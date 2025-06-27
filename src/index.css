@@ -1,0 +1,47 @@
+
+
+
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@400;500;600;700&display=swap');
+
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+
+/* slick-carousel CSS */
+@import "~slick-carousel/slick/slick.css";
+@import "~slick-carousel/slick/slick-theme.css";
+
+/* --- position the dot row a touch higher if you like -------------- */
+.mobile-slider .slick-dots {
+    bottom: 10px;        /* move 10 px up from the very bottom */
+  }
+  
+  /* --- dot appearance ---------------------------------------------- */
+  .mobile-slider .slick-dots li button:before {
+    font-size: 8px;      /* default circle size      */
+    color: black;      /* inactive dot colour      */
+  }
+  
+  /* --- active dot gets the highlight colour ------------------------ */
+  .mobile-slider .slick-dots li.slick-active button:before {
+    color: #ffffff;      /* active dot colour        */
+    opacity: 1;          /* fully opaque             */
+  }
+  
+  /* --- tighten spacing between dots if desired --------------------- */
+  .mobile-slider .slick-dots li {
+    margin: 5px 2px;       /* adjust horizontal gap    */
+  }
+  
+  
+
+
+  
+  
+  
+  
+  
