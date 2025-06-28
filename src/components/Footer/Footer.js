@@ -58,8 +58,8 @@ function Footer() {
           Copyright © 2025 &nbsp; | &nbsp; Ikonix Perfume &nbsp; | &nbsp; All Rights Reserved
         </p>
         <div className="flex gap-4 mt-2 md:mt-0">
-          <a href="#" className="hover:underline">Terms & Conditions</a>
-          <a href="#" className="hover:underline">Privacy Policy</a>
+          <p>Terms & Conditions</p>
+          <p>Privacy Policy</p>
         </div>
       </div>
     </footer>

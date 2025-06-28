@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
+import { ReactComponent as Left } from '../../../assets/caretleft.svg';
+import { ReactComponent as Right } from '../../../assets/caretright.svg';
+
+
 import {
   HiOutlineShoppingBag,
 } from 'react-icons/hi';
-import perfume from '../../assets/perfume.svg'
-import { useNavigate } from 'react-router-dom';
+import perfume from '../../../assets/perfume.svg'
 
 const FILTERS = [
   'Our Bestsellers',
@@ -23,9 +26,9 @@ const PRODUCTS = Array.from({ length: 8 }, (_, i) => ({
   tag: 'Mens'
 }));
 
-export default function ProductSection() {
+export default function Products({ currentPage = 1, totalPages = 4 }) {
   const [activeFilter, setActiveFilter] = useState(FILTERS[0]);
-  const navigate = useNavigate();
+
   return (
     <section className="bg-white py-8 w-[95%] md:w-[75%] mx-auto">
       {/* Filters */}
@@ -53,7 +56,7 @@ export default function ProductSection() {
       <div className="mt-6 overflow-x-auto md:overflow-visible">
         <div className="flex gap-24 xl:gap-5 md:flex-wrap xl:grid grid-cols-4">
           {PRODUCTS.map(p => (
-            <div 
+            <div
               key={p.id}
               className="w-60 flex-shrink-0 rounded-xl relative"
             >
@@ -64,7 +67,7 @@ export default function ProductSection() {
                 <HiOutlineShoppingBag size={20} />
               </button>
 
-              <div className="" onClick={()=>navigate('/product-details')}>
+              <div className="">
                 <div className="flex justify-center">
                   <img
                     src={p.image}
@@ -94,7 +97,18 @@ export default function ProductSection() {
       </div>
 
       {/* view all button */}
-     <button className='font-normal mt-5 font-[lato] text-[16px] text-[#13181F] tracking-[0.5px] bg-[#C5A291] px-[24px] py-[8px] rounded-[24px]'>View all Products</button>
-    </section>
+      <div className="w-full border-t border-[#C9B9AF] py-4 flex items-center justify-between text-[#9C7E6E] text-[16px] font-normal bg-[#FAF8F6]">
+      <button className="ml-4 p-2 hover:opacity-70">
+        <Left className="w-5 h-5" strokeWidth={1.5} />
+      </button>
+
+      <span className="text-center flex-1 text-[16px]">
+        Page {currentPage} of {totalPages}
+      </span>
+
+      <button className="mr-4 p-2 hover:opacity-70">
+        <Right className="w-5 h-5" strokeWidth={1.5} />
+      </button>
+    </div>    </section>
   );
 }

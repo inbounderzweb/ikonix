@@ -1,13 +1,17 @@
-import './App.css';
-import Home from './pages/Home/Home';
+import React from "react";
+import AppRoutes from "./routes/AppRoutes"; // or your routing component
+import { BrowserRouter } from "react-router-dom";
+import Header from "./components/header/Header";
+import Footer from "./components/Footer/Footer";
 
 function App() {
   return (
-    <div className="App">
-    <h1>
-      <Home />
-    </h1>
-    </div>
+    <BrowserRouter>
+    <Header/>
+          <AppRoutes />
+    <Footer />
+    </BrowserRouter>
+   
   );
 }
 

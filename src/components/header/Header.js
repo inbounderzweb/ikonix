@@ -9,10 +9,19 @@ import { ChevronDownIcon } from '@heroicons/react/20/solid';
 import DropDown from './DropDown';
 import Drawer from '../Drawer';
 import AuthModal from '../../Authmodal/AuthModal';
+import { useNavigate } from 'react-router-dom';
+
+
+
+
+
 
 
 
 function Header() {
+
+  const navigate = useNavigate();
+
   const [open, setOpen] = useState(false);      // products dropdown
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);  // NEW ⬅️ auth modal
@@ -50,7 +59,7 @@ function Header() {
 
             {/* Nav links */}
             <ul className='flex gap-5 text-white items-center text-[16px] font-thin'>
-              <li>Home</li>
+            <li className='cursor-pointer' onClick={() => navigate('/')}>Home</li>
               <li>About&nbsp;us</li>
 
               {/* Products dropdown */}
@@ -80,7 +89,7 @@ function Header() {
                 </div>
               </li>
 
-              <li>Contact&nbsp;us</li>
+              <li onClick={()=>navigate('/contact')}>Contact&nbsp;us</li>
             </ul>
 
             {/* Icons */}
