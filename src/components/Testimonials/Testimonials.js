@@ -17,7 +17,7 @@ const deals = [
   {
     id: 2,
     img: test2,
-    name: "Full Name",
+    name: "Full name",
     testimonial:
       "Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat."
   },
@@ -56,17 +56,18 @@ const settings = {
   prevArrow: <Arrow direction="prev" />,
   nextArrow: <Arrow direction="next" />,
   responsive: [
-    { breakpoint: 2048, settings: { slidesToShow: 2 } },
+    { breakpoint: 2048, settings: { slidesToShow: 3 } },
     { breakpoint: 1024, settings: { slidesToShow: 1 } },
   ],
 };
 
 function Testimonials() {
   return (
-    <div className="w-[75%] mx-auto py-8">
-        <div className='w-[700px] mx-auto'>
+    <div className='bg-white w-full'>
+    <div className="w-[95%] md:w-[75%] mx-auto py-16">
+        <div className='lg:w-[700px] w-[95%] mx-auto'>
         <h1 className='text-[#B39384] font-[Luxia] text-center text-[27px] font-normal tracking-[0.5px]'>User Testimonials</h1>
-        <p className='font-[lato] text-[#53443D] text-[16px] font-normal tracking-[0.5px]'>Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.</p>
+        <p className='font-[lato] text-[#53443D] text-center text-[16px] font-normal tracking-[0.5px]'>Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.</p>
         </div>
         
       <Slider {...settings}>
@@ -76,14 +77,15 @@ function Testimonials() {
               <div className="w-[300px] h-[250px] mx-auto flex flex-col items-center justify-center gap-3">
                 <img src={deal.img} alt="testimonial-profile" className="w-16 h-16 rounded-full object-cover" />
                 <div className="grid text-center">
-                  <span className="font-semibold">{deal.name}</span>
-                  <span className="text-sm text-gray-600">{deal.testimonial}</span>
+                  <span className="text-[#C5A291] font-[lato] text-[21px] font-[700]">{deal.name}</span>
+                  <span className="text-[14px] md:text-[16px] font-[lato] text-gray-600">{deal.testimonial}</span>
                 </div>
               </div>
             </div>
           </div>
         ))}
       </Slider>
+    </div>
     </div>
   );
 }

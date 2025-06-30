@@ -52,19 +52,26 @@ const settings = {
   prevArrow: <Arrow direction="prev" />,
   nextArrow: <Arrow direction="next" />,
   responsive: [
-    { breakpoint: 2048, settings: { slidesToShow: 2 } }, // tablets
-    { breakpoint: 1024, settings: { slidesToShow: 1 } },  // phones
+    {
+      breakpoint: 1024, // <= 1024px (mobile & tablets)
+      settings: {
+        slidesToShow: 1,
+        dots: true,
+        arrows: false, // ❌ hide arrows on mobile
+      },
+    },
   ],
 };
+
 
 /* ───────── Main component ───────── */
 export default function SpecialDealsSlider() {
   return (
-    <section className="bg-[#e8d5cf] py-16 mt-[48px]">
+    <section className="bg-[#e8d5cf] py-16">
       <div className="mx-auto  w-[95%] md:w-[80%] px-4">
     
-    <h1 className="text-[27px] text-[#8C7367] tracking-[0.5px]">special deals</h1>
-    <p className="text-[#53443D] text-[16px] font-[lato] font-[400] w-full md:w-[710px] mx-auto">Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.</p>
+    <h1 className="text-[27px] text-[#8C7367] text-center tracking-[0.5px]">special deals</h1>
+    <p className="text-[#53443D] text-[16px] font-[lato] text-center font-[400] w-full md:w-[710px] mx-auto">Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.</p>
         {/* Slider */}
         <Slider {...settings} className="mt-12">
           {deals.map((deal) => (

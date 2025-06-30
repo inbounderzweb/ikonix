@@ -57,18 +57,18 @@ const settings = {
 
 export default function InstagramShowcase() {
   return (
-    <section className="bg-gradient-to-b from-[#c7a895] to-white py-10 w-full">
+    <section className="bg-gradient-to-r from-[#c7a895] to-white pt-[40px] w-full">
       {/*
         Wrapper width capped at 75% of viewport (`w-[75%]`) and pushed flush to the
         right with `ml-auto`, so the carousel kisses the screen edge while the
         phone mock‑up sits just to its left.
       */}
-      <div className="ml-auto flex w-[90%] flex-col gap-6 md:flex-row md:items-start md:justify-between">
+      <div className="mx:auto ml-4 md:ml-auto flex w-[90%] flex-col gap-6 md:flex-row md:items-start md:justify-between">
         {/* Left ─ Instagram profile preview */}
         <img
           src={instapage}
           alt="Instagram page preview"
-          className="mx-auto w-full max-w-sm object-contain md:mx-0"
+          className="mx-auto w-full md:max-w-sm object-contain md:mx-0"
         />
 
         {/* Right ─ Carousel flush‑right */}
@@ -91,12 +91,13 @@ export default function InstagramShowcase() {
           <div className="mt-5 flex gap-8 items-center">
 
             <div className="grid">
-              <span className="text-[B39384] font-normal text-[16px] font-[luxia] text-left">Check us out on</span>
-              <span className="text-[B39384] font-semibold text-[24px] font-[luxia]">Instagram</span>
+              <span className="text-[#53443D] font-normal text-[16px] tracking-[0.5px] leading-[150%] font-[lato] text-left">Check us out on</span>
+              <span className="font-normal text-[36px] font-[luxia] text-left text-[#8C7367]">Instagram</span>
+
             </div>
 
             <div>
-                <button className="bg-[#C5A291] px-[24px] py-[8px] rounded-[24px]">Click here</button>
+                <button className="bg-[#C5A291] font-[lato] px-[24px] py-[8px] rounded-[24px]">Click here</button>
             </div>
 
           </div>

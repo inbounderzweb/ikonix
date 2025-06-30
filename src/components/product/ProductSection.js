@@ -27,9 +27,12 @@ export default function ProductSection() {
   const [activeFilter, setActiveFilter] = useState(FILTERS[0]);
   const navigate = useNavigate();
   return (
+    <div className='bg-white w-full mt-[80px] py-[40px]'>
+
+  
     <section className="bg-white py-8 w-[95%] md:w-[75%] mx-auto">
       {/* Filters */}
-      <div className="overflow-x-auto md:overflow-visible">
+      <div className="overflow-x-auto md:overflow-visible pb-4">
         <ul className="flex space-x-3 px-4 scrollbar-hide md:justify-start md:px-0">
           {FILTERS.map(f => (
             <li key={f} className="whitespace-nowrap">
@@ -51,7 +54,7 @@ export default function ProductSection() {
 
       {/* Products */}
       <div className="mt-6 overflow-x-auto md:overflow-visible">
-        <div className="flex gap-24 xl:gap-5 md:flex-wrap xl:grid grid-cols-4">
+        <div className="flex gap-8 md:gap-24 xl:gap-5 md:flex-wrap xl:grid grid-cols-4">
           {PRODUCTS.map(p => (
             <div 
               key={p.id}
@@ -94,7 +97,8 @@ export default function ProductSection() {
       </div>
 
       {/* view all button */}
-     <button className='font-normal mt-5 font-[lato] text-[16px] text-[#13181F] tracking-[0.5px] bg-[#C5A291] px-[24px] py-[8px] rounded-[24px]'>View all Products</button>
+     <button className='font-normal text-center mx-auto flex justify-center mt-5 font-[lato] text-[16px] text-[#13181F] tracking-[0.5px] bg-[#C5A291] px-[24px] py-[8px] rounded-[24px]'>View all Products</button>
     </section>
+    </div>
   );
 }

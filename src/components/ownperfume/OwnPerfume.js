@@ -6,7 +6,7 @@ import makeperfume from '../../assets/makeperfume.svg'
 export default function OwnPerfume() {
   return (
     <section className="bg-bg-brand">
-      <div className=" w-[75%] mx-auto px-4 py-16">
+      <div className=" w-[95%] md:w-[75%] mx-auto px-4 py-16">
         {/* card wrapper */}
         <div className="flex flex-col overflow-hidden rounded-[24px] bg-white/10 backdrop-blur-md md:flex-row">
           {/* image */}

@@ -38,7 +38,7 @@ function Header() {
   }, []);
 
   return (
-    <div className='mx-auto w-[75%] pt-[24px] font-fancy'>
+    <div className='mx-auto w-[95%] md:w-[75%] pt-[24px] font-fancy'>
       <div className='bg-[#2A3443] h-[70px] rounded-[8px] md:rounded-[16px]'>
         <div className='flex items-center h-full justify-between'>
 
