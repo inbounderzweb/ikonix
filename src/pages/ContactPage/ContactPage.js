@@ -1,11 +1,15 @@
 import React, { useState } from "react";
 import { FiPhone } from "react-icons/fi";
+import illustration from '../../assets/contact.svg'
+import SpecialDealsSlider from "../../components/SpecialDealsSlider/SpecialDealsSlider";
+import OwnPerfume from "../../components/ownperfume/OwnPerfume";
+
 
 /**
  * ContactPage – matches your desktop & mobile mock 1‑to‑1.
  * Plug into <Route path="/contact" element={<ContactPage />} />
  */
-export default function ContactPage({ illustration = "https://placehold.co/460x380?text=Illustration" }) {
+export default function ContactPage() {
   const [form, setForm] = useState({
     first: "",
     last: "",
@@ -133,6 +137,17 @@ export default function ContactPage({ illustration = "https://placehold.co/460x3
       >
         <FiPhone className="w-6 h-6 text-white" />
       </a>
+
+
+
+<SpecialDealsSlider />
+<OwnPerfume />
+
+
+
+
+
+
     </section>
   );
 }

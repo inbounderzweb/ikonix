@@ -1,6 +1,18 @@
 import React from 'react'
 import shopherobg from '../../assets/shopherobg.svg';
 import shopherobgmob from '../../assets/shopheromobbg.svg';
+import aboutmain from '../../assets/aboutmain.svg';
+import mission from '../../assets/mission.svg';
+import vision from '../../assets/vision.svg';
+import ch1 from '../../assets/ch1.svg';
+import ch2 from '../../assets/ch2.svg';
+import ch3 from '../../assets/ch3.svg';
+import ch4 from '../../assets/ch4.png';
+import ch5 from '../../assets/ch5.svg';
+import SpecialDealsSlider from '../../components/SpecialDealsSlider/SpecialDealsSlider';
+import OwnPerfume from '../../components/ownperfume/OwnPerfume';
+
+
 function AboutUs() {
   return (
     <div>
@@ -40,7 +52,7 @@ function AboutUs() {
   {/* <!-- Who We Are --> */}
   <div class="max-w-7xl mx-auto px-4 md:px-8 py-16 flex flex-col md:flex-row items-center gap-10">
     {/* <!-- Illustration --> */}
-    <img src="/images/about-illustration.svg" alt="Custom perfume illustration" class="w-full md:w-1/2 max-w-[480px] object-contain" />
+    <img src={aboutmain} alt="Custom perfume illustration" class="w-full md:w-1/2 max-w-[480px] object-contain" />
 
     {/* <!-- Copy --> */}
     <div class="flex-1 space-y-4 md:pr-10">
@@ -59,10 +71,7 @@ function AboutUs() {
       </p>
     </div>
 
-    {/* <!-- Optional floating helper icon (desktop only) --> */}
-    <button class="hidden lg:flex items-center justify-center w-10 h-10 rounded-full bg-[#12131a] text-white shadow-lg">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 13v6a3 3 0 01-3 3H6a3 3 0 01-3-3V9a3 3 0 013-3h6" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 3h6v6" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14L21 3" /></svg>
-    </button>
+   
   </div>
 
   {/* <!-- Mission & Vision strip --> */}
@@ -71,7 +80,7 @@ function AboutUs() {
       {/* <!-- Mission --> */}
       <div class="flex items-start gap-5">
         <div class="w-12 h-12 flex-shrink-0 rounded-full bg-white flex items-center justify-center ring-1 ring-[#d9cfc9]">
-          <img src="/icons/mission.svg" alt="Mission icon" class="w-6 h-6" />
+          <img src={mission} alt="Mission icon" class="w-24 p-2" />
         </div>
         <div>
           <h3 class="text-lg font-semibold mb-1">Our Mission</h3>
@@ -83,7 +92,7 @@ function AboutUs() {
       {/* <!-- Vision --> */}
       <div class="flex items-start gap-5">
         <div class="w-12 h-12 flex-shrink-0 rounded-full bg-white flex items-center justify-center ring-1 ring-[#d9cfc9]">
-          <img src="/icons/vision.svg" alt="Vision icon" class="w-6 h-6" />
+          <img src={vision} alt="Vision icon" class="w-24 p-2" />
         </div>
         <div>
           <h3 class="text-lg font-semibold mb-1">Our Vision</h3>
@@ -97,46 +106,38 @@ function AboutUs() {
 
   {/* <!-- Why Choose Us --> */}
   <div class="max-w-7xl mx-auto px-4 md:px-8 py-16">
-    <h2 class="text-center text-2xl md:text-3xl font-semibold mb-12">Why Choose Us</h2>
+    <h2 class="text-center text-2xl md:text-3xl font-[luxia] mb-12">Why Choose Us</h2>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
       {/* <!-- Card --> */}
       <div class="flex flex-col items-center text-center bg-[#f5ece8] rounded-lg p-8 space-y-4">
-        <div class="w-16 h-16 rounded-full bg-[#b49d91]/90 flex items-center justify-center">
-          <img src="/icons/personalised.svg" alt="Personalised" class="w-7 h-7" />
-        </div>
+          <img src={ch1} alt="Personalised" class="w-24" />
+       
         <h4 class="font-semibold">Personalised Fragrances</h4>
         <p class="text-sm leading-relaxed">We create scents that are all about your preferences.</p>
       </div>
       {/* <!-- Card --> */}
       <div class="flex flex-col items-center text-center bg-[#f5ece8] rounded-lg p-8 space-y-4">
-        <div class="w-16 h-16 rounded-full bg-[#b49d91]/90 flex items-center justify-center">
-          <img src="/icons/recreate.svg" alt="Scent Recreation" class="w-7 h-7" />
-        </div>
+          <img src={ch2} alt="Scent Recreation" class="w-24" />
+        
         <h4 class="font-semibold">Scent Recreation</h4>
         <p class="text-sm leading-relaxed">We recreate popular favourites for you, making them more accessible without compromising on quality.</p>
       </div>
       {/* <!-- Card --> */}
       <div class="flex flex-col items-center text-center bg-[#f5ece8] rounded-lg p-8 space-y-4">
-        <div class="w-16 h-16 rounded-full bg-[#b49d91]/90 flex items-center justify-center">
-          <img src="/icons/ingredients.svg" alt="High‑Quality Ingredients" class="w-7 h-7" />
-        </div>
+          <img src={ch3} alt="High‑Quality Ingredients" class="w-24" />
         <h4 class="font-semibold">High‑Quality Ingredients</h4>
         <p class="text-sm leading-relaxed">We use safe, premium ingredients that last long and are gentle on your skin.</p>
       </div>
       {/* <!-- Card --> */}
       <div class="flex flex-col items-center text-center bg-[#f5ece8] rounded-lg p-8 space-y-4 sm:col-span-1 lg:col-span-1">
-        <div class="w-16 h-16 rounded-full bg-[#b49d91]/90 flex items-center justify-center">
-          <img src="/icons/pricing.svg" alt="Affordable Pricing" class="w-7 h-7" />
-        </div>
+          <img src={ch4} alt="Affordable Pricing" class="w-24" />
         <h4 class="font-semibold">Affordable Pricing</h4>
         <p class="text-sm leading-relaxed">We offer custom blends and recreated favourites at prices that make sense.</p>
       </div>
       {/* <!-- Card --> */}
       <div class="flex flex-col items-center text-center bg-[#f5ece8] rounded-lg p-8 space-y-4 sm:col-span-1 lg:col-span-1">
-        <div class="w-16 h-16 rounded-full bg-[#b49d91]/90 flex items-center justify-center">
-          <img src="/icons/craftsmanship.svg" alt="Expert Craftsmanship" class="w-7 h-7" />
-        </div>
+          <img src={ch5} alt="Expert Craftsmanship" class="w-24" />
         <h4 class="font-semibold">Expert Craftsmanship</h4>
         <p class="text-sm leading-relaxed">Our perfumers, with years of experience in the industry, ensure every fragrance is carefully balanced and thoughtfully made.</p>
       </div>
@@ -147,7 +148,8 @@ function AboutUs() {
 
 
 
-
+<SpecialDealsSlider />
+<OwnPerfume />
 
 
 

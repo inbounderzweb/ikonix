@@ -1,12 +1,16 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-function DropDown() {
+function DropDown({ onSelect = () => {} }) {
   const navigate = useNavigate();
 
   const handleNavigate = (path) => {
     navigate(path);
+    onSelect();       // tell Header to close the menu
+
   };
+
+ 
 
   return (
     <div className="w-[80%] mx-auto relative">
@@ -15,7 +19,7 @@ function DropDown() {
           <div>
             <h3 className="text-lg font-semibold text-gray-600 mb-2">Men’s Perfume</h3>
             <ul className="space-y-2 text-sm text-gray-700">
-              <li className='cursor-pointer border-b-[1px] border-gray-400 mb-4 pb-4' onClick={() => navigate('/shop')}>Men’s perfume</li>
+              <li className='cursor-pointer border-b-[1px] border-gray-400 mb-4 pb-4' onClick={() => handleNavigate('/shop')}>Men’s perfume</li>
               <li className='border-b-[1px] border-gray-400 mb-4 pb-4'>Men’s perfume</li>
               <li className='border-b-[1px] border-gray-400 mb-4 pb-4'>Men’s perfume</li>
               <li className='border-b-[1px] border-gray-400 mb-4 pb-4'>Men’s perfume</li>

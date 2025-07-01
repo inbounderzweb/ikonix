@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ReactComponent as Left } from '../../../assets/caretleft.svg';
 import { ReactComponent as Right } from '../../../assets/caretright.svg';
-
+import { Link } from 'react-router-dom';
 
 import {
   HiOutlineShoppingBag,
@@ -56,7 +56,7 @@ export default function Products({ currentPage = 1, totalPages = 4 }) {
       <div className="mt-6 overflow-x-auto md:overflow-visible">
         <div className="flex gap-24 xl:gap-5 md:flex-wrap xl:grid grid-cols-4">
           {PRODUCTS.map(p => (
-            <div
+           <div 
               key={p.id}
               className="w-60 flex-shrink-0 rounded-xl relative"
             >
@@ -69,11 +69,13 @@ export default function Products({ currentPage = 1, totalPages = 4 }) {
 
               <div className="">
                 <div className="flex justify-center">
-                  <img
+                <Link to={'/product-details'}>
+                <img
                     src={p.image}
                     alt={p.title}
                     className="object-contain"
                   />
+                </Link>  
                 </div>
 
                 <div className="mt-4 flex justify-between items-end mb-6">
@@ -92,9 +94,13 @@ export default function Products({ currentPage = 1, totalPages = 4 }) {
                 </div>
               </div>
             </div>
+            
+
           ))}
         </div>
       </div>
+
+      
 
       {/* view all button */}
       <div className="w-full border-t border-[#C9B9AF] py-4 flex items-center justify-between text-[#9C7E6E] text-[16px] font-normal bg-[#FAF8F6]">
