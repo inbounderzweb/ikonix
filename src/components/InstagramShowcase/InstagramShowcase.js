@@ -105,5 +105,6 @@ export default function InstagramShowcase() {
         </div>
       </div>
     </section>
+    
   );
 }

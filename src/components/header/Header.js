@@ -60,7 +60,7 @@ function Header() {
             {/* Nav links */}
             <ul className='flex gap-5 text-white items-center text-[16px] font-thin'>
             <li className='cursor-pointer' onClick={() => navigate('/')}>Home</li>
-              <li>About&nbsp;us</li>
+              <li className='cursor-pointer' onClick={()=>navigate('/about')}>About&nbsp;us</li>
 
               {/* Products dropdown */}
               <li className='relative' ref={menuRef}>
@@ -89,7 +89,7 @@ function Header() {
                 </div>
               </li>
 
-              <li onClick={()=>navigate('/contact')}>Contact&nbsp;us</li>
+              <li className='cursor-pointer' onClick={()=>navigate('/contact')}>Contact&nbsp;us</li>
             </ul>
 
             {/* Icons */}
@@ -113,7 +113,7 @@ function Header() {
         onClose={() => setSidebarOpen(false)}
       >
         <div className='grid gap-6 text-lg text-gray-800 px-6 pt-8'>
-          <p>About us</p>
+          <p className='cursor-pointer' onClick={()=>navigate('/about')}>About us</p>
           <p>Products</p>
           <p>Contact us</p>
 
