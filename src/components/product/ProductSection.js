@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   HiOutlineShoppingBag,
 } from 'react-icons/hi';
 import perfume from '../../assets/perfume.svg'
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const FILTERS = [
   'Our Bestsellers',
@@ -24,6 +25,32 @@ const PRODUCTS = Array.from({ length: 8 }, (_, i) => ({
 }));
 
 export default function ProductSection() {
+
+
+
+  // useEffect(() => {
+  //   const fetchProducts = async () => {
+  //     try {
+  //       const res = await fetch('https://ikonixperfumer.com/beta/api/products');
+  //       const data = await res.json();
+  //       console.log(data);
+  //     } catch (error) {
+  //       console.error('Fetch error:', error);
+  //     }
+  //   };
+  
+  //   fetchProducts();
+  // }, []);
+  
+
+
+
+
+
+
+
+
+
   const [activeFilter, setActiveFilter] = useState(FILTERS[0]);
   const navigate = useNavigate();
   return (

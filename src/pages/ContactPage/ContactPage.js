@@ -18,35 +18,35 @@ export default function ContactPage() {
     comment: "",
   });
   const inputBase =
-    "w-full border text-[15px] placeholder:text-gray-400 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#b49d91]";
+    "w-full border text-[14px] rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#b49d91]";
 
   return (
-    <section className="w-full bg-white text-[#3b312e] font-[\'Inter\',sans-serif] pb-20">
+    <section className="w-[98%] md:w-[75%] mx-auto text-[#3b312e] font-[\'Inter\',sans-serif] pb-20">
       {/* breadcrumb */}
-      <nav className="max-w-7xl mx-auto px-4 md:px-8 pt-6 text-sm text-gray-500">
+      <nav className="mx-auto pt-6 text-sm text-gray-500">
         Home / <span className="text-black">Contact us</span>
       </nav>
 
       {/* heading */}
-      <h1 className="text-center text-[32px] md:text-[36px] font-medium tracking-wide pt-4 pb-8">
+      <h1 className="text-center text-[#8C7367] font-[luxia] text-[36px] font-[400] pt-4 pb-8">
         Contact us
       </h1>
 
       {/* main card */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8">
-        <div className="bg-[#fdf6f4] rounded-2xl p-8 md:p-12 flex flex-col md:flex-row gap-10 items-center md:items-start">
+      <div className="mx-auto ">
+        <div className="bg-[#EDE2DD] rounded-[24px] p-8 md:p-12 flex flex-col md:flex-row gap-10 items-center md:items-start">
           {/* illustration – on left desktop, bottom mobile */}
           <img
             src={illustration}
             alt="Customer Support Illustration"
-            className="w-full md:w-1/2 max-w-[480px] object-contain order-2 md:order-1"
+            className="max-w-[480px] object-contain order-2 md:order-1"
           />
 
           {/* form */}
           <form className="flex-1 w-full order-1 md:order-2" onSubmit={(e) => e.preventDefault()}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
-                <label htmlFor="first" className="text-[13px] font-medium">
+                <label htmlFor="first" className="font-[lato] text-[12px] font-[400] text-[#53443D] tracking-[0.5px]">
                   First Name
                 </label>
                 <input
@@ -59,7 +59,7 @@ export default function ContactPage() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label htmlFor="last" className="text-[13px] font-medium">
+                <label htmlFor="last" className="font-[lato] text-[12px] font-[400] text-[#53443D] tracking-[0.5px]">
                   Second Name
                 </label>
                 <input
@@ -72,7 +72,7 @@ export default function ContactPage() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label htmlFor="email" className="text-[13px] font-medium">
+                <label htmlFor="email" className="font-[lato] text-[12px] font-[400] text-[#53443D] tracking-[0.5px]">
                   Email
                 </label>
                 <input
@@ -85,26 +85,31 @@ export default function ContactPage() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label htmlFor="phone" className="text-[13px] font-medium">
-                  Phone Number
-                </label>
-                <div className="flex gap-2">
-                  <span className="min-w-[56px] border rounded px-3 py-2 flex items-center justify-center text-gray-500">+91</span>
-                  <input
-                    id="phone"
-                    type="tel"
-                    placeholder="0000 000 000"
-                    className={`${inputBase} flex-1`}
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  />
-                </div>
-              </div>
+  <label
+    htmlFor="phone"
+    className="text-[13px] font-normal text-[#53443D] tracking-[0.5px]"
+  >
+    Phone Number
+  </label>
+  <div className="flex items-center bg-[#FDFBFA] border rounded-[8px] overflow-hidden w-full">
+    <span className="pl-4 pr-2">+91</span>
+    <div className="h-[24px] w-[1px] bg-[#4B3A34] mx-1" />
+    <input
+      id="phone"
+      type="tel"
+      placeholder="0000 000 000"
+      className="flex-1 px-2 py-[10px] "
+      value={form.phone}
+      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+    />
+  </div>
+</div>
+
             </div>
 
             {/* comment */}
             <div className="flex flex-col gap-1 mt-4">
-              <label htmlFor="comment" className="text-[13px] font-medium">
+              <label htmlFor="comment" className="font-[lato] text-[12px] font-[400] text-[#53443D] tracking-[0.5px]">
                 Comment
               </label>
               <textarea
@@ -120,7 +125,7 @@ export default function ContactPage() {
             {/* submit */}
             <button
               type="submit"
-              className="mt-6 w-full md:w-auto px-16 bg-[#12131a] text-white py-3 rounded-md hover:opacity-90 transition block mx-auto"
+              className="mt-6 w-full md:w-auto px-16 bg-[#12131a] text-[#EAEBED] text-[lato] tracking-[0.5px] font-[400] py-3 rounded-md hover:opacity-90 transition block mx-auto"
             >
               Submit
             </button>
@@ -140,8 +145,6 @@ export default function ContactPage() {
 
 
 
-<SpecialDealsSlider />
-<OwnPerfume />
 
 
 

@@ -38,11 +38,24 @@
   }
   
   body{
-    background-color: #EDE2DD;
+    background-color: #F9F6F4;
   }
 
 
-  
+ 
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+    background-color: white;
+color: white;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+    background-color: white;
+    color: white;
+  }
+
   
   
   

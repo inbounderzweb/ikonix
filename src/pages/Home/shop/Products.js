@@ -30,7 +30,7 @@ export default function Products({ currentPage = 1, totalPages = 4 }) {
   const [activeFilter, setActiveFilter] = useState(FILTERS[0]);
 
   return (
-    <section className="bg-white py-8 w-[95%] md:w-[75%] mx-auto">
+    <section className="py-8 w-[95%] md:w-[75%] mx-auto">
       {/* Filters */}
       <div className="overflow-x-auto md:overflow-visible">
         <ul className="flex space-x-3 px-4 scrollbar-hide md:justify-start md:px-0">

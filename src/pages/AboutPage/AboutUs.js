@@ -25,7 +25,7 @@ function AboutUs() {
 >
 
 
-<span className='font-[luxia] text-[#53443D] text-[36px] leading-[112.5%] tracking-[0.5px] flex  align-middle items-center lg:mr-[80px] xl:mr-[200px]'>Lorem Ipsum <br/>dolor sit amet</span>
+<span className='font-[luxia] text-[#53443D] text-[36px] leading-[112.5%] tracking-[0.5px] flex  align-middle items-center lg:mr-[80px] xl:mr-[150px]'>Lorem Ipsum <br/>dolor sit amet</span>
   
 </div>
 {/* End Hero section for desktop  */}
@@ -48,7 +48,7 @@ function AboutUs() {
 
 
     {/* <!-- BEGIN: About / Mission / Why Choose Us section --> */}
-<section class="w-full text-[#3b312e] font-['Inter',sans-serif]">
+<section class="w-[98%] md:w-[75%] mx-auto text-[#3b312e] font-['Inter',sans-serif]">
   {/* <!-- Who We Are --> */}
   <div class="max-w-7xl mx-auto px-4 md:px-8 py-16 flex flex-col md:flex-row items-center gap-10">
     {/* <!-- Illustration --> */}
@@ -57,26 +57,26 @@ function AboutUs() {
     {/* <!-- Copy --> */}
     <div class="flex-1 space-y-4 md:pr-10">
       <h2 class="text-2xl md:text-3xl font-semibold">Who We Are</h2>
-      <p>
+      <p className='text-[14px] text-justify'>
         Ikonix is built around one simple idea – scent should be personal. We specialise in
         creating custom fragrances that capture who you are and what you love. Whether you’re
         after something entirely unique or a budget‑friendly recreation of a popular favourite,
         every Ikonix perfume is thoughtfully made with care.
       </p>
-      <p>
+      <p className='text-[14px] text-justify'>
         Our team of experienced perfumers blends quality ingredients with attention to detail,
         ensuring each fragrance isn’t just wearable but also memorable. At Ikonix, we don’t
         believe in one‑scent‑fits‑all. We’re here to help you find a fragrance that truly feels
         like you.
       </p>
     </div>
-
-   
   </div>
+</section>
 
-  {/* <!-- Mission & Vision strip --> */}
-  <div class="bg-[#f5ece8] py-12">
-    <div class="max-w-7xl mx-auto px-4 md:px-8 grid grid-cols-1 md:grid-cols-2 gap-10">
+   {/* <!-- Mission & Vision strip --> */}
+   <div className='w-full bg-[#EDE2DD]'>
+  <div class="py-12">
+    <div class="mx-auto px-4 md:px-8 grid grid-cols-1 md:grid-cols-2 gap-10 w-[98%] md:w-[75%]">
       {/* <!-- Mission --> */}
       <div class="flex items-start gap-5">
         <div class="w-12 h-12 flex-shrink-0 rounded-full bg-white flex items-center justify-center ring-1 ring-[#d9cfc9]">
@@ -103,9 +103,10 @@ function AboutUs() {
       </div>
     </div>
   </div>
+  </div>
 
   {/* <!-- Why Choose Us --> */}
-  <div class="max-w-7xl mx-auto px-4 md:px-8 py-16">
+  <div class=" mx-auto py-16 w-[98%] md:w-[75%]">
     <h2 class="text-center text-2xl md:text-3xl font-[luxia] mb-12">Why Choose Us</h2>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -143,7 +144,7 @@ function AboutUs() {
       </div>
     </div>
   </div>
-</section>
+
 {/* <!-- END: About / Mission / Why Choose Us section --> */}
 
 

@@ -5,7 +5,7 @@ import info2 from '../../assets/info2.svg'
 
 function CollectionCards() {
   return (
-    <div className='mx-auto w-[95%] md:w-full'>
+    <div className='mx-auto w-[95%] md:w-[75%]'>
       <div className='grid grid-cols-1 md:flex gap-4 md:gap-8 mx-auto justify-center items-center align-middle pt-6'>
       <div>
         <img className='w-full' src={info} alt='info-image' />

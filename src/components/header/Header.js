@@ -26,6 +26,24 @@ function Header() {
   const [cartOpen,   setCartOpen]   = useState(false);  // NEW – cart drawer
   const [searchOpen, setSearchOpen] = useState(false);
 
+
+// header sticky function
+const [scrolled, setScrolled] = useState(false);
+
+useEffect(() => {
+  const handleScroll = () => {
+    setScrolled(window.scrollY > 10);
+  };
+  window.addEventListener('scroll', handleScroll);
+  return () => window.removeEventListener('scroll', handleScroll);
+}, []);
+
+// end header sticky function
+
+
+
+
+
   const menuRef = useRef(null);
 
   /* ───── Close mega-menu on outside click ───────── */
@@ -42,7 +60,13 @@ function Header() {
 
   /* —————————————————————————————————————————————————————— */
   return (
-    <div className="mx-auto w-[95%] md:w-[75%] pt-6 font-fancy">
+    <div>
+
+  
+    <div className={`fixed top-0 left-1/2 -translate-x-1/2 z-50 w-[95%] md:w-[75%] transition-all duration-300 ease-in-out font-fancy ${
+      scrolled ? 'bg-[#2A3443]/90 shadow-md backdrop-blur-md' : 'bg-[#2A3443]'
+    } rounded-[8px] md:rounded-[16px] mt-3`}>
+    
       <div className="bg-[#2A3443] h-[70px] rounded-[8px] md:rounded-[16px]">
         <div className="flex items-center h-full justify-between">
           {/* Logo */}
@@ -96,9 +120,9 @@ function Header() {
           </div>
         </div>
       </div>
-
-      {/* Mobile drawer (☰) */}
-      <Drawer setSideBarOpen={sidebar} onClose={() => setSidebar(false)}>
+    </div>
+   {/* Mobile drawer (☰) */}
+   <Drawer setSideBarOpen={sidebar} onClose={() => setSidebar(false)}>
         {/* … unchanged mobile menu content … */}
       </Drawer>
 

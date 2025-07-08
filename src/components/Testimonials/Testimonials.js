@@ -34,8 +34,8 @@ const deals = [
 const Arrow = ({ onClick, direction }) => (
   <button
     onClick={onClick}
-    className={`absolute top-1/2 -translate-y-1/2 z-50 flex h-8 w-8 items-center justify-center rounded-full bg-[#C5A291] backdrop-blur-lg transition
-      ${direction === "prev" ? "left-2" : "right-2"}`}
+    className={`absolute top-1/2 -translate-y-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-[#C5A291] backdrop-blur-lg transition
+      ${direction === "prev" ? "left-[-0.1rem]" : "right-[-0.1rem]"}`}
   >
     {direction === "prev" ? (
       <ArrowLeftIcon className="h-5 w-5 text-white" />
@@ -76,9 +76,9 @@ function Testimonials() {
             <div className="bg-[#EDE2DD] rounded-[24px]">
               <div className="w-[300px] h-[250px] mx-auto flex flex-col items-center justify-center gap-3">
                 <img src={deal.img} alt="testimonial-profile" className="w-16 h-16 rounded-full object-cover" />
-                <div className="grid text-center">
+                <div className="grid text-center p-2">
                   <span className="text-[#C5A291] font-[lato] text-[21px] font-[700]">{deal.name}</span>
-                  <span className="text-[14px] md:text-[16px] font-[lato] text-gray-600">{deal.testimonial}</span>
+                  <span className="text-[14px] font-[lato] text-gray-600">{deal.testimonial}</span>
                 </div>
               </div>
             </div>
