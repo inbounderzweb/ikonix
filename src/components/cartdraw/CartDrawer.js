@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useNavigate } from "react-router-dom";
 
 /**
  * CartDrawer – pure‑Tailwind slide‑in cart (no HeadlessUI dependency).
@@ -11,10 +12,8 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
  * ▸ onInc / onDec : (id)   – quantity adjust callbacks
  * ▸ onRemove      : (id)   – remove line‑item callback
  * ▸ recommended   : array  – [{ id, title, img }] (optional)
- *
- * This component stays mounted long enough to play the close animation,
- * then unmounts itself automatically (using local `show` flag).
  */
+
 export default function CartDrawer({
   open,
   onClose,
@@ -24,8 +23,8 @@ export default function CartDrawer({
   onRemove = () => {},
   recommended = [],
 }) {
-  // keep DOM mounted until slide‑out finishes
   const [show, setShow] = useState(open);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (open) setShow(true);
@@ -35,7 +34,14 @@ export default function CartDrawer({
     if (!open) setShow(false);
   };
 
-  if (!show && !open) return null; // fully hidden → unmount
+  const handleCheckout = () => {
+    onClose();
+    setTimeout(() => {
+      navigate("/checkout");
+    }, 100);
+  };
+
+  if (!show && !open) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex">
@@ -57,7 +63,10 @@ export default function CartDrawer({
         {/* Header */}
         <div className="px-6 py-5 border-b flex justify-between items-start">
           <h2 className="text-2xl font-medium">
-            Cart <span className="text-lg text-gray-500">({cart.length} {cart.length === 1 ? "item" : "items"})</span>
+            Cart{" "}
+            <span className="text-lg text-gray-500">
+              ({cart.length} {cart.length === 1 ? "item" : "items"})
+            </span>
           </h2>
           <button onClick={onClose} aria-label="Close cart">
             <XMarkIcon className="w-6 h-6" />
@@ -123,14 +132,11 @@ export default function CartDrawer({
           </div>
         )}
 
-        {/* Checkout */}
+        {/* Checkout Button */}
         <div className="border-t px-6 py-6">
           <button
+            onClick={handleCheckout}
             className="w-full py-3 rounded-md bg-[#b49d91] text-white text-lg font-medium hover:opacity-90 transition"
-            onClick={() => {
-              onClose();
-              window.location.href = "/checkout";
-            }}
           >
             Checkout
           </button>

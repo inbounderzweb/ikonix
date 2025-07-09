@@ -4,21 +4,24 @@ import { BrowserRouter } from "react-router-dom";
 import Header from "./components/header/Header";
 import Footer from "./components/Footer/Footer";
 import ValidateOnLoad from "./lib/keyService";
+import ScrollToTop from "./components/ScrollToTop";
+import { AuthProvider } from "./context/AuthContext";
 
 
 function App() {
   return (
     <BrowserRouter>
-<ValidateOnLoad/>
+    <AuthProvider>
+    <ScrollToTop />
 
-<div className="pt-[90px]"> {/* Adjust based on header height */}
+  <div className="pt-[90px]"> {/* Adjust based on header height */}
   <Header />
   {/* rest of your content */}
-</div>
-          <AppRoutes />
+  </div>
+    <AppRoutes />
     <Footer />
-  
-  
+    </AuthProvider>
+   
     </BrowserRouter>
    
   );

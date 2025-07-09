@@ -41,6 +41,9 @@ const mockCart = [
 ];
 
 export default function CheckoutPage() {
+
+
+  
   const [cart, setCart] = useState(mockCart);
   const [payMethod, setPayMethod] = useState("cod");
   const [form, setForm] = useState({

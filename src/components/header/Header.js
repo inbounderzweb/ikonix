@@ -2,6 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDownIcon } from '@heroicons/react/20/solid';
 import { useNavigate, useLocation,Link } from 'react-router-dom';   // ← location closes menu
+import { useAuth } from '../../context/AuthContext';
+
+
 
 // … your existing asset imports …
 import logo    from '../../assets/logo.svg';
@@ -19,6 +22,8 @@ import SearchModal from '../search/Search';
 function Header() {
   const navigate = useNavigate();
   const location = useLocation();            // auto-close the mega-menu on route change
+
+  const {token}=useAuth()
 
   const [open,       setOpen]       = useState(false);  // products ▼
   const [sidebar,    setSidebar]    = useState(false);  // mobile ☰
@@ -145,7 +150,10 @@ useEffect(() => {
         onRemove={id => {/* remove logic */}}
         recommended={discoverMore}   // optional array for “Discover More”
       />
+
+      {token ? <p>token is avilable {`${token}`}</p> :'token not avilable'}
     </div>
+
   );
 }
 

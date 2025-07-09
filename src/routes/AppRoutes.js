@@ -6,11 +6,14 @@ import ProductDetail from "../pages/Home/productdetail/ProductDetail";
 import CheckoutPage from "../pages/Home/checkout/CheckoutPage";
 import ContactPage from "../pages/ContactPage/ContactPage";
 import AboutUs from "../pages/AboutPage/AboutUs";
+import AppLayout from "../Layout/AppLayout";
+
+
 
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
+      <Route path="/" element={<AppLayout />} />
       <Route path="/shop" element={<Shop />} />
       <Route path="/product-details" element={<ProductDetail />}/>
       <Route path='/checkout' element={<CheckoutPage />} />
