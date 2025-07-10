@@ -151,7 +151,7 @@ useEffect(() => {
         recommended={discoverMore}   // optional array for “Discover More”
       />
 
-      {token ? <p>token is avilable {`${token}`}</p> :'token not avilable'}
+      {/* {token ? <p>token is avilable {`${token}`}</p> :'token not avilable'} */}
     </div>
 
   );

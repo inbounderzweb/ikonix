@@ -7,7 +7,6 @@ import Home from '../pages/Home/Home';
 
 export default function AppLayout() {
   const { setToken } = useAuth();
-
   const fetchToken = async () => {
     try {
       const response = await axios.post(
@@ -28,7 +27,7 @@ export default function AppLayout() {
         localStorage.setItem('authToken', tokenValue);
         localStorage.setItem('authTokenTime', Date.now().toString());
         setToken(tokenValue);
-        console.log('✅ Token fetched & saved globally');
+        console.log('✅ Token fetched & saved globally',tokenValue);
       }
     } catch (err) {
       console.error('❌ Global token fetch failed:', err?.response?.data || err.message);

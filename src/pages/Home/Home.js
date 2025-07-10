@@ -6,9 +6,9 @@ import SpecialDealsSlider from '../../components/SpecialDealsSlider/SpecialDeals
 import OwnPerfume from '../../components/ownperfume/OwnPerfume'
 import UspSection from '../../components/UspSection/UspSection'
 import InstagramShowcase from '../../components/InstagramShowcase/InstagramShowcase'
-import ProductSection from '../../components/product/ProductSection'
 import Testimonials from '../../components/Testimonials/Testimonials'
 import BlogList from '../../components/Blogs/BlogList'
+import ProductList from '../products/ProductList'
 
 function Home() {
   return (
@@ -16,7 +16,7 @@ function Home() {
       <div className='hidden md:block'><SliderComponent /></div>
         <div className='block md:hidden'><MobileSlider/></div>
         <div><CollectionCards /></div>
-        <ProductSection />
+        <div><ProductList/></div>
         <div><SpecialDealsSlider /></div>
         <div><OwnPerfume /></div>
         <div><UspSection /></div>
