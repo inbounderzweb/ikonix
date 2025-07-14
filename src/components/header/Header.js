@@ -21,7 +21,10 @@ import SearchModal from '../search/Search';
 
 function Header() {
   const navigate = useNavigate();
-  const location = useLocation();            // auto-close the mega-menu on route change
+  const location = useLocation();  // auto-close the mega-menu on route change
+
+
+  const { user } = useAuth(); // Get the user from the AuthContext
 
   const {token}=useAuth()
 
@@ -117,8 +120,11 @@ useEffect(() => {
             {/* Icons */}
             <div className="flex gap-3 items-center">
               <img src={search} onClick={()=>setSearchOpen(true)}  alt="Search"  className="cursor-pointer" />
+
               <img src={profile} alt="Profile" className="cursor-pointer"
-                   onClick={() => setAuthOpen(true)} />
+                   onClick={() => user ? navigate('/user-profile') : setAuthOpen(true)} />
+
+
               <img src={cartIco} alt="Cart"    className="cursor-pointer"
                    onClick={() => setCartOpen(true)} />
             </div>

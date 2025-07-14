@@ -21,6 +21,7 @@ const AppRoutes = () => {
       <Route path='/contact' element={<ContactPage />} />
       <Route path='/about' element={<AboutUs />}/>
       <Route path='/profile' element={<UserProfile />} />
+      <Route path='/user-profile' element={<UserProfile/>} />
     </Routes>
   );
 };
