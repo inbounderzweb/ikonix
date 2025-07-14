@@ -1,4 +1,3 @@
-// src/pages/products/ProductDetails.js
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
@@ -35,7 +34,7 @@ export default function ProductDetails() {
         }
       );
 
-      if (response.data.success) {
+      if (response.data.success || response.data.status) {
         alert(`${product.name} added to cart`);
       } else {
         alert(response.data.message || 'Failed to add to cart');
@@ -46,9 +45,52 @@ export default function ProductDetails() {
     }
   };
 
-  const handleBuyNow = () => {
-    // Navigate to checkout page or payment page
-    navigate('/checkout', { state: { product } });
+  const handleBuyNow = async () => {
+    if (!token || !user) {
+      alert('User not logged in or token missing.');
+      return;
+    }
+
+    try {
+      // 1. Add product to cart
+      await axios.post(
+        'https://ikonixperfumer.com/beta/api/cart',
+        qs.stringify({
+          userid: user.id,
+          productid: product.id,
+          qty: 1,
+        }),
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+
+      // 2. Fetch updated cart
+      const fetchResponse = await axios.post(
+        'https://ikonixperfumer.com/beta/api/cart',
+        qs.stringify({
+          userid: user.id,
+        }),
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+
+      const cartItems = fetchResponse.data?.data || [];
+
+      // 3. Navigate to checkout with cart items
+      navigate('/checkout', { state: { cartItems } });
+
+    } catch (error) {
+      console.error('Buy now failed:', error?.response?.data || error.message);
+      alert('Failed to buy product. Try again.');
+    }
   };
 
   return (

@@ -1,142 +1,142 @@
-import React, { useEffect, useState } from "react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from 'react';
+import { XMarkIcon } from '@heroicons/react/24/outline';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import axios from 'axios';
+import qs from 'qs';
 
-/**
- * CartDrawer – pure‑Tailwind slide‑in cart (no HeadlessUI dependency).
- *
- * Props
- * ▸ open          : boolean – controls visibility
- * ▸ onClose       : () => void – close handler (backdrop ➜ onClose, X ➜ onClose)
- * ▸ cart          : array  – [{ id, title, price, qty, img }]
- * ▸ onInc / onDec : (id)   – quantity adjust callbacks
- * ▸ onRemove      : (id)   – remove line‑item callback
- * ▸ recommended   : array  – [{ id, title, img }] (optional)
- */
+export default function CartDrawer({ open, onClose }) {
+  const [show, setShow]   = useState(open);
+  const [cartItems, setItems] = useState([]);
 
-export default function CartDrawer({
-  open,
-  onClose,
-  cart = [],
-  onInc = () => {},
-  onDec = () => {},
-  onRemove = () => {},
-  recommended = [],
-}) {
-  const [show, setShow] = useState(open);
-  const navigate = useNavigate();
+  const { user, token } = useAuth();
+  const navigate        = useNavigate();
+  const location        = useLocation();
 
+  const ANIM_MS = 300; // matches `duration-300` in transition classes
+  /* ───────── push fresh state to /checkout on every change ───────── */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (open) setShow(true);
-  }, [open]);
+    if (location.pathname === '/checkout') {
+      navigate('/checkout', { state: { cartItems }, replace: true });
+    }
+  }, [cartItems, location.pathname, navigate]);
+  /* ───────── handle open / close ───────── */
+  useEffect(() => {
+    if (open) {
+      setShow(true);
+      fetchCart();
+    } else {
+      /* guarantee overlay removal even if transitionend fails */
+      const t = setTimeout(() => setShow(false), ANIM_MS);
+      return () => clearTimeout(t);
+    }
+  }, [open]);                                             // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleTransitionEnd = () => {
-    if (!open) setShow(false);
-  };
+  if (!show) return null; // overlay removed → header clickable again
 
+  /* ───────── fetch cart from server once ───────── */
+  async function fetchCart() {
+    if (!token || !user) return;
+    try {
+      const { data } = await axios.post(
+        'https://ikonixperfumer.com/beta/api/cart',
+        qs.stringify({ userid: user.id }),
+        { headers: { Authorization:`Bearer ${token}`, 'Content-Type':'application/x-www-form-urlencoded' } }
+      );
+      if (data.status && Array.isArray(data.data)) {
+        setItems(data.data.map(it => ({ ...it, qty: Number(it.qty) })));
+      } else setItems([]);
+    } catch (e) { console.error('Fetch cart error', e); }
+  }
+
+  /* ───────── local increment / decrement ───────── */
+  const inc = id => setItems(p => p.map(it =>
+    it.cartid === id ? { ...it, qty: it.qty + 1 } : it
+  ));
+  const dec = id => setItems(p => p.map(it =>
+    it.cartid === id ? { ...it, qty: Math.max(1, it.qty - 1) } : it
+  ));
+
+  /* ───────── remove line-item (API) ───────── */
+  async function remove(cartid) {
+    if (!token || !user) return;
+    try {
+      await axios.post(
+        'https://ikonixperfumer.com/beta/api/delete-cart',
+        qs.stringify({ userid: user.id, cartid }),
+        { headers: { Authorization:`Bearer ${token}`, 'Content-Type':'application/x-www-form-urlencoded' } }
+      );
+      setItems(p => p.filter(it => it.cartid !== cartid));
+    } catch (e) { console.error('Delete failed', e); }
+  }
+
+
+
+  /* ───────── proceed to checkout ───────── */
   const handleCheckout = () => {
     onClose();
-    setTimeout(() => {
-      navigate("/checkout");
-    }, 100);
+    navigate('/checkout', { state: { cartItems } });
   };
 
-  if (!show && !open) return null;
-
+  /* ───────── Render ───────── */
   return (
     <div className="fixed inset-0 z-[100] flex">
-      {/* ─── Backdrop */}
+      {/* Backdrop */}
       <div
         className={`fixed inset-0 bg-black/40 transition-opacity duration-300 ${
-          open ? "opacity-100" : "opacity-0 pointer-events-none"
+          open ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={onClose}
       />
 
-      {/* ─── Panel */}
+      {/* Drawer Panel */}
       <div
         className={`relative ml-auto h-full w-full max-w-md bg-white shadow-xl flex flex-col overflow-hidden transform transition-transform duration-300 ${
-          open ? "translate-x-0" : "translate-x-full"
+          open ? 'translate-x-0' : 'translate-x-full'
         }`}
-        onTransitionEnd={handleTransitionEnd}
       >
         {/* Header */}
-        <div className="px-6 py-5 border-b flex justify-between items-start">
-          <h2 className="text-2xl font-medium">
-            Cart{" "}
-            <span className="text-lg text-gray-500">
-              ({cart.length} {cart.length === 1 ? "item" : "items"})
-            </span>
-          </h2>
-          <button onClick={onClose} aria-label="Close cart">
-            <XMarkIcon className="w-6 h-6" />
+        <div className="p-4 border-b flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Your Cart</h2>
+          <button onClick={onClose}>
+            <XMarkIcon className="h-6 w-6 text-gray-600" />
           </button>
         </div>
 
         {/* Items */}
-        <div className="flex-1 overflow-y-auto divide-y px-6">
-          {cart.length === 0 ? (
-            <p className="py-20 text-center text-gray-500">Your cart is empty.</p>
-          ) : (
-            cart.map((item) => (
-              <div key={item.id} className="py-6 flex gap-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {cartItems.length === 0 ? (
+            <p className="text-center text-gray-500 mt-10">Your cart is empty.</p>
+          ) : cartItems.map(item => (
+            <div key={item.cartid} className="border rounded p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
                 <img
-                  src={item.img}
-                  alt={item.title}
-                  className="w-24 h-28 object-cover rounded-md flex-shrink-0"
+                  src={`https://ikonixperfumer.com/beta/assets/uploads/${item.image}`}
+                  alt={item.name}
+                  className="w-16 h-16 object-cover rounded"
                 />
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-medium leading-snug line-clamp-2">
-                    {item.title}
-                  </h3>
-                  <p className="mt-1 mb-2 text-xl font-semibold">Rs.{item.price}/-</p>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span>Qty</span>
-                    <div className="flex border rounded-md">
-                      <button className="px-3 select-none" onClick={() => onDec(item.id)}>
-                        –
-                      </button>
-                      <span className="w-8 text-center select-none">{item.qty}</span>
-                      <button className="px-3 select-none" onClick={() => onInc(item.id)}>
-                        +
-                      </button>
-                    </div>
-                    <button className="ml-3 underline" onClick={() => onRemove(item.id)}>
-                      Remove
-                    </button>
-                  </div>
+                <div>
+                  <p className="font-medium">{item.name}</p>
+                  <p className="text-xs text-gray-500">Qty: {item.qty}</p>
                 </div>
               </div>
-            ))
-          )}
+
+              <div className="flex items-center gap-2">
+                <button onClick={() => dec(item.cartid)} className="px-2 py-1 bg-gray-200 rounded">−</button>
+                <span className="w-6 text-center">{item.qty}</span>
+                <button onClick={() => inc(item.cartid)} className="px-2 py-1 bg-gray-200 rounded">+</button>
+                <button onClick={() => remove(item.cartid)} className="text-red-500 text-sm">Remove</button>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* Discover More */}
-        {recommended.length > 0 && (
-          <div className="border-t px-6 pb-6 pt-4">
-            <h3 className="text-xl font-medium mb-4">Discover More</h3>
-            <div className="flex gap-4 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300">
-              {recommended.map((p) => (
-                <div key={p.id} className="w-32 flex-shrink-0">
-                  <img
-                    src={p.img}
-                    alt={p.title}
-                    className="w-full aspect-[1/1] object-cover rounded-md bg-[#f5ece8]"
-                  />
-                  <p className="text-[13px] mt-2 text-center leading-tight line-clamp-2">
-                    {p.title}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Checkout Button */}
+        {/* Footer */}
         <div className="border-t px-6 py-6">
           <button
             onClick={handleCheckout}
-            className="w-full py-3 rounded-md bg-[#b49d91] text-white text-lg font-medium hover:opacity-90 transition"
+            className="w-full py-3 bg-[#b49d91] text-white text-lg rounded-md hover:opacity-90 transition"
           >
             Checkout
           </button>
