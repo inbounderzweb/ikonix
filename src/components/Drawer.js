@@ -75,11 +75,26 @@ const Drawer = ({ setSideBarOpen, onClose, width = "w-56", children }) => {
           >
             &times;
           </button>
+
         </div>
 
         {/* scrollable content */}
         <div className="p-6 overflow-y-auto">{children}</div>
+
+        <div className="grid grid-cols-1 gap-5 ml-5">
+          <p>About us</p>
+          <p>Products</p>
+          <p>contact</p>
+        </div>
+        
       </aside>
+
+
+
+
+
+
+
     </>,
     el
   );
