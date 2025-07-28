@@ -131,17 +131,17 @@ function Header() {
       {/* ─── Fixed Bottom Nav (mobile only) ───────── */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t shadow-inner z-50">
         <ul className="flex justify-around items-center py-2">
-          <li onClick={() => setSearchOpen(true)} className="cursor-pointer">
+          <li onClick={() => setSearchOpen(true)} className="cursor-pointer flex gap-2">
             <img src={search} alt="Search" className="w-6 h-6 mx-auto" />
             <span className="text-xs mt-1 block">Search</span>
           </li>
-          <li onClick={() => setCartOpen(true)} className="cursor-pointer">
+          <li onClick={() => setCartOpen(true)} className="cursor-pointer flex gap-2">
             <img src={cartIco} alt="Cart" className="w-6 h-6 mx-auto" />
             <span className="text-xs mt-1 block">Cart</span>
           </li>
           <li
             onClick={() => user ? navigate('/user-profile') : setAuthOpen(true)}
-            className="cursor-pointer"
+            className="cursor-pointer flex gap-2"
           >
             <img src={profile} alt="Profile" className="w-6 h-6 mx-auto" />
             <span className="text-xs mt-1 block">{user ? 'Profile' : 'Login'}</span>

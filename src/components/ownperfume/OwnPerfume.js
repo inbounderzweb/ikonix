@@ -19,7 +19,7 @@ export default function OwnPerfume() {
           </div>
 
           {/* content */}
-          <div className="flex flex-1 flex-col justify-center gap-6 p-8 md:p-14">
+          <div className="flex flex-1 flex-col justify-center gap-6 lg:p-8 p-0 md:p-14">
             <h2 className="text-3xl font-medium text-left text-[#7c706c] md:text-4xl">
               Create your own perfume
             </h2>

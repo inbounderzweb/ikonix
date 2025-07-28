@@ -154,9 +154,9 @@ export default function ProductList() {
                 e.stopPropagation();
                 handleAddToCart(product);
               }}
-              className="absolute top-2 right-2 p-1 bg-white rounded-full shadow"
+              className="absolute top-2 right-2 rounded-full shadow"
             >
-              <img src={bag} alt="cart" className="h-5 w-5" />
+              <img src={bag} alt="cart" className="h-6 w-6" />
             </button>
 
             {/* Image → Details */}
@@ -164,7 +164,7 @@ export default function ProductList() {
               onClick={() => navigate('/product-details', { state: { product } })}
               src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
               alt={product.name}
-              className="w-full h-60 object-cover rounded-t-[10px] cursor-pointer"
+              className="w-full object-cover cursor-pointer rounded-[16px]"
             />
 
             {/* Info */}

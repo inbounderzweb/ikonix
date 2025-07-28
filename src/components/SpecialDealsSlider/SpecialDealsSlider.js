@@ -82,7 +82,7 @@ const settings = {
 export default function SpecialDealsSlider() {
   return (
     <section className="bg-[#e8d5cf] py-16">
-      <div className="mx-auto w-[95%] md:w-[80%] px-4">
+      <div className="mx-auto w-[95%] md:w-[80%] lg:px-4 px-0">
         {/* Header */}
         <h1 className="text-[27px] text-[#8C7367] text-center tracking-[0.5px]">special deals</h1>
         <p className="text-[#53443D] text-[16px] font-[lato] text-center font-[400] w-full md:w-[710px] mx-auto">
@@ -90,7 +90,7 @@ export default function SpecialDealsSlider() {
         </p>
 
         {/* Slider */}
-        <Slider {...settings} className="mt-12">
+        <Slider {...settings} className="lg:mt-12 mt-4">
           {deals.map((deal) => (
             <div key={deal.id} className="px-3">
               <div className="relative overflow-hidden rounded-[24px]">
