@@ -57,23 +57,28 @@ const settings = {
 
 export default function InstagramShowcase() {
   return (
-    <section className="bg-gradient-to-r from-[#c7a895] to-white pt-[40px] w-full">
+    <section className="bg-gradient-to-l lg:bg-gradient-to-r from-[#c7a895] to-[#c7a895] lg:to-white pt-[40px] w-full">
       {/*
         Wrapper width capped at 75% of viewport (`w-[75%]`) and pushed flush to the
         right with `ml-auto`, so the carousel kisses the screen edge while the
         phone mock‑up sits just to its left.
       */}
-      <div className="mx:auto ml-4 md:ml-auto flex w-[90%] flex-col gap-6 md:flex-row md:items-start md:justify-between">
+      <div className="mx:auto ml-4 md:ml-auto flex w-[90%] flex-col relative gap-6 md:flex-row md:items-start md:justify-between">
+
         {/* Left ─ Instagram profile preview */}
         <img
           src={instapage}
           alt="Instagram page preview"
           className="mx-auto w-full md:max-w-sm object-contain md:mx-0"
         />
+    <div className="pointer-events-none z-10 absolute top-[22.3rem] right-0 w-full h-40 flex lg:hidden bg-gradient-to-t from-[#c8a997] via-[#c8a997]/80 to-transparent" />
+
 
         {/* Right ─ Carousel flush‑right */}
-        <div className="relative ml-auto w-full overflow-hidden md:flex-1 md:pl-4">
-          <Slider {...settings}>
+        <div className="relative ml-auto w-full overflow-hidden md:flex-1 md:pl-4 mt-[-4rem] lg:mt-0 z-20">
+
+
+ <Slider {...settings}>
             {CARDS.map(({ id, img, title }) => (
               <div key={id} className="px-2">
                 <img
@@ -85,8 +90,11 @@ export default function InstagramShowcase() {
             ))}
           </Slider>
 
+         
+
+
           {/* Wider, softer right‑edge gradient overlay */}
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-white via-white/80 to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-white via-white/80 to-transparent hidden lg:flex" />
 
           <div className="mt-5 flex gap-8 items-center">
 
@@ -104,6 +112,16 @@ export default function InstagramShowcase() {
 
         </div>
       </div>
+
+
+
+
+
+
+
+
+
+      
     </section>
     
   );

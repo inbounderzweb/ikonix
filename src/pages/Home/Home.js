@@ -13,14 +13,6 @@ import ProductList from '../products/ProductList'
 
 function Home() {
 
-
-
- 
-
-
-
-
-
   return (
     <div className=''>
       <div className='hidden md:block'><SliderComponent /></div>

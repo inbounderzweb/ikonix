@@ -71,7 +71,7 @@ useEffect(() => {
     <div>
 
   
-    <div className={`fixed top-0 left-1/2 -translate-x-1/2 z-50 w-[95%] md:w-[75%] transition-all duration-300 ease-in-out font-fancy ${
+    <div className={`fixed top-0 left-1/2 -translate-x-1/2 z-50 w-[95%] lg:w-[75%] transition-all duration-300 ease-in-out font-fancy ${
       scrolled ? 'bg-[#2A3443]/90 shadow-md backdrop-blur-md' : 'bg-[#2A3443]'
     } rounded-[8px] md:rounded-[16px] mt-3`}>
     
@@ -145,6 +145,15 @@ useEffect(() => {
   onClose={() => setSearchOpen(false)}
   onSubmit={(q) => navigate(`/search?q=${encodeURIComponent(q)}`)}
 />
+
+{/* <SearchModal
+  open={searchOpen}
+  onClose={() => setSearchOpen(false)}
+  onPick={(product) => {
+    // default behaviour already navigates to details, but you can override here
+    console.log('Picked', product);
+  }}
+/>; */}
 
       {/* ─── Cart drawer ───────────────── */}
       <CartDrawer

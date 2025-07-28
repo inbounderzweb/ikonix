@@ -70,7 +70,7 @@ const SliderComponent = () => {
   
 
   return (
-    <div className="relative w-[75%] mx-auto">
+    <div className="relative w-[95%] lg:w-[75%] mx-auto">
       <Slider {...settings}>
         {sliderData.map((slide, index) => (
           <div key={index} className="relative overflow-hidden">
