@@ -96,7 +96,7 @@ export default function InstagramShowcase() {
           {/* Wider, softer right‑edge gradient overlay */}
           <div className="pointer-events-none absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-white via-white/80 to-transparent hidden lg:flex" />
 
-          <div className="mt-5 flex gap-8 items-center">
+          <div className="mt-4 2xl:mt-5 flex gap-8 items-center">
 
             <div className="grid">
               <span className="text-[#53443D] font-normal text-[16px] tracking-[0.5px] leading-[150%] font-[lato] text-left">Check us out on</span>

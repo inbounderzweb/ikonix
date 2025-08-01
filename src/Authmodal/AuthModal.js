@@ -10,6 +10,7 @@ import {
   EnvelopeIcon,
   DevicePhoneMobileIcon,
 } from '@heroicons/react/24/outline';
+import { data } from 'react-router-dom';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
@@ -117,6 +118,7 @@ export default function AuthModal({ open, onClose }) {
 
     try {
       const { data } = await apiPost(url, payload, token);
+    
       if (!data?.token || !data?.user) {
         alert(data.message || 'Verification failed');
         return;

@@ -204,7 +204,7 @@ export default function Shop() {
             return (
               <div
                 key={`${product.id}-${variant.vid}`}
-                className="relative bg-[#f5efe9] rounded-xl overflow-hidden shadow-sm cursor-pointer"
+                className="relative rounded-xl overflow-hidden cursor-pointer"
                 onClick={() => handleViewDetails(product)}
               >
                 {/* Category badge */}
@@ -232,22 +232,29 @@ export default function Shop() {
                 />
 
                 {/* Info */}
-                <div className="p-4 flex flex-col gap-2">
-                  <h3 className="font-semibold text-base line-clamp-2">
-                    {product.name}
+                <div className=" pt-4 flex gap-5 justify-between">
+
+                <div>
+                  <h3 className="text-[#2A3443] font-[Lato] text-[16px] leading-snug">
+                  {product.name}
                   </h3>
-                  <p className="text-sm text-gray-500">
-                    {variant.weight} ml
-                  </p>
-                  <div className="mt-auto flex items-baseline justify-between">
-                    {sale < msrp && (
-                      <span className="text-xs line-through text-gray-400 mr-2">
-                        ₹{msrp}/-
-                      </span>
-                    )}
-                    <span className="font-semibold">₹{sale}/-</span>
-                  </div>
+                <p className='text-[#2A3443] font-[Lato] text-[16px]'>{product.category_name}</p>
                 </div>
+               
+               <div className='grid grid-cols-1'>
+               {sale < msrp && (
+                    <span className="text-xs line-through text-[#2A3443] font-[Lato]">
+                      ₹{msrp}/-
+                    </span>
+                  )}
+                <span className="font-semibold text-[#2A3443]">₹{sale}/-</span>
+
+               </div>
+
+
+                {/* <p className="text-sm text-gray-500">{variant.weight} ml</p> */}
+               
+              </div>
               </div>
             );
           })}

@@ -161,7 +161,7 @@ export default function ProductList() {
           return (
             <div
               key={`${product.id}-${vid}`}
-              className="relative rounded-xl overflow-hidden shadow-sm"
+              className="relative overflow-hidden "
             >
               {/* Category badge */}
               <span className="absolute top-2 left-2 inline-block
@@ -193,20 +193,31 @@ export default function ProductList() {
                 className="w-full h-56 object-cover cursor-pointer"
               />
 
+
+
               {/* Info */}
-              <div className="p-4 flex flex-col gap-2">
-                <h3 className="text-[#2A3443] font-medium leading-snug">
+              <div className=" pt-4 flex gap-5 justify-between">
+
+                <div>
+                  <h3 className="text-[#2A3443] font-[Lato] text-[16px] leading-snug">
                   {product.name}
-                </h3>
-                <p className="text-sm text-gray-500">{variant.weight} ml</p>
-                <div className="mt-auto flex items-baseline justify-between">
-                  {sale < msrp && (
-                    <span className="text-xs line-through text-gray-400 mr-2">
+                  </h3>
+                <p className='text-[#2A3443] font-[Lato] text-[16px]'>{product.category_name}</p>
+                </div>
+               
+               <div className='grid grid-cols-1'>
+               {sale < msrp && (
+                    <span className="text-xs line-through text-[#2A3443] font-[Lato]">
                       ₹{msrp}/-
                     </span>
                   )}
-                  <span className="font-semibold">₹{sale}/-</span>
-                </div>
+                <span className="font-semibold text-[#2A3443]">₹{sale}/-</span>
+
+               </div>
+
+
+                {/* <p className="text-sm text-gray-500">{variant.weight} ml</p> */}
+               
               </div>
             </div>
           );

@@ -83,8 +83,8 @@ function AboutUs() {
           <img src={mission} alt="Mission icon" class="w-24 p-2" />
         </div>
         <div>
-          <h3 class="text-lg font-semibold mb-1">Our Mission</h3>
-          <p class="text-sm leading-relaxed">
+          <h3 class="text-lg font-semibold mb-1 font-[Luxia] text-[#8C7367]">Our Mission</h3>
+          <p class="leading-relaxed font-[Lato] text-[16px] font-[400] text-[#53443D]">
             To create high‑quality, personalised fragrances that express individual style, evoke emotion, and make luxury scent experiences accessible to everyone.
           </p>
         </div>
@@ -95,8 +95,8 @@ function AboutUs() {
           <img src={vision} alt="Vision icon" class="w-24 p-2" />
         </div>
         <div>
-          <h3 class="text-lg font-semibold mb-1">Our Vision</h3>
-          <p class="text-sm leading-relaxed">
+          <h3 class="text-lg font-semibold mb-1 font-[Luxia] text-[#8C7367]">Our Vision</h3>
+          <p class="leading-relaxed font-[Lato] text-[16px] font-[400] text-[#53443D]">
             To become a trusted name in custom perfumery by changing the way people connect with fragrance through creativity, affordability, and thoughtful craftsmanship.
           </p>
         </div>
@@ -107,40 +107,40 @@ function AboutUs() {
 
   {/* <!-- Why Choose Us --> */}
   <div class=" mx-auto py-16 w-[98%] md:w-[75%]">
-    <h2 class="text-center text-2xl md:text-3xl font-[luxia] mb-12">Why Choose Us</h2>
+    <h2 class="text-center text-2xl md:text-3xl text-[#B39384] font-[luxia] mb-12">Why Choose Us</h2>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
       {/* <!-- Card --> */}
       <div class="flex flex-col items-center text-center bg-[#f5ece8] rounded-lg p-8 space-y-4">
           <img src={ch1} alt="Personalised" class="w-24" />
        
-        <h4 class="font-semibold">Personalised Fragrances</h4>
-        <p class="text-sm leading-relaxed">We create scents that are all about your preferences.</p>
+        <h4 class="font-[Lato] font-[700] text-[21px] text-[#53443D]">Personalised Fragrances</h4>
+        <p class="font-[Lato] text-[16px] font-[400] text-[#53443D]">We create scents that are all about your preferences.</p>
       </div>
       {/* <!-- Card --> */}
       <div class="flex flex-col items-center text-center bg-[#f5ece8] rounded-lg p-8 space-y-4">
           <img src={ch2} alt="Scent Recreation" class="w-24" />
         
-        <h4 class="font-semibold">Scent Recreation</h4>
-        <p class="text-sm leading-relaxed">We recreate popular favourites for you, making them more accessible without compromising on quality.</p>
+        <h4 class="font-[Lato] font-[700] text-[21px] text-[#53443D]">Scent Recreation</h4>
+        <p class="font-[Lato] text-[16px] font-[400] text-[#53443D]">We recreate popular favourites for you, making them more accessible without compromising on quality.</p>
       </div>
       {/* <!-- Card --> */}
       <div class="flex flex-col items-center text-center bg-[#f5ece8] rounded-lg p-8 space-y-4">
           <img src={ch3} alt="High‑Quality Ingredients" class="w-24" />
-        <h4 class="font-semibold">High‑Quality Ingredients</h4>
-        <p class="text-sm leading-relaxed">We use safe, premium ingredients that last long and are gentle on your skin.</p>
+        <h4 class="ffont-[Lato] font-[700] text-[21px] text-[#53443D]">High‑Quality Ingredients</h4>
+        <p class="font-[Lato] text-[16px] font-[400] text-[#53443D]">We use safe, premium ingredients that last long and are gentle on your skin.</p>
       </div>
       {/* <!-- Card --> */}
       <div class="flex flex-col items-center text-center bg-[#f5ece8] rounded-lg p-8 space-y-4 sm:col-span-1 lg:col-span-1">
           <img src={ch4} alt="Affordable Pricing" class="w-24" />
-        <h4 class="font-semibold">Affordable Pricing</h4>
-        <p class="text-sm leading-relaxed">We offer custom blends and recreated favourites at prices that make sense.</p>
+        <h4 class="font-[Lato] font-[700] text-[21px] text-[#53443D]">Affordable Pricing</h4>
+        <p class="font-[Lato] text-[16px] font-[400] text-[#53443D]">We offer custom blends and recreated favourites at prices that make sense.</p>
       </div>
       {/* <!-- Card --> */}
       <div class="flex flex-col items-center text-center bg-[#f5ece8] rounded-lg p-8 space-y-4 sm:col-span-1 lg:col-span-1">
           <img src={ch5} alt="Expert Craftsmanship" class="w-24" />
-        <h4 class="font-semibold">Expert Craftsmanship</h4>
-        <p class="text-sm leading-relaxed">Our perfumers, with years of experience in the industry, ensure every fragrance is carefully balanced and thoughtfully made.</p>
+        <h4 class="font-[Lato] font-[700] text-[21px] text-[#53443D]">Expert Craftsmanship</h4>
+        <p class="font-[Lato] text-[16px] font-[400] text-[#53443D]">Our perfumers, with years of experience in the industry, ensure every fragrance is carefully balanced and thoughtfully made.</p>
       </div>
     </div>
   </div>
