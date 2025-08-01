@@ -53,7 +53,7 @@ const sliderSettings = {
 function BlogList() {
   return (
     <div className="w-full bg-white">
-      <div className="py-12">
+      <div className="lg:py-12 py-0">
         <div className="max-w-6xl mx-auto px-4">
           <h2 className="text-2xl md:text-3xl tracking-[0.5px] text-center mb-10 text-[#B39384] font-[luxia]">
             Blogs

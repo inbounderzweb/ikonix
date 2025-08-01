@@ -12,25 +12,22 @@ export default function CartDrawer({ open, onClose }) {
   const prevOpen = useRef(open);
   const ANIM_MS = 300;
 
-  // 1) Fetch once on the transition false -> true
+  // 1) refresh on open
   useEffect(() => {
-    if (!prevOpen.current && open) {
-      refresh();
-    }
+    if (!prevOpen.current && open) refresh();
     prevOpen.current = open;
   }, [open, refresh]);
 
-  // 2) Control enter/exit animation
+  // 2) mount/unmount for animation
   useEffect(() => {
-    if (open) {
-      setShow(true);
-    } else {
+    if (open) setShow(true);
+    else {
       const t = setTimeout(() => setShow(false), ANIM_MS);
       return () => clearTimeout(t);
     }
   }, [open]);
 
-  // 3) Sync to /checkout if already there
+  // 3) keep checkout in sync
   useEffect(() => {
     if (location.pathname === '/checkout') {
       navigate('/checkout', { state: { cartItems: items }, replace: true });
@@ -39,9 +36,11 @@ export default function CartDrawer({ open, onClose }) {
 
   if (!show) return null;
 
+  const totalCount = items.reduce((sum, i) => sum + i.qty, 0);
   const goCheckout = () => {
     onClose();
     navigate('/checkout', { state: { cartItems: items } });
+    // console.log(items)
   };
 
   return (
@@ -62,7 +61,9 @@ export default function CartDrawer({ open, onClose }) {
       >
         {/* Header */}
         <div className="p-4 border-b flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Your Cart</h2>
+          <h2 className="text-lg font-semibold">
+            Your Cart {totalCount > 0 && <>({totalCount})</>}
+          </h2>
           <button onClick={onClose}>
             <XMarkIcon className="h-6 w-6 text-gray-600" />
           </button>
@@ -87,24 +88,29 @@ export default function CartDrawer({ open, onClose }) {
                   <div>
                     <p className="font-medium">{item.name}</p>
                     <p className="text-xs text-gray-500">Qty: {item.qty}</p>
+                    <p className="text-xs text-gray-500">variationid:{item.variantid}</p>
+
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* Decrement */}
                   <button
-                    onClick={() => dec(item.cartid, item.id)}
+                    onClick={() => dec(item.cartid, item.id, item.variantid)}
                     className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
-                  >
-                    −
-                  </button>
+                  >−</button>
+
+                  {/* Current qty */}
                   <span className="w-6 text-center">{item.qty}</span>
+
+                  {/* Increment */}
                   <button
-                    onClick={() => inc(item.cartid, item.id)}
+                    onClick={() => inc(item.cartid, item.id, item.variantid)}
                     className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
-                  >
-                    +
-                  </button>
+                  >+</button>
+
+                  {/* Remove */}
                   <button
-                    onClick={() => remove(item.cartid, item.id)}
+                    onClick={() => remove(item.cartid, item.id, item.variantid)}
                     className="text-red-500 text-sm hover:underline"
                   >
                     Remove

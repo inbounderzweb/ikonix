@@ -3,17 +3,17 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import qs from 'qs';
-import { ShoppingBagIcon } from '@heroicons/react/24/outline';
 import { useGetProductsQuery } from '../../features/product/productApi';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import bag from '../../assets/bag.svg';
 
-// Make sure you've installed tailwind-scrollbar-hide and added it to tailwind.config.js
+const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
+// Sync guest → server cart
 async function syncGuestCartWithServer(userId, token) {
   const resp = await axios.post(
-    'https://ikonixperfumer.com/beta/api/cart',
+    `${API_BASE}/cart`,
     qs.stringify({ userid: userId }),
     {
       headers: {
@@ -22,15 +22,21 @@ async function syncGuestCartWithServer(userId, token) {
       },
     }
   );
-  const serverItems = resp.data?.data || [];
-  const formatted = serverItems.map(it => ({
-    id:    it.id,
-    name:  it.name,
-    image: it.image,
-    price: it.price,
-    qty:   Number(it.qty),
-  }));
-  localStorage.setItem('guestCart', JSON.stringify(formatted));
+  const items = resp.data?.data || [];
+  // Persist server’s version (ensuring we include variantid too)
+  localStorage.setItem(
+    'guestCart',
+    JSON.stringify(
+      items.map(it => ({
+        id:        it.id,
+        vid:       it.variantid ?? it.vid,
+        name:      it.name,
+        image:     it.image,
+        price:     it.price,
+        qty:       Number(it.qty),
+      }))
+    )
+  );
 }
 
 export default function ProductList() {
@@ -38,7 +44,6 @@ export default function ProductList() {
   const navigate = useNavigate();
   const { user, token } = useAuth();
   const { refresh } = useCart();
-
   const products = data?.data || [];
 
   // Build category filters
@@ -48,29 +53,41 @@ export default function ProductList() {
   );
   const filters = ['Our Bestsellers', ...categoryList];
   const [selectedCategory, setSelectedCategory] = useState(filters[0]);
-  const filtered = useMemo(() => {
-    return selectedCategory === 'Our Bestsellers'
-      ? products
-      : products.filter(p => p.category_name === selectedCategory);
-  }, [selectedCategory, products]);
+  const filtered = useMemo(
+    () =>
+      selectedCategory === 'Our Bestsellers'
+        ? products
+        : products.filter(p => p.category_name === selectedCategory),
+    [selectedCategory, products]
+  );
 
-  // Guest‐cart helpers
-  const readGuest  = () => JSON.parse(localStorage.getItem('guestCart') || '[]');
-  const writeGuest = arr => localStorage.setItem('guestCart', JSON.stringify(arr));
+  // Guest-cart helpers (now include vid)
+  const readGuest = () =>
+    JSON.parse(localStorage.getItem('guestCart') || '[]');
+  const writeGuest = arr =>
+    localStorage.setItem('guestCart', JSON.stringify(arr));
 
-  const saveGuestCart = item => {
+  const saveGuestCart = product => {
     const raw = readGuest();
-    const idx = raw.findIndex(i => i.id === item.id);
-    if (idx > -1) raw[idx].qty += 1;
-    else raw.push({
-      id:    item.id,
-      name:  item.name,
-      image: item.image,
-      price: item.price,
-      qty:   1
-    });
+    const variant = product.variants[0] || {};
+    const vid     = variant.vid;
+    const price   = variant.sale_price || variant.price || 0;
+    const idx     = raw.findIndex(i => i.id === product.id && i.vid === vid);
+
+    if (idx > -1) {
+      raw[idx].qty += 1;
+    } else {
+      raw.push({
+        id:    product.id,
+        vid,                      // <-- now capturing variant id
+        name:  product.name,
+        image: product.image,
+        price,                    // use sale_price if available
+        qty:   1,
+      });
+    }
     writeGuest(raw);
-    alert(`${item.name} added to cart (guest)`);
+    alert(`${product.name} added to cart (guest)`);
     refresh();
   };
 
@@ -80,10 +97,16 @@ export default function ProductList() {
       saveGuestCart(product);
       return;
     }
+    const variant = product.variants[0] || {};
     try {
       const { data: resp } = await axios.post(
-        'https://ikonixperfumer.com/beta/api/cart',
-        qs.stringify({ userid: user.id, productid: product.id, qty: 1 }),
+        `${API_BASE}/cart`,
+        qs.stringify({
+          userid:    user.id,
+          productid: product.id,
+          variantid: variant.vid,
+          qty:       1,
+        }),
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -99,7 +122,7 @@ export default function ProductList() {
         alert(resp.message || 'Failed to add to cart');
       }
     } catch (error) {
-      console.error("❌ Error adding to cart:", error?.response?.data || error);
+      console.error('❌ Error adding to cart:', error?.response?.data || error);
       alert('Error adding to cart. Check console.');
     }
   };
@@ -110,7 +133,7 @@ export default function ProductList() {
   return (
     <section className="mx-auto w-[90%] md:w-[75%] py-8">
       {/* Filter Pills */}
-      <div className="flex gap-4 mb-6 overflow-x-auto scrollbar-hide pb-[15px]">
+      <div className="flex gap-4 mb-6 overflow-x-auto scrollbar-hide pb-4">
         {filters.map(cat => (
           <button
             key={cat}
@@ -118,7 +141,7 @@ export default function ProductList() {
             className={`
               px-4 py-2 rounded-full flex-shrink-0 transition
               ${selectedCategory === cat
-                ? 'bg-[#b49d91] text-white border-transparent'
+                ? 'bg-[#b49d91] text-white'
                 : 'bg-white text-[#b49d91] border border-[#b49d91]'}
             `}
           >
@@ -127,61 +150,67 @@ export default function ProductList() {
         ))}
       </div>
 
-      {/* Mobile: horizontal carousel; Desktop: grid */}
-      <div
-        className={`
-          flex space-x-4 overflow-x-auto scrollbar-hide py-4
-          md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-6 md:space-x-0
-        `}
-      >
-        {filtered.map(product => (
-          <div
-            key={product.id}
-            className={`
-              flex-shrink-0 w-[80%] sm:w-[45%]
-              md:w-auto md:flex-none
-              relative rounded-[10px]
-            `}
-          >
-            {/* Category badge */}
-            <span className="absolute top-2 left-2 border border-[#8C7367] text-[#8C7367] text-xs px-2 py-1 rounded-full">
-              {product.category_name}
-            </span>
+      {/* Products Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 py-4">
+        {filtered.map(product => {
+          const variant = product.variants[0] || {};
+          const vid     = variant.vid;
+          const msrp    = Number(variant.price)      || 0;
+          const sale    = Number(variant.sale_price) || msrp;
 
-            {/* Cart icon */}
-            <button
-              onClick={e => {
-                e.stopPropagation();
-                handleAddToCart(product);
-              }}
-              className="absolute top-2 right-2 rounded-full shadow"
+          return (
+            <div
+              key={`${product.id}-${vid}`}
+              className="relative rounded-xl overflow-hidden shadow-sm"
             >
-              <img src={bag} alt="cart" className="h-6 w-6" />
-            </button>
+              {/* Category badge */}
+              <span className="absolute top-2 left-2 inline-block
+                              rounded-full border border-[#8C7367]
+                              px-3 py-1 text-xs text-[#8C7367]">
+                {product.category_name}
+              </span>
 
-            {/* Image → Details */}
-            <img
-              onClick={() => navigate('/product-details', { state: { product } })}
-              src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
-              alt={product.name}
-              className="w-full object-cover cursor-pointer rounded-[16px]"
-            />
+              {/* Add‐to‐cart button */}
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  handleAddToCart(product);
+                }}
+                className="absolute top-2 right-2 rounded-full shadow"
+              >
+                <img src={bag} alt="cart" className="h-5 w-5" />
+              </button>
 
-            {/* Info */}
-            <div className=" mt-4 flex justify-between items-start">
-              <div>
-                <h3 className="text-[#2A3443] font-[400]">{product.name}</h3>
-                <p className="text-[#2A3443] text-sm">{product.category_name}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-[#2A3443] line-through">
-                  ₹{(product.price * 1.5).toFixed(0)}/-
-                </p>
-                <p className="text-sm font-semibold">₹{product.price}/-</p>
+              {/* Image */}
+              <img
+                onClick={() =>
+                  navigate('/product-details', {
+                    state: { product, vid },
+                  })
+                }
+                src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
+                alt={product.name}
+                className="w-full h-56 object-cover cursor-pointer"
+              />
+
+              {/* Info */}
+              <div className="p-4 flex flex-col gap-2">
+                <h3 className="text-[#2A3443] font-medium leading-snug">
+                  {product.name}
+                </h3>
+                <p className="text-sm text-gray-500">{variant.weight} ml</p>
+                <div className="mt-auto flex items-baseline justify-between">
+                  {sale < msrp && (
+                    <span className="text-xs line-through text-gray-400 mr-2">
+                      ₹{msrp}/-
+                    </span>
+                  )}
+                  <span className="font-semibold">₹{sale}/-</span>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* View All */}

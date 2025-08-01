@@ -64,7 +64,7 @@ const settings = {
 function Testimonials() {
   return (
     <div className='bg-white w-full'>
-    <div className="w-[95%] md:w-[75%] mx-auto py-16">
+    <div className="w-[95%] md:w-[75%] mx-auto lg:py-16 py-8">
         <div className='lg:w-[700px] w-[95%] mx-auto'>
         <h1 className='text-[#B39384] font-[Luxia] text-center text-[27px] font-normal tracking-[0.5px]'>User Testimonials</h1>
         <p className='font-[lato] text-[#53443D] text-center text-[16px] font-normal tracking-[0.5px]'>Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.</p>

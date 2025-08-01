@@ -57,7 +57,7 @@ const settings = {
 
 export default function InstagramShowcase() {
   return (
-    <section className="bg-gradient-to-l lg:bg-gradient-to-r from-[#c7a895] to-[#c7a895] lg:to-white pt-[40px] w-full">
+    <section className="bg-gradient-to-b lg:bg-gradient-to-r from-[#c7a895] to-[#EDE2DD] lg:to-white pt-[40px] w-full">
       {/*
         Wrapper width capped at 75% of viewport (`w-[75%]`) and pushed flush to the
         right with `ml-auto`, so the carousel kisses the screen edge while the

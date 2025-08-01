@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
-import { useGetProductsQuery } from '../../features/product/productApi'; // ← same hook you already use
+import { useGetProductsQuery } from '../../features/product/productApi';
 
 /**
  * SearchModal – centred popup with blurred backdrop and Tailwind-only animations.
@@ -11,19 +11,19 @@ import { useGetProductsQuery } from '../../features/product/productApi'; // ← 
  *  open      : boolean
  *  onClose   : () => void
  *  onSubmit  : (string) => void   (optional, fired when pressing Enter with no row selected)
- *  onPick    : (product) => void  (optional, fired when a product row is clicked / Enter on a row)
+ *  onPick    : (product, vid) => void  (optional, fired when a product row is clicked / Enter on a row)
  */
 export default function SearchModal({ open, onClose, onSubmit = () => {}, onPick }) {
-  const [show, setShow]   = useState(open);
-  const [query, setQuery] = useState('');
-  const [active, setActive] = useState(0); // keyboard highlight
-  const inputRef  = useRef(null);
-  const listRef   = useRef(null);
-  const navigate  = useNavigate();
+  const [show, setShow]       = useState(open);
+  const [query, setQuery]     = useState('');
+  const [active, setActive]   = useState(0);
+  const inputRef              = useRef(null);
+  const listRef               = useRef(null);
+  const navigate              = useNavigate();
 
-  // fetch all products once (RTK Query)
-  const { data, isLoading } = useGetProductsQuery();
-  const allProducts = data?.data || [];
+  // fetch all products once
+  const { data, isLoading }   = useGetProductsQuery();
+  const allProducts           = data?.data || [];
 
   // mount/animate
   useEffect(() => {
@@ -37,22 +37,31 @@ export default function SearchModal({ open, onClose, onSubmit = () => {}, onPick
     if (!open) setShow(false);
   };
 
-  // Filter products (case-insensitive substring on name + category)
+  // filter products by name/category/price
   const results = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.trim().toLowerCase();
-    return allProducts.filter(
-      p =>
-        p.name?.toLowerCase().includes(q) ||
-        p.category_name?.toLowerCase().includes(q) ||
-        String(p.price).includes(q)
+    return allProducts.filter(p =>
+      p.name?.toLowerCase().includes(q) ||
+      p.category_name?.toLowerCase().includes(q) ||
+      String(p.variants?.[0]?.price || '').includes(q) ||
+      String(p.variants?.[0]?.sale_price || '').includes(q)
     );
   }, [query, allProducts]);
 
-  // keep active index in bounds
+  // attach first variant for display
+  const displayList = useMemo(
+    () => results.map(p => ({
+      product: p,
+      variant: (Array.isArray(p.variants) ? p.variants[0] : {}) || {}
+    })),
+    [results]
+  );
+
+  // keep active in bounds
   useEffect(() => {
-    if (active >= results.length) setActive(0);
-  }, [results.length, active]);
+    if (active >= displayList.length) setActive(0);
+  }, [displayList.length, active]);
 
   const closeAndReset = useCallback(() => {
     setQuery('');
@@ -61,45 +70,48 @@ export default function SearchModal({ open, onClose, onSubmit = () => {}, onPick
   }, [onClose]);
 
   const firePick = useCallback(
-    (product) => {
-      if (onPick) onPick(product);
-      else {
-        // default: go to detail page
-        navigate('/product-details', { state: { product } });
+    (prod, vid) => {
+      if (onPick) {
+        onPick(prod, vid);
+      } else {
+        navigate('/product-details', { state: { product: prod, vid } });
       }
       closeAndReset();
     },
     [onPick, navigate, closeAndReset]
   );
 
-  const handleSubmit = (e) => {
+  const handleSubmit = e => {
     e.preventDefault();
-    if (results.length > 0) {
-      firePick(results[active]);
+    if (displayList.length > 0) {
+      const { product, variant } = displayList[active];
+      firePick(product, variant.vid);
     } else {
       onSubmit(query);
       closeAndReset();
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (!results.length) return;
+  const handleKeyDown = e => {
+    if (!displayList.length) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActive((i) => (i + 1) % results.length);
-      listRef.current?.children[(active + 1) % results.length]?.scrollIntoView({ block: 'nearest' });
+      const next = (active + 1) % displayList.length;
+      setActive(next);
+      listRef.current?.children[next]?.scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setActive((i) => (i - 1 + results.length) % results.length);
-      listRef.current?.children[(active - 1 + results.length) % results.length]?.scrollIntoView({ block: 'nearest' });
+      const prev = (active - 1 + displayList.length) % displayList.length;
+      setActive(prev);
+      listRef.current?.children[prev]?.scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      firePick(results[active]);
+      const { product, variant } = displayList[active];
+      firePick(product, variant.vid);
     }
   };
 
-  // simple highlight helper
-  const highlight = (text) => {
+  const highlight = text => {
     if (!query) return text;
     const parts = text.split(new RegExp(`(${query})`, 'ig'));
     return parts.map((p, i) =>
@@ -147,7 +159,7 @@ export default function SearchModal({ open, onClose, onSubmit = () => {}, onPick
             type="text"
             placeholder="Search products, collections …"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             className="flex-1 text-lg outline-none placeholder:text-gray-400 caret-[#b49d91]"
           />
@@ -159,34 +171,38 @@ export default function SearchModal({ open, onClose, onSubmit = () => {}, onPick
             <p className="text-sm text-gray-500 py-4 text-center">Loading products…</p>
           )}
 
-          {!isLoading && query && results.length === 0 && (
+          {!isLoading && query && displayList.length === 0 && (
             <p className="text-sm text-gray-500 py-4 text-center">No matches found.</p>
           )}
 
           {!isLoading &&
-            results.map((p, idx) => (
-              <button
-                key={p.id}
-                onClick={() => firePick(p)}
-                className={`w-full flex items-center gap-3 py-2 px-2 rounded-lg text-left hover:bg-gray-100 transition ${
-                  idx === active ? 'bg-gray-100' : ''
-                }`}
-              >
-                <img
-                  src={`https://ikonixperfumer.com/beta/assets/uploads/${p.image}`}
-                  alt={p.name}
-                  className="w-12 h-12 object-cover rounded-md flex-shrink-0"
-                />
-                <div className="flex-1">
-                  <p className="text-sm font-medium leading-tight">
-                    {highlight(p.name || '')}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {highlight(p.category_name || '')} • ₹{p.price}
-                  </p>
-                </div>
-              </button>
-            ))}
+            displayList.map(({ product: p, variant }, idx) => {
+              const imgSrc = variant.image || p.image;
+              const price  = variant.sale_price ?? variant.price ?? 0;
+              return (
+                <button
+                  key={`${p.id}-${variant.vid}`}
+                  onClick={() => firePick(p, variant.vid)}
+                  className={`w-full flex items-center gap-3 py-2 px-2 rounded-lg text-left hover:bg-gray-100 transition ${
+                    idx === active ? 'bg-gray-100' : ''
+                  }`}
+                >
+                  <img
+                    src={`https://ikonixperfumer.com/beta/assets/uploads/${imgSrc}`}
+                    alt={p.name}
+                    className="w-12 h-12 object-cover rounded-md flex-shrink-0"
+                  />
+                  <div className="flex-1 overflow-hidden">
+                    <p className="text-sm font-medium leading-tight line-clamp-1">
+                      {highlight(p.name || '')}
+                    </p>
+                    <p className="text-xs text-gray-500 line-clamp-1">
+                      {highlight(p.category_name || '')} • ₹{price}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
         </div>
       </div>
     </div>
