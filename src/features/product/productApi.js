@@ -1,9 +1,8 @@
+// features/product/productApi.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 // 🔐 Utility to fetch token from localStorage
-const fetchAuthToken = () => {
-  return localStorage.getItem('authToken');
-};
+const fetchAuthToken = () => localStorage.getItem('authToken');
 
 export const productApi = createApi({
   reducerPath: 'productApi',
@@ -12,8 +11,6 @@ export const productApi = createApi({
     baseUrl: 'https://ikonixperfumer.com/beta/api/',
     prepareHeaders: (headers) => {
       const token = fetchAuthToken();
-
-      // Set headers only if token exists
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);
       }
@@ -24,10 +21,9 @@ export const productApi = createApi({
 
   endpoints: (builder) => ({
     getProducts: builder.query({
-      query: () => 'products', // 🔗 Will call: https://ikonixperfumer.com/beta/api/products
+      query: () => 'products', // 🔗 GET https://ikonixperfumer.com/beta/api/products
     }),
   }),
 });
 
-// ✅ Hook for component usage
 export const { useGetProductsQuery } = productApi;

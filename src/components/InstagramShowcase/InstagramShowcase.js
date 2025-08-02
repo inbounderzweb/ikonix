@@ -63,19 +63,19 @@ export default function InstagramShowcase() {
         right with `ml-auto`, so the carousel kisses the screen edge while the
         phone mock‑up sits just to its left.
       */}
-      <div className="mx:auto ml-4 md:ml-auto flex w-[90%] flex-col relative gap-6 md:flex-row md:items-start md:justify-between">
+      <div className="mx:auto ml-4 md:ml-auto flex w-[90%] flex-col relative gap-6 md:flex-row md:items-end md:justify-between">
 
         {/* Left ─ Instagram profile preview */}
         <img
           src={instapage}
           alt="Instagram page preview"
-          className="mx-auto w-full md:max-w-sm object-contain md:mx-0"
+          className="mx-auto object-contain md:mx-0 w-full md:w-[55%] lg:w-[28%]"
         />
     <div className="pointer-events-none z-10 absolute top-[22.3rem] right-0 w-full h-40 flex lg:hidden bg-gradient-to-t from-[#c8a997] via-[#c8a997]/80 to-transparent" />
 
 
         {/* Right ─ Carousel flush‑right */}
-        <div className="relative ml-auto w-full overflow-hidden md:flex-1 md:pl-4 mt-[-4rem] lg:mt-0 z-20">
+        <div className="relative ml-auto w-full overflow-hidden md:flex-1 md:pl-4 mt-[-4rem] lg:mt-0 z-20 pb-[40px] lg:pb-0">
 
 
  <Slider {...settings}>
@@ -98,7 +98,7 @@ export default function InstagramShowcase() {
 
           <div className="mt-4 2xl:mt-5 flex gap-8 items-center">
 
-            <div className="grid">
+            <div className="grid pb-12">
               <span className="text-[#53443D] font-normal text-[16px] tracking-[0.5px] leading-[150%] font-[lato] text-left">Check us out on</span>
               <span className="font-normal text-[36px] font-[luxia] text-left text-[#8C7367]">Instagram</span>
 

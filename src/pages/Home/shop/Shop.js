@@ -9,6 +9,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import qs from 'qs';
 import { ShoppingBagIcon } from '@heroicons/react/24/outline';
+import bag from '../../../assets/bag.svg';
+
 
 import shopherobg    from '../../../assets/shopherobg.svg';
 import shopherobgmob from '../../../assets/shopheromobbg.svg';
@@ -204,12 +206,11 @@ export default function Shop() {
             return (
               <div
                 key={`${product.id}-${variant.vid}`}
-                className="relative rounded-xl overflow-hidden cursor-pointer"
+                className="min-w-[80%] lg:min-w-[60%] sm:min-w-0 relative overflow-hidden rounded-[10px]"
                 onClick={() => handleViewDetails(product)}
               >
                 {/* Category badge */}
-                <span className="absolute top-2 left-2 bg-white/80 text-xs text-gray-700
-                                  px-2 py-1 rounded-full">
+                <span className="absolute top-2 left-2 inline-block rounded-full border border-[#8C7367] px-3 py-1 text-xs text-[#8C7367]">
                   {product.category_name}
                 </span>
 
@@ -219,16 +220,16 @@ export default function Shop() {
                     e.stopPropagation();
                     handleAddToCart(product);
                   }}
-                  className="absolute top-2 right-2 p-1 bg-white/80 rounded-full"
+                  className="absolute top-2 right-2 rounded-full p-1"
                 >
-                  <ShoppingBagIcon className="h-5 w-5 text-gray-800" />
+                   <img src={bag} alt="cart" className="h-6 w-6" />
                 </button>
 
                 {/* Image */}
                 <img
                   src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
                   alt={product.name}
-                  className="w-full h-48 object-cover"
+                  className="w-full h-72 object-cover cursor-pointer"
                 />
 
                 {/* Info */}

@@ -1,5 +1,5 @@
 // src/components/ProductList.js
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import qs from 'qs';
@@ -23,27 +23,41 @@ async function syncGuestCartWithServer(userId, token) {
     }
   );
   const items = resp.data?.data || [];
-  // Persist server’s version (ensuring we include variantid too)
   localStorage.setItem(
     'guestCart',
     JSON.stringify(
       items.map(it => ({
-        id:        it.id,
-        vid:       it.variantid ?? it.vid,
-        name:      it.name,
-        image:     it.image,
-        price:     it.price,
-        qty:       Number(it.qty),
+        id:    it.id,
+        vid:   it.variantid ?? it.vid,
+        name:  it.name,
+        image: it.image,
+        price: it.price,
+        qty:   Number(it.qty),
       }))
     )
   );
 }
 
 export default function ProductList() {
-  const { data, isLoading, isError } = useGetProductsQuery();
   const navigate = useNavigate();
   const { user, token } = useAuth();
   const { refresh } = useCart();
+
+  // fire the products request immediately...
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,      // <-- grab refetch
+  } = useGetProductsQuery();
+
+  // ...but if/when a token arrives, retry with the Bearer header
+  useEffect(() => {
+    if (token) {
+      refetch();
+    }
+  }, [token, refetch]);
+
   const products = data?.data || [];
 
   // Build category filters
@@ -61,7 +75,7 @@ export default function ProductList() {
     [selectedCategory, products]
   );
 
-  // Guest-cart helpers (now include vid)
+  // Guest-cart helpers
   const readGuest = () =>
     JSON.parse(localStorage.getItem('guestCart') || '[]');
   const writeGuest = arr =>
@@ -79,10 +93,10 @@ export default function ProductList() {
     } else {
       raw.push({
         id:    product.id,
-        vid,                      // <-- now capturing variant id
+        vid,
         name:  product.name,
         image: product.image,
-        price,                    // use sale_price if available
+        price,
         qty:   1,
       });
     }
@@ -150,8 +164,13 @@ export default function ProductList() {
         ))}
       </div>
 
-      {/* Products Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 py-4">
+      {/* Products Grid/List */}
+      <div
+        className="
+          flex flex-row gap-6 overflow-x-auto pb-4
+          sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:pb-0
+        "
+      >
         {filtered.map(product => {
           const variant = product.variants[0] || {};
           const vid     = variant.vid;
@@ -161,27 +180,25 @@ export default function ProductList() {
           return (
             <div
               key={`${product.id}-${vid}`}
-              className="relative overflow-hidden "
+              className="min-w-[80%] lg:min-w-[60%] sm:min-w-0 relative overflow-hidden rounded-[10px]"
             >
               {/* Category badge */}
-              <span className="absolute top-2 left-2 inline-block
-                              rounded-full border border-[#8C7367]
-                              px-3 py-1 text-xs text-[#8C7367]">
+              <span className="absolute top-2 left-2 inline-block rounded-full border border-[#8C7367] px-3 py-1 text-xs text-[#8C7367]">
                 {product.category_name}
               </span>
 
-              {/* Add‐to‐cart button */}
+              {/* Add-to-cart button */}
               <button
                 onClick={e => {
                   e.stopPropagation();
                   handleAddToCart(product);
                 }}
-                className="absolute top-2 right-2 rounded-full shadow"
+                className="absolute top-2 right-2 rounded-full p-1"
               >
-                <img src={bag} alt="cart" className="h-5 w-5" />
+                <img src={bag} alt="cart" className="h-6 w-6" />
               </button>
 
-              {/* Image */}
+              {/* Product Image */}
               <img
                 onClick={() =>
                   navigate('/product-details', {
@@ -190,34 +207,27 @@ export default function ProductList() {
                 }
                 src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
                 alt={product.name}
-                className="w-full h-56 object-cover cursor-pointer"
+                className="w-full h-72 object-cover cursor-pointer"
               />
 
-
-
               {/* Info */}
-              <div className=" pt-4 flex gap-5 justify-between">
-
+              <div className="pt-4 flex justify-between items-start">
                 <div>
                   <h3 className="text-[#2A3443] font-[Lato] text-[16px] leading-snug">
-                  {product.name}
+                    {product.name}
                   </h3>
-                <p className='text-[#2A3443] font-[Lato] text-[16px]'>{product.category_name}</p>
+                  <p className="text-[#2A3443] font-[Lato] text-[14px]">
+                    {product.category_name}
+                  </p>
                 </div>
-               
-               <div className='grid grid-cols-1'>
-               {sale < msrp && (
-                    <span className="text-xs line-through text-[#2A3443] font-[Lato]">
+                <div className="text-right">
+                  {sale < msrp && (
+                    <span className="text-xs line-through text-[#2A3443] font-[Lato] block">
                       ₹{msrp}/-
                     </span>
                   )}
-                <span className="font-semibold text-[#2A3443]">₹{sale}/-</span>
-
-               </div>
-
-
-                {/* <p className="text-sm text-gray-500">{variant.weight} ml</p> */}
-               
+                  <span className="font-semibold text-[#2A3443]">₹{sale}/-</span>
+                </div>
               </div>
             </div>
           );
