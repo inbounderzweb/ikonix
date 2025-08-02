@@ -1,5 +1,5 @@
 // src/components/AuthModal.js
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import qs from 'qs';
 import { useAuth } from '../context/AuthContext';
@@ -10,144 +10,197 @@ import {
   EnvelopeIcon,
   DevicePhoneMobileIcon,
 } from '@heroicons/react/24/outline';
-import { data } from 'react-router-dom';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
 export default function AuthModal({ open, onClose }) {
-  const [tab, setTab]               = useState('login');   // 'login' | 'register' | 'otp' | 'reset'
-  const [authMethod, setMethod]     = useState('email');   // 'email' | 'mobile'
-  const [usePassword, setUsePwd]    = useState(false);
+  const [tab, setTab]            = useState('login');    // 'login' | 'register' | 'otp' | 'reset'
+  const [authMethod, setMethod]  = useState('email');    // 'email' | 'mobile'
+  const [usePassword, setUsePwd] = useState(false);
 
-  const [otpDigits, setOtp]         = useState(Array(6).fill(''));
-  const [serverOtp, setServerOtp]   = useState('');
-  const [verifyToken, setVToken]    = useState('');        // backend-provided verification token
-  const [otpFlow, setOtpFlow]       = useState(null);      // 'login' | 'register'
-
-  const [form, setForm]             = useState({
-    name:'', email:'', mobile:'', password:''
+  const [form, setForm] = useState({
+    name:     '',
+    email:    '',
+    mobile:   '',
+    password: '',
+    newPassword: '',
   });
 
-  const otpRefs = useRef([]);
+  const [otpDigits, setOtp]      = useState(Array(6).fill(''));
+  const [verifyToken, setVToken] = useState('');
+  const [otpFlow, setOtpFlow]    = useState(null);       // 'login' | 'register' | 'reset'
 
+  const otpRefs = useRef([]);
   const { token, setUser, setToken } = useAuth();
   const { refresh } = useCart();
 
-  /* ----------------- generic POST ----------------- */
-  const apiPost = (url, payload, bearer = token) =>
+  // clear on tab change (but not wiping when entering OTP)
+  useEffect(() => {
+    if (tab !== 'otp') {
+      setForm({ name:'', email:'', mobile:'', password:'', newPassword:'' });
+      setOtp(Array(6).fill(''));
+      setUsePwd(false);
+    }
+  }, [tab]);
+
+  const apiPost = (url, payload) =>
     axios.post(url, qs.stringify(payload), {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+        Authorization: `Bearer ${token}`,
       },
     });
 
   const handleField = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  /* ----------------- STEP 1: SEND OTP ----------------- */
+  /* STEP 1a: LOGIN or REGISTER → request OTP */
   const sendOtp = async () => {
-    if (!token) { alert('Auth token missing'); return; }
+    if (!token) return alert('Auth token missing');
     const isLogin = tab === 'login';
     setOtpFlow(isLogin ? 'login' : 'register');
 
-    const url = isLogin ? `${API_BASE}/login` : `${API_BASE}/register`;
+    // always include all fields
+    const base = {
+      name:     form.name,
+      email:    form.email,
+      mobile:   form.mobile,
+      password: form.password,
+    };
+
     const payload = isLogin
-      ? authMethod === 'email'
-        ? { email: form.email,  otp_login: 1 }
-        : { mobile: form.mobile, otp_login: 1 }
-      : authMethod === 'email'
-        ? { name: form.name, email: form.email, password: form.password, otp: 0 }
-        : { name: form.name, mobile: form.mobile, password: form.password, otp: 0 };
+      ? { ...base, otp_login: 1 }
+      : { ...base, otp: 0 };
 
     try {
-      const { data } = await apiPost(url, payload, token);
+      const { data } = await apiPost(
+        isLogin ? `${API_BASE}/login` : `${API_BASE}/register`,
+        payload
+      );
       if (data.otp) {
-        setServerOtp(String(data.otp));
-        setVToken(data.verify_token || data.verification_token || data.vtoken || '');
+        setVToken(data.verify_token || data.vtoken);
         setTab('otp');
-        alert(data.otp)
+        alert(`Your code is ${data.otp}`);
       } else {
         alert(data.message || 'OTP not received');
       }
     } catch (e) {
       console.error(e);
-      alert('Network error');
+      alert(e.response?.data?.message || 'Error sending OTP');
     }
   };
 
-  /* ----------------- PASSWORD LOGIN ----------------- */
+  /* STEP 1b: LOGIN with password */
   const loginWithPassword = async () => {
-    if (!token) { alert('Auth token missing'); return; }
-    const url = `${API_BASE}/login`;
-    const payload =
-      authMethod === 'email'
-        ? { email: form.email,  password: form.password, pass_login: 1 }
-        : { mobile: form.mobile, password: form.password, pass_login: 1 };
+    if (!token) return alert('Auth token missing');
+
+    const payload = {
+      name:     form.name,
+      email:    form.email,
+      mobile:   form.mobile,
+      password: form.password,
+      pass_login: 1,
+    };
 
     try {
-      const { data } = await apiPost(url, payload, token);
-      if (!data?.token || !data?.user) {
+      const { data } = await apiPost(`${API_BASE}/login`, payload);
+      if (!data.token || !data.user) {
         alert(data.message || 'Login failed');
         return;
       }
       await finalizeLogin(data);
     } catch (e) {
       console.error(e);
-      alert('Network error');
+      alert('Network error during password login');
     }
   };
 
-  /* ----------------- STEP 2: VERIFY OTP ----------------- */
+  /* STEP 1c: RESET PASSWORD → request code (otp:0) */
+  const resetPwd = async () => {
+    if (!token) return alert('Auth token missing');
+    setOtpFlow('reset');
+
+    const payload = {
+      name:     form.name,
+      email:    form.email,
+      mobile:   form.mobile,
+      password: form.newPassword, // use password for the new one
+      otp:      0,
+    };
+
+    try {
+      const { data } = await apiPost(`${API_BASE}/forgot-password`, payload);
+      if (data.otp) {
+        setVToken(data.verify_token || data.vtoken);
+        setTab('otp');
+        alert(`Your reset code is ${data.otp}`);
+      } else {
+        alert(data.message || 'Failed to send reset code');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Network error during reset request');
+    }
+  };
+
+  /* STEP 2: VERIFY OTP for all flows */
   const verifyOtp = async () => {
     const entered = otpDigits.join('');
     if (!entered) return alert('Enter OTP');
 
+    // RESET flow verify with same payload + otp:1
+    if (otpFlow === 'reset') {
+      const payload = {
+        name:     form.name,
+        email:    form.email,
+        mobile:   form.mobile,
+        password: form.newPassword,  // again new password here
+        otp:      1,
+        verify_token: verifyToken,
+      };
+      try {
+        const { data } = await apiPost(`${API_BASE}/forgot-password`, payload);
+        if (data.status === true) {
+          alert(data.message);
+          setTab('login');
+        } else {
+          alert(data.message || 'Reset verification failed');
+        }
+      } catch (e) {
+        console.error(e);
+        alert('Server error on reset verify');
+      }
+      return;
+    }
+
+    // LOGIN or REGISTER verify
     const isLogin = otpFlow === 'login';
-    const url = isLogin ? `${API_BASE}/login` : `${API_BASE}/register`;
-
-    const base = isLogin
-      ? authMethod === 'email'
-        ? { email: form.email,  otp_login: 2 }
-        : { mobile: form.mobile, otp_login: 2 }
-      : authMethod === 'email'
-        ? { name: form.name, email: form.email, password: form.password, otp: 1 }
-        : { name: form.name, mobile: form.mobile, password: form.password, otp: 1 };
-
-    const payload = { ...base, otp: entered };
-    if (verifyToken) payload.verify_token = verifyToken;
+    const payload = {
+      name:     form.name,
+      email:    form.email,
+      mobile:   form.mobile,
+      password: form.password,
+      otp:      entered,
+      verify_token: verifyToken,
+      ...(isLogin ? { otp_login: 2 } : {}),
+    };
 
     try {
-      const { data } = await apiPost(url, payload, token);
-    
-      if (!data?.token || !data?.user) {
+      const { data } = await apiPost(
+        isLogin ? `${API_BASE}/login` : `${API_BASE}/register`,
+        payload
+      );
+      if (!data.token || !data.user) {
         alert(data.message || 'Verification failed');
         return;
       }
       await finalizeLogin(data);
     } catch (e) {
       console.error(e);
-      alert('Server error');
+      alert('Server error on verify');
     }
   };
 
-  /* ----------------- RESET PASSWORD ----------------- */
-  const resetPwd = async () => {
-    if (!token) { alert('Auth token missing'); return; }
-    try {
-      const { data } = await apiPost(
-        `${API_BASE}/reset-password`,
-        { email: form.email, mobile: form.mobile },
-        token
-      );
-      alert(data.success ? 'Reset link sent' : (data.message || 'Failed'));
-      if (data.success) setTab('login');
-    } catch (e) {
-      console.error(e);
-      alert('Network error');
-    }
-  };
-
-  /* ----------------- FINALIZE LOGIN ----------------- */
+  /* FINALIZE login/register */
   const finalizeLogin = async (data) => {
     const userInfo = {
       id:     data.user.id,
@@ -155,31 +208,34 @@ export default function AuthModal({ open, onClose }) {
       email:  data.user.email,
       mobile: data.user.mobile,
     };
+    
+    setOtp('')
+    setTab('login');
     setUser(userInfo);
     setToken(data.token);
     localStorage.setItem('authUser',  JSON.stringify(userInfo));
     localStorage.setItem('authToken', data.token);
 
-    // Guest cart sync
+    // sync guest cart
     try {
-      const srv1 = await apiPost(`${API_BASE}/cart`, { userid: data.user.id }, data.token);
+      const srv1 = await apiPost(`${API_BASE}/cart`, { userid: data.user.id });
       const serverItems = Array.isArray(srv1.data.data) ? srv1.data.data : [];
-      const serverIds   = new Set(serverItems.map(i => i.id));
+      const serverIds = new Set(serverItems.map(i => i.id));
 
       const guest = JSON.parse(localStorage.getItem('guestCart') || '[]');
       await Promise.all(
         guest
           .filter(g => !serverIds.has(g.id))
           .map(g =>
-            apiPost(
-              `${API_BASE}/cart`,
-              { userid: data.user.id, productid: g.id, qty: g.qty },
-              data.token
-            ).catch(err => console.error('Sync fail', g.id, err))
+            apiPost(`${API_BASE}/cart`, {
+              userid: data.user.id,
+              productid: g.id,
+              qty: g.qty,
+            }).catch(err => console.error('Sync fail', g.id, err))
           )
       );
 
-      const srv2 = await apiPost(`${API_BASE}/cart`, { userid: data.user.id }, data.token);
+      const srv2 = await apiPost(`${API_BASE}/cart`, { userid: data.user.id });
       const fresh = Array.isArray(srv2.data.data) ? srv2.data.data : [];
       const normalized = fresh.map(i => ({
         id:    i.id,
@@ -194,12 +250,10 @@ export default function AuthModal({ open, onClose }) {
     }
 
     await refresh();
-    setOtp(Array(6).fill(''));
-    setTab('login');
     onClose?.();
   };
 
-  /* ----------------- OTP inputs ----------------- */
+  /* OTP input handling */
   const handleOtpField = (e, idx) => {
     if (/[^0-9]/.test(e.target.value)) return;
     const next = [...otpDigits];
@@ -208,206 +262,131 @@ export default function AuthModal({ open, onClose }) {
     if (e.target.value && idx < 5) otpRefs.current[idx + 1].focus();
   };
 
-  /* ----------------- RENDER ----------------- */
   if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-[120] flex items-center justify-center"
-      onClick={onClose}
-    >
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+    <div className="fixed inset-0 z-[120] flex items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"/>
 
-      {/* Dialog */}
       <div
-        className="relative bg-white w-[92%] max-w-sm rounded-2xl shadow-xl px-6 pb-7 pt-10 animate-fadeIn scale-100"
-        onClick={(e) => e.stopPropagation()}
+        className="relative bg-white w-[92%] max-w-sm rounded-2xl shadow-xl px-6 pb-7 pt-10 animate-fadeIn"
+        onClick={e => e.stopPropagation()}
       >
         {/* Close */}
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100"
-        >
-          <XMarkIcon className="w-5 h-5 text-gray-500" />
+        <button onClick={onClose} className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100">
+          <XMarkIcon className="w-5 h-5 text-gray-500"/>
         </button>
-
-        {/* Top icon */}
+        {/* Icon */}
         <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#b49d91] text-white rounded-full p-3 shadow-md">
-          <LockClosedIcon className="w-6 h-6" />
+          <LockClosedIcon className="w-6 h-6"/>
         </div>
-
         {/* Title */}
         <h2 className="text-center text-xl font-semibold text-[#2A3443] mb-6">
-          {tab === 'login'    ? 'Sign In'
-          : tab === 'register' ? 'Create Account'
-          : tab === 'otp'      ? 'Enter OTP'
-          : 'Reset Password'}
+          {tab==='login'   ? 'Sign In'
+          : tab==='register'? 'Create Account'
+          : tab==='otp'     ? 'Enter OTP'
+          :                  'Reset Password'}
         </h2>
 
         {/* Back link */}
-        {tab !== 'login' && tab !== 'otp' && (
+        {tab!=='login' && tab!=='otp' && (
           <button
             className="mb-4 text-xs text-[#b49d91] hover:underline"
-            onClick={() => setTab('login')}
-          >
-            ← Back to Login
-          </button>
+            onClick={()=>setTab('login')}
+          >← Back to Login</button>
         )}
 
         {/* Method toggle */}
         {['login','register','reset'].includes(tab) && (
           <div className="flex mb-5 rounded-lg overflow-hidden border border-[#eadcd5]">
             <ToggleBtn
-              active={authMethod === 'email'}
-              onClick={() => setMethod('email')}
-              icon={<EnvelopeIcon className="w-4 h-4" />}
+              active={authMethod==='email'}
+              onClick={()=>{
+                setMethod('email');
+                setForm(f=>({...f,mobile:''}));
+              }}
+              icon={<EnvelopeIcon className="w-4 h-4"/>}
               label="Email"
             />
             <ToggleBtn
-              active={authMethod === 'mobile'}
-              onClick={() => setMethod('mobile')}
-              icon={<DevicePhoneMobileIcon className="w-4 h-4" />}
+              active={authMethod==='mobile'}
+              onClick={()=>{
+                setMethod('mobile');
+                setForm(f=>({...f,email:''}));
+              }}
+              icon={<DevicePhoneMobileIcon className="w-4 h-4"/>}
               label="Mobile"
             />
           </div>
         )}
 
         {/* LOGIN */}
-        {tab === 'login' && (
+        {tab==='login' && (
           <div>
-            {authMethod==='email' ? (
-              <Input
-                type="email"
-                placeholder="Email"
-                value={form.email}
-                onChange={(e)=>handleField('email', e.target.value)}
-              />
-            ) : (
-              <Input
-                type="tel"
-                placeholder="Mobile Number"
-                value={form.mobile}
-                onChange={(e)=>handleField('mobile', e.target.value)}
-              />
-            )}
+            {authMethod==='email'
+              ? <Input type="email" placeholder="Email" value={form.email} onChange={e=>handleField('email',e.target.value)}/>
+              : <Input type="tel"   placeholder="Mobile" value={form.mobile} onChange={e=>handleField('mobile',e.target.value)}/>
+            }
 
-            {!usePassword ? (
-              <PrimaryBtn onClick={sendOtp} label="Login with OTP" />
-            ) : (
-              <>
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  value={form.password}
-                  onChange={(e)=>handleField('password', e.target.value)}
-                />
-                <PrimaryBtn onClick={loginWithPassword} label="Login" />
-              </>
-            )}
+            {!usePassword
+              ? <PrimaryBtn onClick={sendOtp} label="Login with OTP"/>
+              : <>
+                  <Input type="password" placeholder="Password" value={form.password} onChange={e=>handleField('password',e.target.value)}/>
+                  <PrimaryBtn onClick={loginWithPassword} label="Login"/>
+                </>
+            }
 
-            <p
-              className="text-xs text-center text-[#b49d91] cursor-pointer mb-3"
-              onClick={() => setUsePwd(p => !p)}
-            >
+            <p className="text-xs text-center text-[#b49d91] cursor-pointer mb-3" onClick={()=>setUsePwd(p=>!p)}>
               {usePassword ? 'Use OTP instead' : 'Use password instead'}
             </p>
 
             <div className="text-center space-y-1 text-xs">
-              <p
-                className="text-[#b49d91] cursor-pointer"
-                onClick={() => setTab('reset')}
-              >
-                Forgot password?
-              </p>
-              <p>
-                Don’t have an account?{' '}
-                <span
-                  className="text-[#b49d91] cursor-pointer underline"
-                  onClick={() => setTab('register')}
-                >
-                  Sign up
-                </span>
+              <p className="text-[#b49d91] cursor-pointer" onClick={()=>setTab('reset')}>Forgot password?</p>
+              <p>Don’t have an account?{' '}
+                <span className="text-[#b49d91] cursor-pointer underline" onClick={()=>setTab('register')}>Sign up</span>
               </p>
             </div>
           </div>
         )}
 
         {/* REGISTER */}
-        {tab === 'register' && (
+        {tab==='register' && (
           <div>
-            <Input
-              type="text"
-              placeholder="Full name"
-              value={form.name}
-              onChange={(e)=>handleField('name', e.target.value)}
-            />
-            {authMethod==='email' ? (
-              <Input
-                type="email"
-                placeholder="Email"
-                value={form.email}
-                onChange={(e)=>handleField('email', e.target.value)}
-              />
-            ) : (
-              <Input
-                type="tel"
-                placeholder="Mobile Number"
-                value={form.mobile}
-                onChange={(e)=>handleField('mobile', e.target.value)}
-              />
-            )}
-            <Input
-              type="password"
-              placeholder="Password"
-              value={form.password}
-              onChange={(e)=>handleField('password', e.target.value)}
-            />
-            <PrimaryBtn onClick={sendOtp} label="Send verification code" />
+            <Input type="text" placeholder="Full name" value={form.name} onChange={e=>handleField('name',e.target.value)}/>
+            {authMethod==='email'
+              ? <Input type="email" placeholder="Email" value={form.email} onChange={e=>handleField('email',e.target.value)}/>
+              : <Input type="tel"   placeholder="Mobile" value={form.mobile} onChange={e=>handleField('mobile',e.target.value)}/>
+            }
+            <Input type="password" placeholder="Password" value={form.password} onChange={e=>handleField('password',e.target.value)}/>
+            <PrimaryBtn onClick={sendOtp} label="Send verification code"/>
           </div>
         )}
 
         {/* OTP */}
-        {tab === 'otp' && (
+        {tab==='otp' && (
           <div>
-            <p className="text-center text-xs text-gray-500 mb-4">
-              Enter the 6-digit code
-            </p>
+            <p className="text-center text-xs text-gray-500 mb-4">Enter the 6-digit code</p>
             <div className="flex justify-between mb-6">
-              {otpDigits.map((d, i) => (
-                <input
-                  key={i}
-                  maxLength={1}
-                  value={d}
-                  ref={el => otpRefs.current[i] = el}
-                  onChange={e => handleOtpField(e, i)}
-                  className="w-10 h-10 border border-[#eadcd5] text-center rounded focus:outline-none focus:ring-1 focus:ring-[#b49d91]"
+              {otpDigits.map((d,i)=>(
+                <input key={i} maxLength={1} value={d}
+                  ref={el=>otpRefs.current[i]=el}
+                  onChange={e=>handleOtpField(e,i)}
+                  className="w-10 h-10 border border-[#eadcd5] text-center rounded focus:ring-1 focus:ring-[#b49d91]"
                 />
               ))}
             </div>
-            <PrimaryBtn onClick={verifyOtp} label="Verify OTP" />
+            <PrimaryBtn onClick={verifyOtp} label="Verify OTP"/>
           </div>
         )}
 
-        {/* RESET PASSWORD */}
-        {tab === 'reset' && (
+        {/* RESET */}
+        {tab==='reset' && (
           <div>
-            {authMethod==='email' ? (
-              <Input
-                type="email"
-                placeholder="Email"
-                value={form.email}
-                onChange={(e)=>handleField('email', e.target.value)}
-              />
-            ) : (
-              <Input
-                type="tel"
-                placeholder="Mobile Number"
-                value={form.mobile}
-                onChange={(e)=>handleField('mobile', e.target.value)}
-              />
-            )}
-            <PrimaryBtn onClick={resetPwd} label="Send reset link" />
+            {authMethod==='email'
+              ? <Input type="email" placeholder="Email" value={form.email} onChange={e=>handleField('email',e.target.value)}/>
+              : <Input type="tel"   placeholder="Mobile" value={form.mobile} onChange={e=>handleField('mobile',e.target.value)}/>
+            }
+            <Input type="password" placeholder="New Password" value={form.newPassword} onChange={e=>handleField('newPassword',e.target.value)}/>
+            <PrimaryBtn onClick={resetPwd} label="Send Reset Code"/>
           </div>
         )}
       </div>
@@ -415,38 +394,13 @@ export default function AuthModal({ open, onClose }) {
   );
 }
 
-/* ---------- Small UI helpers ---------- */
-
-const Input = (props) => (
-  <input
-    {...props}
-    className={`w-full p-3 mb-4 border border-[#eadcd5] rounded-lg text-sm
-      focus:outline-none focus:ring-1 focus:ring-[#b49d91] ${props.className || ''}`}
-  />
+/* UI helpers */
+const Input = props => (
+  <input {...props} className="w-full p-3 mb-4 border border-[#eadcd5] rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#b49d91]" />
 );
-
 const PrimaryBtn = ({ onClick, label }) => (
-  <button
-    onClick={onClick}
-    className="w-full p-3 bg-[#b49d91] text-white rounded-lg text-sm hover:opacity-90 transition mb-4"
-  >
-    {label}
-  </button>
+  <button onClick={onClick} className="w-full p-3 bg-[#b49d91] text-white rounded-lg text-sm hover:opacity-90 mb-4">{label}</button>
 );
-
 const ToggleBtn = ({ active, onClick, icon, label }) => (
-  <button
-    onClick={onClick}
-    className={`flex-1 flex items-center justify-center gap-1 py-2 text-xs
-      ${active ? 'bg-[#b49d91] text-white' : 'bg-white text-[#6d5a52]'}`}
-  >
-    {icon}
-    {label}
-  </button>
+  <button onClick={onClick} className={`flex-1 flex items-center justify-center gap-1 py-2 text-xs ${active?'bg-[#b49d91] text-white':'bg-white text-[#6d5a52]'}`}>{icon}<span>{label}</span></button>
 );
-
-/* Tailwind animation (optional):
-   Add this to your globals if you want fadeIn:
-   @keyframes fadeIn { from {opacity:0; transform:scale(.98)} to {opacity:1; transform:scale(1)} }
-   .animate-fadeIn { animation: fadeIn .25s ease-out; }
-*/
