@@ -370,7 +370,7 @@ export default function AuthModal({ open, onClose }) {
       className="mb-4 text-xs text-[#b49d91] hover:underline"
       onClick={() => setTab('login')}
     >
-      ← Back to Login
+      ←  Login
     </button>
 
     <p className="text-center text-xs text-gray-500 mb-4">Enter the 6-digit code</p>
