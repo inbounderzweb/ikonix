@@ -223,7 +223,7 @@ export default function ProductDetails() {
           </div>
 
           {/* qty + actions */}
-          <div className="mt-6 flex items-center gap-4">
+          <div className="mt-4 flex items-center gap-4">
             <div className="flex items-center border rounded-full">
               <button
                 onClick={() => setQty(q => Math.max(1, q - 1))}
@@ -237,7 +237,7 @@ export default function ProductDetails() {
                 <PlusIcon className="h-5 w-5" />
               </button>
             </div>
-            <button onClick={handleAddToCart} className="px-6 py-3 bg-[#b49d91] text-white rounded-md">
+            <button onClick={handleAddToCart} className="px-1 py-1 text-[10px] bg-[#b49d91] text-white rounded-md">
               Add to Cart
             </button>
             <button onClick={handleBuyNow} className="px-6 py-3 bg-[#2A3443] text-white rounded-md">

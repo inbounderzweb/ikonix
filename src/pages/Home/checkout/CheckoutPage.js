@@ -88,6 +88,13 @@ export default function CheckoutPage() {
       .filter(Boolean)
       .join(', ');
 
+  // ←─── helper to push the selected address to the top
+  const ordered = (list, selectedId) => {
+    const first = list.find(a => a.id === selectedId);
+    const rest  = list.filter(a => a.id !== selectedId);
+    return first ? [first, ...rest] : rest;
+  };
+
   const fetchAddresses = async () => {
     try {
       const payload = qs.stringify({ userid: user.id, address_id: 1 });
@@ -111,7 +118,7 @@ export default function CheckoutPage() {
       const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
       const norm = list.map(normalizeAddr);
       setAddresses(norm);
-      if (norm.length && !shippingId) {
+      if (norm.length) {
         setShippingId(norm[0].id);
         setBillingId(norm[0].id);
       }
@@ -123,8 +130,7 @@ export default function CheckoutPage() {
     }
   };
 
-
-   const fetchDefaultAddresses = async () => {
+  const fetchDefaultAddresses = async () => {
     try {
       const payload = qs.stringify({ userid: user.id, address_id: 1 });
       const { data } = await axios.post(
@@ -147,7 +153,7 @@ export default function CheckoutPage() {
       const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
       const norm = list.map(normalizeAddr);
       setAddresses(norm);
-      if (norm.length && !shippingId) {
+      if (norm.length) {
         setShippingId(norm[0].id);
         setBillingId(norm[0].id);
       }
@@ -251,9 +257,17 @@ export default function CheckoutPage() {
           }
         }
         setForm({
-          doorno: '', house: '', street: '', city: '',
-          pincode: '', district: '', state: '', country: '',
-          company: '', gst: '', type: ''
+          doorno: '',
+          house: '',
+          street: '',
+          city: '',
+          pincode: '',
+          district: '',
+          state: '',
+          country: '',
+          company: '',
+          gst: '',
+          type: ''
         });
         setStep('select');
       } else {
@@ -389,15 +403,23 @@ export default function CheckoutPage() {
                     onDec={() => dec(item.cartid, item.id, item.variantid)}
                     onInc={() => inc(item.cartid, item.id, item.variantid)}
                   />
-                  <button onClick={() => remove(item.cartid, item.id, item.variantid)} className="underline text-[#6d5a52] text-sm ml-4 md:hidden">
+                  <button
+                    onClick={() => remove(item.cartid, item.id, item.variantid)}
+                    className="underline text-[#6d5a52] text-sm ml-4 md:hidden"
+                  >
                     Remove
                   </button>
                 </div>
 
                 {/* Total & Remove on md+ */}
                 <div className="flex justify-between md:justify-end md:col-span-2 items-center">
-                  <p className="text-[#2A3443] font-semibold text-lg">Rs.{(item.price * item.qty).toFixed(2)}/-</p>
-                  <button onClick={() => remove(item.cartid, item.id, item.variantid)} className="underline text-[#6d5a52] text-sm hidden md:inline-block ml-4">
+                  <p className="text-[#2A3443] font-semibold text-lg">
+                    Rs.{(item.price * item.qty).toFixed(2)}/-
+                  </p>
+                  <button
+                    onClick={() => remove(item.cartid, item.id, item.variantid)}
+                    className="underline text-[#6d5a52] text-sm hidden md:inline-block ml-4"
+                  >
                     Remove
                   </button>
                 </div>
@@ -412,7 +434,9 @@ export default function CheckoutPage() {
             <div className="w-1/2 max-w-sm space-y-2">
               <div className="flex justify-between">
                 <span className="text-base">Subtotal</span>
-                <span className="text-[#b49d91] font-semibold">Rs.{subtotal.toFixed(2)}/-</span>
+                <span className="text-[#b49d91] font-semibold">
+                  Rs.{subtotal.toFixed(2)}/-
+                </span>
               </div>
               <div className="flex justify-between text-xl font-bold text-[#2A3443]">
                 <span>Total</span>
@@ -423,7 +447,10 @@ export default function CheckoutPage() {
 
           {/* Place order */}
           <div className="flex justify-center mt-10">
-            <button onClick={handlePlaceOrder} className="bg-[#1e2633] text-white text-lg px-16 py-4 rounded-xl hover:opacity-90 transition">
+            <button
+              onClick={handlePlaceOrder}
+              className="bg-[#1e2633] text-white text-lg px-16 py-4 rounded-xl hover:opacity-90 transition"
+            >
               Place order
             </button>
           </div>
@@ -445,7 +472,10 @@ export default function CheckoutPage() {
               <>
                 <h2 className="text-3xl font-semibold text-[#6d5a52] mb-6">Enter Shipping Address</h2>
 
-                <button onClick={handleUseLocation} className="mb-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#eadcd5] text-[#6d5a52] hover:opacity-90">
+                <button
+                  onClick={handleUseLocation}
+                  className="mb-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#eadcd5] text-[#6d5a52] hover:opacity-90"
+                >
                   <span className="material-icons text-base">my_location</span>
                   Use my Location
                 </button>
@@ -475,10 +505,18 @@ export default function CheckoutPage() {
                 {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
 
                 <div className="mt-10 flex justify-end gap-4">
-                  <button onClick={handleCancel} className="px-10 py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]" disabled={loading}>
+                  <button
+                    onClick={handleCancel}
+                    className="px-10 py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]"
+                    disabled={loading}
+                  >
                     Back
                   </button>
-                  <button onClick={handleAddAddress} className="px-10 py-3 rounded-xl bg-[#1e2633] text-white hover:opacity-90" disabled={loading}>
+                  <button
+                    onClick={handleAddAddress}
+                    className="px-10 py-3 rounded-xl bg-[#1e2633] text-white hover:opacity-90"
+                    disabled={loading}
+                  >
                     {loading ? 'Saving...' : 'Continue'}
                   </button>
                 </div>
@@ -494,12 +532,28 @@ export default function CheckoutPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Shipping */}
                   <div>
-                    <h3 className="text-xl font-semibold text-[#6d5a52] bg-[#eadcd5] px-4 py-2 rounded-md inline-block mb-4">Shipping Address</h3>
+                    <h3 className="text-xl font-semibold text-[#6d5a52] bg-[#eadcd5] px-4 py-2 rounded-md inline-block mb-4">
+                      Shipping Address
+                    </h3>
                     <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
-                      {addresses.map((a) => (
-                        <label key={a.id} className={`block border rounded-2xl p-4 cursor-pointer text-sm leading-snug ${shippingId === a.id ? 'border-[#b49d91] bg-white' : 'border-[#d7c6bf] bg-[#f6ebe6]'} ${newAddrId === a.id ? 'ring-2 ring-[#b49d91]' : ''}`}>
+                      {ordered(addresses, shippingId).map(a => (
+                        <label
+                          key={a.id}
+                          className={`block border rounded-2xl p-4 cursor-pointer text-sm leading-snug
+                            ${shippingId === a.id ? 'border-[#b49d91] bg-white' : 'border-[#d7c6bfd7] bg-[#f6ebe6]'}
+                            ${newAddrId === a.id ? 'ring-2 ring-[#b49d91]' : ''}`}
+                        >
                           <div className="flex items-start gap-3">
-                            <input type="radio" className="mt-1 accent-[#1e2633]" name="shipping" checked={shippingId === a.id} onChange={() => { setShippingId(a.id); if (sameAsShip) setBillingId(a.id); }} />
+                            <input
+                              type="radio"
+                              className="mt-1 accent-[#1e2633]"
+                              name="shipping"
+                              checked={shippingId === a.id}
+                              onChange={() => {
+                                setShippingId(a.id);
+                                if (sameAsShip) setBillingId(a.id);
+                              }}
+                            />
                             <div>
                               {addrLabel(a)}
                               {a.company && <div>Company: {a.company}</div>}
@@ -510,24 +564,48 @@ export default function CheckoutPage() {
                         </label>
                       ))}
                     </div>
-                    <button onClick={() => { setStep('form'); setNewAddrId(null); }} className="mt-6 w-full bg-[#eadcd5] text-[#6d5a52] py-4 rounded-2xl flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => { setStep('form'); setNewAddrId(null); }}
+                      className="mt-6 w-full bg-[#eadcd5] text-[#6d5a52] py-4 rounded-2xl flex items-center justify-center gap-2"
+                    >
                       <span className="text-xl">+</span> Add New
                     </button>
                   </div>
 
                   {/* Billing */}
                   <div>
-                    <h3 className="text-xl font-semibold text-[#6d5a52] bg-[#eadcd5] px-4 py-2 rounded-md inline-block mb-4">Billing Address</h3>
+                    <h3 className="text-xl font-semibold text-[#6d5a52] bg-[#eadcd5] px-4 py-2 rounded-md inline-block mb-4">
+                      Billing Address
+                    </h3>
                     <label className="flex items-center gap-2 text-sm text-[#6d5a52] mb-4">
-                      <input type="checkbox" className="accent-[#1e2633]" checked={sameAsShip} onChange={(e) => { setSameAsShip(e.target.checked); if (e.target.checked) setBillingId(shippingId); }} />
+                      <input
+                        type="checkbox"
+                        className="accent-[#1e2633]"
+                        checked={sameAsShip}
+                        onChange={(e) => {
+                          setSameAsShip(e.target.checked);
+                          if (e.target.checked) setBillingId(shippingId);
+                        }}
+                      />
                       Billing address same as shipping
                     </label>
                     {!sameAsShip && (
                       <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
-                        {addresses.map((a) => (
-                          <label key={a.id} className={`block border rounded-2xl p-4 cursor-pointer text-sm leading-snug ${billingId === a.id ? 'border-[#b49d91] bg-white' : 'border-[#d7c6bf] bg-[#f6ebe6]'} ${newAddrId === a.id ? 'ring-2 ring-[#b49d91]' : ''}`}>
+                        {ordered(addresses, billingId).map(a => (
+                          <label
+                            key={a.id}
+                            className={`block border rounded-2xl p-4 cursor-pointer text-sm leading-snug
+                              ${billingId === a.id ? 'border-[#b49d91] bg-white' : 'border-[#d7c6bfd7] bg-[#f6ebe6]'}
+                              ${newAddrId === a.id ? 'ring-2 ring-[#b49d91]' : ''}`}
+                          >
                             <div className="flex items-start gap-3">
-                              <input type="radio" className="mt-1 accent-[#1e2633]" name="billing" checked={billingId === a.id} onChange={() => setBillingId(a.id)} />
+                              <input
+                                type="radio"
+                                className="mt-1 accent-[#1e2633]"
+                                name="billing"
+                                checked={billingId === a.id}
+                                onChange={() => setBillingId(a.id)}
+                              />
                               <div>
                                 {addrLabel(a)}
                                 {a.company && <div>Company: {a.company}</div>}
@@ -539,39 +617,48 @@ export default function CheckoutPage() {
                         ))}
                       </div>
                     )}
-                    {(!addresses.length || !sameAsShip) && (
-                      <button onClick={() => { setStep('form'); setNewAddrId(null); }} className="mt-6 w-full bg-[#eadcd5] text-[#6d5a52] py-4 rounded-2xl flex items-center justify-center gap-2">
-                        <span className="text-xl">+</span> Add New
-                      </button>
-                    )}
+                    <button
+                      onClick={() => { setStep('form'); setNewAddrId(null); }}
+                      className="mt-6 w-full bg-[#eadcd5] text-[#6d5a52] py-4 rounded-2xl flex items-center justify-center gap-2"
+                    >
+                      <span className="text-xl">+</span> Add New
+                    </button>
                   </div>
                 </div>
 
                 <hr className="my-8 border-[#eadcd5]" />
 
+                <div className="grid justify-between lg:flex items-center">
+                  {/* Delivery method */}
+                  <div className="flex items-center gap-3 m-2">
+                    <h4 className="text-20px lg:text-xl font-semibold text-[#6d5a52]">
+                      Delivery Method
+                    </h4>
+                    <select
+                      value={deliveryMethod}
+                      onChange={(e) => setDeliveryMethod(Number(e.target.value))}
+                      className="border border-[#6d5a52] rounded-xl px-6 py-3 text-[#6d5a52] bg-transparent"
+                    >
+                      <option value={1}>Standard</option>
+                      <option value={2}>Express</option>
+                    </select>
+                  </div>
 
-
-
-                    <div className='grid justify-between lg:flex items-center'>
-
-                {/* Delivery method */}
-                <div className='flex items-center gap-3 m-2'>
-                  <h4 className="text-20px lg:text-xl font-semibold text-[#6d5a52]">Delivery Method</h4>
-                  <select value={deliveryMethod} onChange={(e) => setDeliveryMethod(Number(e.target.value))} className="border border-[#6d5a52] rounded-xl px-6 py-3 text-[#6d5a52] bg-transparent">
-                    <option value={1}>Standard</option>
-                    <option value={2}>Express</option>
-                  </select>
+                  <div className="flex gap-3 m-2 ml-[-10px] lg:ml-0 float-start lg:float-end justify-between">
+                    <button
+                      onClick={handleCancel}
+                      className="px-12 py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={handleSelectContinue}
+                      className="px-12 py-3 rounded-xl bg-[#1e2633] text-white hover:opacity-90"
+                    >
+                      Continue
+                    </button>
+                  </div>
                 </div>
-
-                <div className="flex gap-3 m-2 ml-[-10px] lg:ml-0 float-start lg:float-end justify-between">
-                  <button onClick={handleCancel} className="px-12 py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]">Back</button>
-                  <button onClick={handleSelectContinue} className="px-12 py-3 rounded-xl bg-[#1e2633] text-white hover:opacity-90">Continue</button>
-                </div>
-
-                    </div>
-                
-
-              
               </>
             )}
 
@@ -582,14 +669,22 @@ export default function CheckoutPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {/* Products list */}
                   <div>
-                    <div className="bg-[#eadcd5] text-[#6d5a52] rounded-md py-3 px-4 font-semibold mb-4 text-lg">product</div>
+                    <div className="bg-[#eadcd5] text-[#6d5a52] rounded-md py-3 px-4 font-semibold mb-4 text-lg">
+                      product
+                    </div>
                     <div className="max-h-72 overflow-y-auto pr-2 space-y-6">
                       {cartItems.map((item) => (
                         <div key={item.cartid} className="flex gap-4">
-                          <img src={`https://ikonixperfumer.com/beta/assets/uploads/${item.image}`} alt={item.name} className="w-16 h-16 rounded-xl object-cover bg-[#f6ebe6]" />
+                          <img
+                            src={`https://ikonixperfumer.com/beta/assets/uploads/${item.image}`}
+                            alt={item.name}
+                            className="w-16 h-16 rounded-xl object-cover bg-[#f6ebe6]"
+                          />
                           <div className="flex-1">
                             <p className="text-[#6d5a52] font-medium">{item.name}</p>
-                            <p className="text-[#2A3443] font-semibold text-sm">Rs.{item.price.toFixed(2)}/-</p>
+                            <p className="text-[#2A3443] font-semibold text-sm">
+                              Rs.{item.price.toFixed(2)}/-
+                            </p>
                           </div>
                         </div>
                       ))}
@@ -598,22 +693,32 @@ export default function CheckoutPage() {
 
                   {/* Address + totals */}
                   <div>
-                    <div className="bg-[#eadcd5] text-[#6d5a52] rounded-md py-3 px-4 font-semibold mb-4 text-lg">Address</div>
+                    <div className="bg-[#eadcd5] text-[#6d5a52] rounded-md py-3 px-4 font-semibold mb-4 text-lg">
+                      Address
+                    </div>
                     <label className="block border border-[#b49d91] rounded-2xl p-4 text-sm leading-snug text-[#6d5a52] mb-8">
                       <div className="flex items-start gap-3">
                         <input type="radio" className="mt-1 accent-[#1e2633]" checked readOnly />
                         <div>
-                          {addrLabel(addresses.find((a) => a.id === shippingId) || {})}
+                          {addrLabel(addresses.find(a => a.id === shippingId) || {})}
                           {shippingId && billingId && (
                             <>
-                              {addresses.find((a) => a.id === shippingId)?.company && (
-                                <div>Company: {addresses.find((a) => a.id === shippingId)?.company}</div>
+                              {addresses.find(a => a.id === shippingId)?.company && (
+                                <div>
+                                  Company:{' '}
+                                  {addresses.find(a => a.id === shippingId)?.company}
+                                </div>
                               )}
-                              {addresses.find((a) => a.id === shippingId)?.gst && (
-                                <div>GST: {addresses.find((a) => a.id === shippingId)?.gst}</div>
+                              {addresses.find(a => a.id === shippingId)?.gst && (
+                                <div>
+                                  GST: {addresses.find(a => a.id === shippingId)?.gst}
+                                </div>
                               )}
-                              {addresses.find((a) => a.id === shippingId)?.type && (
-                                <div>Type: {addresses.find((a) => a.id === shippingId)?.type}</div>
+                              {addresses.find(a => a.id === shippingId)?.type && (
+                                <div>
+                                  Type:{' '}
+                                  {addresses.find(a => a.id === shippingId)?.type}
+                                </div>
                               )}
                             </>
                           )}
@@ -623,7 +728,9 @@ export default function CheckoutPage() {
                     <div className="space-y-2 text-[#6d5a52] mb-8">
                       <div className="flex justify-between text-base">
                         <span>Subtotal</span>
-                        <span className="text-[#b49d91] font-semibold">Rs.{subtotal.toFixed(2)}/-</span>
+                        <span className="text-[#b49d91] font-semibold">
+                          Rs.{subtotal.toFixed(2)}/-
+                        </span>
                       </div>
                       <div className="flex justify-between text-2xl font-bold text-[#2A3443]">
                         <span>Total</span>
@@ -634,8 +741,17 @@ export default function CheckoutPage() {
                 </div>
                 {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
                 <div className="flex justify-end gap-4 mt-6">
-                  <button onClick={() => setStep('select')} className="px-12 py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]">Back</button>
-                  <button onClick={handleCheckout} className="px-12 py-3 rounded-xl bg-[#1e2633] text-white hover:opacity-90" disabled={loading}>
+                  <button
+                    onClick={() => setStep('select')}
+                    className="px-12 py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleCheckout}
+                    className="px-12 py-3 rounded-xl bg-[#1e2633] text-white hover:opacity-90"
+                    disabled={loading}
+                  >
                     {loading ? 'Processing…' : 'Proceed to Checkout'}
                   </button>
                 </div>
