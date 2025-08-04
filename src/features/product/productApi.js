@@ -1,4 +1,3 @@
-// features/product/productApi.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 // 🔐 Utility to fetch token from localStorage
@@ -21,7 +20,7 @@ export const productApi = createApi({
 
   endpoints: (builder) => ({
     getProducts: builder.query({
-      query: () => 'products', // 🔗 GET https://ikonixperfumer.com/beta/api/products
+      query: () => 'products', // 🔗 GET /products
     }),
   }),
 });

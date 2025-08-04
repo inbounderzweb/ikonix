@@ -3,10 +3,12 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import qs from 'qs';
+import bag from '../../assets/bag.svg';
+import ValidateOnLoad from '../../components/ValidateOnLoad';
+
 import { useGetProductsQuery } from '../../features/product/productApi';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
-import bag from '../../assets/bag.svg';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
@@ -40,23 +42,26 @@ async function syncGuestCartWithServer(userId, token) {
 
 export default function ProductList() {
   const navigate = useNavigate();
-  const { user, token } = useAuth();
+  const { user, token, isTokenReady } = useAuth();    // ← grab isTokenReady
   const { refresh } = useCart();
 
-  // fire the products request immediately...
+  // ▶︎ Fire the products request—but only after token is ready:
   const {
     data,
     isLoading,
     isError,
-    refetch,      // <-- grab refetch
-  } = useGetProductsQuery();
+    refetch,
+  } = useGetProductsQuery(
+    undefined,
+    { skip: !isTokenReady }
+  );
 
-  // ...but if/when a token arrives, retry with the Bearer header
+  // ▶︎ Once token lands, retry the fetch
   useEffect(() => {
-    if (token) {
+    if (isTokenReady) {
       refetch();
     }
-  }, [token, refetch]);
+  }, [isTokenReady, refetch]);
 
   const products = data?.data || [];
 
@@ -145,104 +150,109 @@ export default function ProductList() {
   if (isError)   return <p className="text-center py-8">Error loading products.</p>;
 
   return (
-    <section className="mx-auto w-[90%] md:w-[75%] py-8">
-      {/* Filter Pills */}
-      <div className="flex gap-4 mb-6 overflow-x-auto scrollbar-hide pb-4">
-        {filters.map(cat => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={`
-              px-4 py-2 rounded-full flex-shrink-0 transition
-              ${selectedCategory === cat
-                ? 'bg-[#b49d91] text-white'
-                : 'bg-white text-[#b49d91] border border-[#b49d91]'}
-            `}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
+    <>
+      {/* kick off token validation */}
+      <ValidateOnLoad />
 
-      {/* Products Grid/List */}
-      <div
-        className="
-          flex flex-row gap-6 overflow-x-auto pb-4
-          sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:pb-0
-        "
-      >
-        {filtered.map(product => {
-          const variant = product.variants[0] || {};
-          const vid     = variant.vid;
-          const msrp    = Number(variant.price)      || 0;
-          const sale    = Number(variant.sale_price) || msrp;
-
-          return (
-            <div
-              key={`${product.id}-${vid}`}
-              className="min-w-[80%] lg:min-w-[60%] sm:min-w-0 relative overflow-hidden rounded-[10px]"
+      <section className="mx-auto w-[90%] md:w-[75%] py-8">
+        {/* Filter Pills */}
+        <div className="flex gap-4 mb-6 overflow-x-auto scrollbar-hide pb-4">
+          {filters.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`
+                px-4 py-2 rounded-full flex-shrink-0 transition
+                ${selectedCategory === cat
+                  ? 'bg-[#b49d91] text-white'
+                  : 'bg-white text-[#b49d91] border border-[#b49d91]'}
+              `}
             >
-              {/* Category badge */}
-              <span className="absolute top-2 left-2 inline-block rounded-full border border-[#8C7367] px-3 py-1 text-xs text-[#8C7367]">
-                {product.category_name}
-              </span>
+              {cat}
+            </button>
+          ))}
+        </div>
 
-              {/* Add-to-cart button */}
-              <button
-                onClick={e => {
-                  e.stopPropagation();
-                  handleAddToCart(product);
-                }}
-                className="absolute top-2 right-2 rounded-full p-1"
+        {/* Products Grid/List */}
+        <div
+          className="
+            flex flex-row gap-6 overflow-x-auto pb-4
+            sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:pb-0
+          "
+        >
+          {filtered.map(product => {
+            const variant = product.variants[0] || {};
+            const vid     = variant.vid;
+            const msrp    = Number(variant.price)      || 0;
+            const sale    = Number(variant.sale_price) || msrp;
+
+            return (
+              <div
+                key={`${product.id}-${vid}`}
+                className="min-w-[80%] lg:min-w-[60%] sm:min-w-0 relative overflow-hidden rounded-[10px]"
               >
-                <img src={bag} alt="cart" className="h-6 w-6" />
-              </button>
+                {/* Category badge */}
+                <span className="absolute top-2 left-2 inline-block rounded-full border border-[#8C7367] px-3 py-1 text-xs text-[#8C7367]">
+                  {product.category_name}
+                </span>
 
-              {/* Product Image */}
-              <img
-                onClick={() =>
-                  navigate('/product-details', {
-                    state: { product, vid },
-                  })
-                }
-                src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
-                alt={product.name}
-                className="w-full h-72 object-cover cursor-pointer"
-              />
+                {/* Add-to-cart button */}
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleAddToCart(product);
+                  }}
+                  className="absolute top-2 right-2 rounded-full p-1"
+                >
+                  <img src={bag} alt="cart" className="h-6 w-6" />
+                </button>
 
-              {/* Info */}
-              <div className="pt-4 flex justify-between items-start">
-                <div>
-                  <h3 className="text-[#2A3443] font-[Lato] text-[16px] leading-snug">
-                    {product.name}
-                  </h3>
-                  <p className="text-[#2A3443] font-[Lato] text-[14px]">
-                    {product.category_name}
-                  </p>
-                </div>
-                <div className="text-right">
-                  {sale < msrp && (
-                    <span className="text-xs line-through text-[#2A3443] font-[Lato] block">
-                      ₹{msrp}/-
-                    </span>
-                  )}
-                  <span className="font-semibold text-[#2A3443]">₹{sale}/-</span>
+                {/* Product Image */}
+                <img
+                  onClick={() =>
+                    navigate('/product-details', {
+                      state: { product, vid },
+                    })
+                  }
+                  src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
+                  alt={product.name}
+                  className="w-full h-72 object-cover cursor-pointer"
+                />
+
+                {/* Info */}
+                <div className="pt-4 flex justify-between items-start">
+                  <div>
+                    <h3 className="text-[#2A3443] font-[Lato] text-[16px] leading-snug">
+                      {product.name}
+                    </h3>
+                    <p className="text-[#2A3443] font-[Lato] text-[14px]">
+                      {product.category_name}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    {sale < msrp && (
+                      <span className="text-xs line-through text-[#2A3443] font-[Lato] block">
+                        ₹{msrp}/-
+                      </span>
+                    )}
+                    <span className="font-semibold text-[#2A3443]">₹{sale}/-</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
 
-      {/* View All */}
-      <div className="flex justify-center mt-8">
-        <button
-          onClick={() => navigate('/shop')}
-          className="px-6 py-2 bg-[#b49d91] text-white rounded-full hover:opacity-90 transition"
-        >
-          View all Products
-        </button>
-      </div>
-    </section>
+        {/* View All */}
+        <div className="flex justify-center mt-8">
+          <button
+            onClick={() => navigate('/shop')}
+            className="px-6 py-2 bg-[#b49d91] text-white rounded-full hover:opacity-90 transition"
+          >
+            View all Products
+          </button>
+        </div>
+      </section>
+    </>
   );
 }

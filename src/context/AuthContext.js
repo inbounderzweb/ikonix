@@ -1,3 +1,4 @@
+// src/context/AuthContext.js
 import React, { createContext, useContext, useState } from 'react';
 
 const AuthContext = createContext();
@@ -10,6 +11,9 @@ export function AuthProvider({ children }) {
     const u = localStorage.getItem('authUser');
     return u ? JSON.parse(u) : null;
   });
+
+  // NEW: flag for when our token has been validated/fetched
+  const [isTokenReady, setIsTokenReady] = useState(false);
 
   const setToken = (t) => {
     if (t) localStorage.setItem('authToken', t);
@@ -24,7 +28,17 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, setToken, setUser }}>
+    <AuthContext.Provider
+      value={{
+        token,
+        user,
+        setToken,
+        setUser,
+        // ← expose these so ValidateOnLoad and ProductList can use them:
+        isTokenReady,
+        setIsTokenReady,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
