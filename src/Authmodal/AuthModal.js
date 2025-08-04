@@ -14,7 +14,7 @@ import {
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
 export default function AuthModal({ open, onClose }) {
-  const [tab, setTab]            = useState('login');    // 'login' | 'register' | 'otp' | 'reset'
+  const [tab, setTab]            = useState('register');    // 'login' | 'register' | 'otp' | 'reset'
   const [authMethod, setMethod]  = useState('email');    // 'email' | 'mobile'
   const [usePassword, setUsePwd] = useState(false);
 
@@ -361,22 +361,38 @@ export default function AuthModal({ open, onClose }) {
           </div>
         )}
 
-        {/* OTP */}
-        {tab==='otp' && (
-          <div>
-            <p className="text-center text-xs text-gray-500 mb-4">Enter the 6-digit code</p>
-            <div className="flex justify-between mb-6">
-              {otpDigits.map((d,i)=>(
-                <input key={i} maxLength={1} value={d}
-                  ref={el=>otpRefs.current[i]=el}
-                  onChange={e=>handleOtpField(e,i)}
-                  className="w-10 h-10 border border-[#eadcd5] text-center rounded focus:ring-1 focus:ring-[#b49d91]"
-                />
-              ))}
-            </div>
-            <PrimaryBtn onClick={verifyOtp} label="Verify OTP"/>
-          </div>
-        )}
+      
+       {/* OTP */}
+{tab==='otp' && (
+  <div>
+    {/* ← Back to Login */}
+    <button
+      className="mb-4 text-xs text-[#b49d91] hover:underline"
+      onClick={() => setTab('login')}
+    >
+      ← Back to Login
+    </button>
+
+    <p className="text-center text-xs text-gray-500 mb-4">Enter the 6-digit code</p>
+    <div className="flex justify-between mb-6">
+      {otpDigits.map((d,i) => (
+        <input
+          key={i}
+          maxLength={1}
+          value={d}
+          ref={el => otpRefs.current[i] = el}
+          onChange={e => handleOtpField(e, i)}
+          className="w-10 h-10 border border-[#eadcd5] text-center rounded focus:ring-1 focus:ring-[#b49d91]"
+        />
+      ))}
+    </div>
+    <PrimaryBtn onClick={verifyOtp} label="Verify OTP" />
+  </div>
+)}
+
+
+
+
 
         {/* RESET */}
         {tab==='reset' && (

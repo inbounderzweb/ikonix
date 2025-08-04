@@ -123,6 +123,42 @@ export default function CheckoutPage() {
     }
   };
 
+
+   const fetchDefaultAddresses = async () => {
+    try {
+      const payload = qs.stringify({ userid: user.id, address_id: 1 });
+      const { data } = await axios.post(
+        `${API_BASE}/address/default`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+      if (data.status === false) {
+        alert(data.message || 'Address not found – please add one');
+        setStep('form');
+        setShowAddressModal(true);
+        return [];
+      }
+      const raw = data.data;
+      const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+      const norm = list.map(normalizeAddr);
+      setAddresses(norm);
+      if (norm.length && !shippingId) {
+        setShippingId(norm[0].id);
+        setBillingId(norm[0].id);
+      }
+      return norm;
+    } catch {
+      setStep('form');
+      setShowAddressModal(true);
+      return [];
+    }
+  };
+
   const handlePlaceOrder = async () => {
     if (!user) {
       setShowAuthModal(true);
@@ -131,7 +167,7 @@ export default function CheckoutPage() {
     setError('');
     setLoading(true);
     try {
-      const list = await fetchAddresses();
+      const list = await fetchDefaultAddresses();
       setStep(list.length ? 'select' : 'form');
       setShowAddressModal(true);
     } catch {
@@ -206,7 +242,7 @@ export default function CheckoutPage() {
           setBillingId(addedObj.id);
           setNewAddrId(addedObj.id);
         } else {
-          const list = await fetchAddresses();
+          const list = await fetchDefaultAddresses();
           const last = list[list.length - 1];
           if (last) {
             setShippingId(last.id);
