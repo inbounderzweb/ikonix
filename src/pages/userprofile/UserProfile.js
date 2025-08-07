@@ -19,7 +19,7 @@ export default function UserProfile() {
   const handleLogout = () => {
     localStorage.removeItem('authUser');
     setUser(null);
-    setToken('');
+    // setToken('');
     navigate('/');
   };
 

@@ -132,9 +132,13 @@ export default function CheckoutPage() {
 
   const fetchDefaultAddresses = async () => {
     try {
-      const payload = qs.stringify({ userid: user.id, address_id: 1 });
+      // const payload = qs.stringify({ userid: user.id, address_id: 1 });
+      const payload = qs.stringify({ userid: user.id });
+
       const { data } = await axios.post(
-        `${API_BASE}/address/default`,
+        // `${API_BASE}/address/default`,
+        `${API_BASE}/address`,
+
         payload,
         {
           headers: {
