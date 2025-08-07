@@ -147,7 +147,7 @@ export default function ProductList() {
   };
 
   if (isLoading) return <p className="text-center py-8">Loading…</p>;
-  if (isError)   return <p className="text-center py-8">Error loading products.</p>;
+  if (isError)   return <p className="text-center py-8">Error loading products..</p>;
 
   return (
     <>
