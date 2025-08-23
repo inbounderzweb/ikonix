@@ -1,5 +1,6 @@
 // src/pages/CheckoutPage.js
 import React, { useState, useEffect } from 'react';
+import RazorpayButton from '../../../components/payments/RazorpayButton';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import qs from 'qs';
@@ -744,7 +745,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
                 {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-                <div className="flex justify-end gap-4 mt-6">
+                {/* <div className="flex justify-end gap-4 mt-6">
                   <button
                     onClick={() => setStep('select')}
                     className="px-12 py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]"
@@ -758,7 +759,41 @@ export default function CheckoutPage() {
                   >
                     {loading ? 'Processing…' : 'Proceed to Checkout'}
                   </button>
-                </div>
+                </div> */}
+               <div className="flex justify-end gap-4 mt-6">
+  <button
+    onClick={() => setStep('select')}
+    className="px-12 py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]"
+  >
+    Back
+  </button>
+
+  {/* Pay Online via Razorpay */}
+  <RazorpayButton
+    amountInRupees={Number(total) || 0}
+    orderMeta={{
+      receipt: `rcpt_${Date.now()}`,
+      notes: {
+        userid: user?.id,
+        shippingId,
+        billingId: sameAsShip ? shippingId : billingId,
+        deliveryMethod,
+      },
+    }}
+    onSuccess={(result) => {
+      // Navigate ONLY after server verification succeeds
+      navigate('/order-confirmation', {
+        state: { order: result?.order || null, address_id: shippingId },
+      });
+    }}
+    onError={(err) => {
+      console.error(err);
+      setError(err?.message || 'Payment failed/aborted');
+    }}
+  />
+</div>
+
+
               </>
             )}
           </div>
