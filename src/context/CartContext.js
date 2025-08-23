@@ -19,21 +19,56 @@ export function CartProvider({ children }) {
   const [items, setItems] = useState([]);
   const fetchingRef = useRef(false);
 
-  /* --- Guest storage --- */
-  const readGuest = () =>
-    JSON.parse(localStorage.getItem('guestCart') || '[]');
-  const writeGuest = arr =>
-    localStorage.setItem('guestCart', JSON.stringify(arr));
+  /* --- Guest storage (sanitized read/write + dedupe) --- */
+  const readGuest = () => {
+    const raw = JSON.parse(localStorage.getItem('guestCart') || '[]');
 
-  /* --- Normalize each item --- */
+    // Normalize & coerce
+    const normalized = (Array.isArray(raw) ? raw : []).map(x => ({
+      id:    x.productid ?? x.id,
+      vid:   x.variantid ?? x.vid,
+      name:  x.name,
+      image: x.image,
+      price: Number(x.price) || 0,
+      qty:   Number(x.qty)   || 1,
+    }));
+
+    // Deduplicate by id+vid, summing qty
+    const byKey = new Map();
+    for (const it of normalized) {
+      const key = `${it.id}::${it.vid}`;
+      const prev = byKey.get(key);
+      byKey.set(
+        key,
+        prev
+          ? { ...it, qty: (Number(prev.qty) || 0) + (Number(it.qty) || 0) }
+          : it
+      );
+    }
+    return Array.from(byKey.values());
+  };
+
+  const writeGuest = arr => {
+    const safe = (Array.isArray(arr) ? arr : []).map(i => ({
+      id:    i.id,
+      vid:   i.vid ?? i.variantid, // allow either field name
+      name:  i.name,
+      image: i.image,
+      price: Number(i.price) || 0,
+      qty:   Number(i.qty)   || 1,
+    }));
+    localStorage.setItem('guestCart', JSON.stringify(safe));
+  };
+
+  /* --- Normalize each item for UI --- */
   const normalize = i => ({
-    cartid:    i.cartid ?? i.id,
+    cartid:    i.cartid ?? i.id,                  // server may send cartid
     id:        i.productid ?? i.id,
-    variantid: i.variantid ?? i.vid,
+    variantid: i.variantid ?? i.vid,              // unify to variantid for UI
     name:      i.name,
     image:     i.image,
-    price:     Number(i.price),
-    qty:       Number(i.qty),
+    price:     Number(i.price) || 0,
+    qty:       Number(i.qty)   || 1,
   });
 
   /* --- Fetch cart (server if logged in, else guest) --- */
@@ -41,8 +76,8 @@ export function CartProvider({ children }) {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
 
-    const guest = readGuest();
     if (!token || !user) {
+      const guest = readGuest();
       setItems(guest.map(normalize));
       fetchingRef.current = false;
       return;
@@ -59,9 +94,19 @@ export function CartProvider({ children }) {
           },
         }
       );
-      const server = Array.isArray(data.data) ? data.data : [];
+      const server = Array.isArray(data?.data) ? data.data : [];
       setItems(server.map(normalize));
-      writeGuest(server);
+      // keep guest mirror in sync for fallback flows
+      writeGuest(
+        server.map(it => ({
+          id: it.id,
+          vid: it.variantid ?? it.vid,
+          name: it.name,
+          image: it.image,
+          price: Number(it.price) || 0,
+          qty: Number(it.qty) || 1,
+        }))
+      );
     } catch {
       setItems([]);
     } finally {
@@ -83,7 +128,7 @@ export function CartProvider({ children }) {
                 userid:     user.id,
                 productid:  it.id,
                 variantid:  vid,
-                qty:        it.qty,
+                qty:        Number(it.qty) || 1,
               }),
               {
                 headers: {
@@ -114,7 +159,7 @@ export function CartProvider({ children }) {
         },
       }
     );
-    const server = Array.isArray(data.data) ? data.data : [];
+    const server = Array.isArray(data?.data) ? data.data : [];
     if (!server.length) {
       await syncGuestToServer();
       await fetchCart();
@@ -129,8 +174,10 @@ export function CartProvider({ children }) {
 
   /* --- Effects --- */
   useEffect(() => { fetchCart(); }, [fetchCart]);
+
   useEffect(() => {
     if (!user || !token) {
+      // Always sanitize guest reads
       setItems(readGuest().map(normalize));
     } else {
       (async () => {
@@ -140,7 +187,7 @@ export function CartProvider({ children }) {
     }
   }, [user, token, syncGuestToServer, fetchCart]);
 
-  /* --- inc / dec / remove, all now pass variantid --- */
+  /* --- inc / dec / remove (guest path numeric-safe) --- */
   const inc = async (cartid, id, variantid) => {
     if (token && user) {
       await axios.post(
@@ -151,9 +198,9 @@ export function CartProvider({ children }) {
       await fetchCart();
     } else {
       const raw = readGuest();
-      const idx = raw.findIndex(x => x.id === id && (x.variantid ?? x.vid) === variantid);
+      const idx = raw.findIndex(x => x.id === id && (x.vid ?? x.variantid) === variantid);
       if (idx > -1) {
-        raw[idx].qty += 1;
+        raw[idx].qty = (Number(raw[idx].qty) || 0) + 1;
         writeGuest(raw);
         setItems(raw.map(normalize));
       }
@@ -170,9 +217,10 @@ export function CartProvider({ children }) {
       await fetchCart();
     } else {
       const raw = readGuest();
-      const idx = raw.findIndex(x => x.id === id && (x.variantid ?? x.vid) === variantid);
+      const idx = raw.findIndex(x => x.id === id && (x.vid ?? x.variantid) === variantid);
       if (idx > -1) {
-        raw[idx].qty = Math.max(1, raw[idx].qty - 1);
+        const nextQty = Math.max(1, (Number(raw[idx].qty) || 1) - 1);
+        raw[idx].qty = nextQty;
         writeGuest(raw);
         setItems(raw.map(normalize));
       }
@@ -188,7 +236,7 @@ export function CartProvider({ children }) {
       );
       await fetchCart();
     } else {
-      const raw = readGuest().filter(x => !(x.id === id && (x.variantid ?? x.vid) === variantid));
+      const raw = readGuest().filter(x => !(x.id === id && (x.vid ?? x.variantid) === variantid));
       writeGuest(raw);
       setItems(raw.map(normalize));
     }

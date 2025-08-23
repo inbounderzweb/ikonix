@@ -36,11 +36,15 @@ export default function CartDrawer({ open, onClose }) {
 
   if (!show) return null;
 
-  const totalCount = items.reduce((sum, i) => sum + i.qty, 0);
+  // SAFE reduce: coerce qty to numbers
+  const totalCount = items.reduce(
+    (sum, i) => (Number(sum) || 0) + (Number(i.qty) || 0),
+    0
+  );
+
   const goCheckout = () => {
     onClose();
     navigate('/checkout', { state: { cartItems: items } });
-    // console.log(items)
   };
 
   return (
@@ -76,7 +80,7 @@ export default function CartDrawer({ open, onClose }) {
           ) : (
             items.map(item => (
               <div
-                key={item.cartid}
+                key={`${item.id}-${item.variantid}`} // stable composite key
                 className="border rounded p-4 flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
@@ -87,9 +91,8 @@ export default function CartDrawer({ open, onClose }) {
                   />
                   <div>
                     <p className="font-medium">{item.name}</p>
-                    <p className="text-xs text-gray-500">Qty: {item.qty}</p>
+                    <p className="text-xs text-gray-500">Qty: {Number(item.qty) || 0}</p>
                     <p className="text-xs text-gray-500">variationid:{item.variantid}</p>
-
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -100,7 +103,7 @@ export default function CartDrawer({ open, onClose }) {
                   >−</button>
 
                   {/* Current qty */}
-                  <span className="w-6 text-center">{item.qty}</span>
+                  <span className="w-6 text-center">{Number(item.qty) || 0}</span>
 
                   {/* Increment */}
                   <button

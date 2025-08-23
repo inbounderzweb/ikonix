@@ -13,6 +13,43 @@ import Spinner from '../../components/loader/Spinner';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
+// --- Guest cart helpers here match CartContext’s format & sanitation ---
+const readGuest = () => {
+  const raw = JSON.parse(localStorage.getItem('guestCart') || '[]');
+  const normalized = (Array.isArray(raw) ? raw : []).map(x => ({
+    id:    x.productid ?? x.id,
+    vid:   x.variantid ?? x.vid,
+    name:  x.name,
+    image: x.image,
+    price: Number(x.price) || 0,
+    qty:   Number(x.qty)   || 1,
+  }));
+  const byKey = new Map();
+  for (const it of normalized) {
+    const key = `${it.id}::${it.vid}`;
+    const prev = byKey.get(key);
+    byKey.set(
+      key,
+      prev
+        ? { ...it, qty: (Number(prev.qty) || 0) + (Number(it.qty) || 0) }
+        : it
+    );
+  }
+  return Array.from(byKey.values());
+};
+
+const writeGuest = arr => {
+  const safe = (Array.isArray(arr) ? arr : []).map(i => ({
+    id:    i.id,
+    vid:   i.vid ?? i.variantid,
+    name:  i.name,
+    image: i.image,
+    price: Number(i.price) || 0,
+    qty:   Number(i.qty)   || 1,
+  }));
+  localStorage.setItem('guestCart', JSON.stringify(safe));
+};
+
 // Sync guest → server cart
 async function syncGuestCartWithServer(userId, token) {
   const resp = await axios.post(
@@ -26,24 +63,21 @@ async function syncGuestCartWithServer(userId, token) {
     }
   );
   const items = resp.data?.data || [];
-  localStorage.setItem(
-    'guestCart',
-    JSON.stringify(
-      items.map(it => ({
-        id:    it.id,
-        vid:   it.variantid ?? it.vid,
-        name:  it.name,
-        image: it.image,
-        price: it.price,
-        qty:   Number(it.qty),
-      }))
-    )
+  writeGuest(
+    items.map(it => ({
+      id:    it.id,
+      vid:   it.variantid ?? it.vid,
+      name:  it.name,
+      image: it.image,
+      price: Number(it.price) || 0,
+      qty:   Number(it.qty)   || 1,
+    }))
   );
 }
 
 export default function ProductList() {
   const navigate = useNavigate();
-  const { user, token, isTokenReady } = useAuth();    // ← grab isTokenReady
+  const { user, token, isTokenReady } = useAuth();
   const { refresh } = useCart();
 
   // ▶︎ Fire the products request—but only after token is ready:
@@ -81,23 +115,17 @@ export default function ProductList() {
     [selectedCategory, products]
   );
 
-  // Guest-cart helpers
-  const readGuest = () =>
-    JSON.parse(localStorage.getItem('guestCart') || '[]');
-  const writeGuest = arr =>
-    localStorage.setItem('guestCart', JSON.stringify(arr));
-
   const saveGuestCart = product => {
-    const raw = readGuest();
-    const variant = product.variants[0] || {};
+    const current = readGuest();
+    const variant = product.variants?.[0] || {};
     const vid     = variant.vid;
-    const price   = variant.sale_price || variant.price || 0;
-    const idx     = raw.findIndex(i => i.id === product.id && i.vid === vid);
+    const price   = Number(variant.sale_price || variant.price || 0) || 0;
 
+    const idx = current.findIndex(i => i.id === product.id && i.vid === vid);
     if (idx > -1) {
-      raw[idx].qty += 1;
+      current[idx].qty = (Number(current[idx].qty) || 0) + 1;
     } else {
-      raw.push({
+      current.push({
         id:    product.id,
         vid,
         name:  product.name,
@@ -106,7 +134,7 @@ export default function ProductList() {
         qty:   1,
       });
     }
-    writeGuest(raw);
+    writeGuest(current);
     alert(`${product.name} added to cart (guest)`);
     refresh();
   };
@@ -117,7 +145,7 @@ export default function ProductList() {
       saveGuestCart(product);
       return;
     }
-    const variant = product.variants[0] || {};
+    const variant = product.variants?.[0] || {};
     try {
       const { data: resp } = await axios.post(
         `${API_BASE}/cart`,
@@ -134,12 +162,12 @@ export default function ProductList() {
           },
         }
       );
-      if (resp.success) {
+      if (resp?.success) {
         alert(`${product.name} added to cart`);
         await syncGuestCartWithServer(user.id, token);
         refresh();
       } else {
-        alert(resp.message || 'Failed to add to cart');
+        alert(resp?.message || 'Failed to add to cart');
       }
     } catch (error) {
       console.error('❌ Error adding to cart:', error?.response?.data || error);
@@ -184,7 +212,7 @@ export default function ProductList() {
           "
         >
           {filtered.map(product => {
-            const variant = product.variants[0] || {};
+            const variant = product.variants?.[0] || {};
             const vid     = variant.vid;
             const msrp    = Number(variant.price)      || 0;
             const sale    = Number(variant.sale_price) || msrp;

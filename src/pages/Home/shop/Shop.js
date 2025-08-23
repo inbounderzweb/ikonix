@@ -8,9 +8,8 @@ import React, {
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import qs from 'qs';
-import { ShoppingBagIcon } from '@heroicons/react/24/outline';
+// import { ShoppingBagIcon } from '@heroicons/react/24/outline'; // (unused)
 import bag from '../../../assets/bag.svg';
-
 
 import shopherobg    from '../../../assets/shopherobg.svg';
 import shopherobgmob from '../../../assets/shopheromobbg.svg';
@@ -23,11 +22,47 @@ import { useCart } from '../../../context/CartContext';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
-/** Read/write guest cart in localStorage */
-const readGuest  = () => JSON.parse(localStorage.getItem('guestCart') || '[]');
-const writeGuest = arr => localStorage.setItem('guestCart', JSON.stringify(arr));
+/* ----------------------------- Guest Cart Utils ---------------------------- */
+/** Read + sanitize + dedupe guest cart from localStorage */
+const readGuest = () => {
+  const raw = JSON.parse(localStorage.getItem('guestCart') || '[]');
+  const normalized = (Array.isArray(raw) ? raw : []).map(x => ({
+    id:    x.productid ?? x.id,
+    vid:   x.variantid ?? x.vid,
+    name:  x.name,
+    image: x.image,
+    price: Number(x.price) || 0,
+    qty:   Number(x.qty)   || 1,
+  }));
+  // Deduplicate (id + vid), sum qty
+  const byKey = new Map();
+  for (const it of normalized) {
+    const key = `${it.id}::${it.vid}`;
+    const prev = byKey.get(key);
+    byKey.set(
+      key,
+      prev
+        ? { ...it, qty: (Number(prev.qty) || 0) + (Number(it.qty) || 0) }
+        : it
+    );
+  }
+  return Array.from(byKey.values());
+};
 
-/** Sync local guestCart with server cart */
+/** Write sanitized guest cart to localStorage */
+const writeGuest = arr => {
+  const safe = (Array.isArray(arr) ? arr : []).map(i => ({
+    id:    i.id,
+    vid:   i.vid ?? i.variantid,
+    name:  i.name,
+    image: i.image,
+    price: Number(i.price) || 0,
+    qty:   Number(i.qty)   || 1,
+  }));
+  localStorage.setItem('guestCart', JSON.stringify(safe));
+};
+
+/** Sync local guestCart with server cart (mirror for fallback flows) */
 async function syncGuestCartWithServer(userId, token) {
   const resp = await axios.post(
     `${API_BASE}/cart`,
@@ -40,15 +75,18 @@ async function syncGuestCartWithServer(userId, token) {
     }
   );
   const serverItems = resp.data?.data || [];
-  const formatted = serverItems.map(i => ({
-    id:    i.id,
-    name:  i.name,
-    image: i.image,
-    price: i.price,
-    qty:   Number(i.qty),
-  }));
-  writeGuest(formatted);
+  writeGuest(
+    serverItems.map(i => ({
+      id:    i.id,
+      vid:   i.variantid ?? i.vid,
+      name:  i.name,
+      image: i.image,
+      price: Number(i.price) || 0,
+      qty:   Number(i.qty)   || 1,
+    }))
+  );
 }
+/* -------------------------------------------------------------------------- */
 
 export default function Shop() {
   const { data, isLoading, isError } = useGetProductsQuery();
@@ -90,27 +128,33 @@ export default function Shop() {
     return () => window.removeEventListener('scroll', onScroll);
   }, [onScroll]);
 
-  // add-to-cart logic
+  // add-to-cart logic (guest path numeric-safe + dedupe)
   const saveGuestCart = product => {
-    const raw = readGuest();
-    const variant = product.variants[0] || {};
-    const idx = raw.findIndex(i => i.id === product.id && i.vid === variant.vid);
-    if (idx > -1) raw[idx].qty += 1;
-    else raw.push({
-      id:    product.id,
-      vid:   variant.vid,
-      name:  product.name,
-      image: product.image,
-      price: variant.sale_price || variant.price,
-      qty:   1,
-    });
-    writeGuest(raw);
+    const current = readGuest();
+    const variant = product.variants?.[0] || {};
+    const vid     = variant.vid;
+    const price   = Number(variant.sale_price || variant.price || 0) || 0;
+
+    const idx = current.findIndex(i => i.id === product.id && i.vid === vid);
+    if (idx > -1) {
+      current[idx].qty = (Number(current[idx].qty) || 0) + 1;
+    } else {
+      current.push({
+        id:    product.id,
+        vid,
+        name:  product.name,
+        image: product.image,
+        price,
+        qty:   1,
+      });
+    }
+    writeGuest(current);
     alert(`${product.name} added to cart (guest)`);
     refresh();
   };
 
   const handleAddToCart = async product => {
-    const variant = product.variants[0] || {};
+    const variant = product.variants?.[0] || {};
     if (!token || !user) {
       saveGuestCart(product);
       return;
@@ -131,12 +175,12 @@ export default function Shop() {
           },
         }
       );
-      if (resp.success) {
+      if (resp?.success) {
         alert(`${product.name} added to cart`);
         await syncGuestCartWithServer(user.id, token);
         refresh();
       } else {
-        alert(resp.message || 'Failed to add to cart');
+        alert(resp?.message || 'Failed to add to cart');
       }
     } catch (err) {
       console.error('Error adding to cart:', err?.response?.data || err);
@@ -146,7 +190,7 @@ export default function Shop() {
 
   // view details
   const handleViewDetails = product => {
-    const variant = product.variants[0] || {};
+    const variant = product.variants?.[0] || {};
     navigate('/product-details', {
       state: { product, vid: variant.vid },
     });
@@ -200,7 +244,7 @@ export default function Shop() {
         {/* Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {toShow.map(product => {
-            const variant = product.variants[0] || {};
+            const variant = product.variants?.[0] || {};
             const msrp    = Number(variant.price)      || 0;
             const sale    = Number(variant.sale_price) || msrp;
             return (
@@ -222,7 +266,7 @@ export default function Shop() {
                   }}
                   className="absolute top-2 right-2 rounded-full p-1"
                 >
-                   <img src={bag} alt="cart" className="h-6 w-6" />
+                  <img src={bag} alt="cart" className="h-6 w-6" />
                 </button>
 
                 {/* Image */}
@@ -233,29 +277,25 @@ export default function Shop() {
                 />
 
                 {/* Info */}
-                <div className=" pt-4 flex gap-5 justify-between">
+                <div className="pt-4 flex gap-5 justify-between">
+                  <div>
+                    <h3 className="text-[#2A3443] font-[Lato] text-[16px] leading-snug">
+                      {product.name}
+                    </h3>
+                    <p className="text-[#2A3443] font-[Lato] text-[16px]">
+                      {product.category_name}
+                    </p>
+                  </div>
 
-                <div>
-                  <h3 className="text-[#2A3443] font-[Lato] text-[16px] leading-snug">
-                  {product.name}
-                  </h3>
-                <p className='text-[#2A3443] font-[Lato] text-[16px]'>{product.category_name}</p>
+                  <div className="grid grid-cols-1 text-right">
+                    {sale < msrp && (
+                      <span className="text-xs line-through text-[#2A3443] font-[Lato]">
+                        ₹{msrp}/-
+                      </span>
+                    )}
+                    <span className="font-semibold text-[#2A3443]">₹{sale}/-</span>
+                  </div>
                 </div>
-               
-               <div className='grid grid-cols-1'>
-               {sale < msrp && (
-                    <span className="text-xs line-through text-[#2A3443] font-[Lato]">
-                      ₹{msrp}/-
-                    </span>
-                  )}
-                <span className="font-semibold text-[#2A3443]">₹{sale}/-</span>
-
-               </div>
-
-
-                {/* <p className="text-sm text-gray-500">{variant.weight} ml</p> */}
-               
-              </div>
               </div>
             );
           })}
