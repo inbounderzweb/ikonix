@@ -309,7 +309,7 @@ const handlePayClick = async (order_id) => {
     const payload = qs.stringify({
       order_id,
       userid: user?.id,
-      client_hint_amount: Math.round(Number(total) * 100), // paise hint (server must recompute)
+      client_hint_amount: Math.round(Number(total)), // paise hint (server must recompute)
       receipt: `ikonix_${order_id}`,
       notes: JSON.stringify({ source: 'web', cart: cartItems.length }),
     });
