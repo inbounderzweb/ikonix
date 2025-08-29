@@ -368,22 +368,24 @@ const handlePayClick = async (order_id) => {
           form.append('payment_id', resp.razorpay_payment_id);
           form.append('signature', resp.razorpay_signature);
 
-          const verifyRes = await fetch(`${API_BASE}/payment`, {
+          const verifyRes = await fetch(`${API_BASE}/payment/callback`, {
             method: 'POST',
             headers: token ? { Authorization: `Bearer ${token}` } : undefined,
             body: form,
           });
           const result = await verifyRes.json().catch(() => ({}));
+        
           if (!verifyRes.ok || result?.status === false) {
             throw new Error(result?.message || 'Signature verification failed');
           }
+          // console.log(result,'finalout')
+        
 
-          await clear?.();
-          // navigate('/order-confirmation', { state: { orderId: order_id }});
         } catch (err) {
           setError(err.message || 'Payment verification failed');
         } finally {
           setLoading(false);
+          navigate('/order-confirmation')
         }
       },
       modal: { ondismiss: () => setLoading(false) },
@@ -434,6 +436,7 @@ const handlePayClick = async (order_id) => {
       }
       if (data?.status === true) {
         // After internal order created, launch payment
+        setShowAddressModal(false);
         handlePayClick(data.order_id);
       } else {
         setError(data?.message || 'Checkout failed, please try again');

@@ -131,13 +131,7 @@ if(addressId){
           Your order has been placed successfully.
         </p>
 
-        <div className="bg-gray-50 border rounded-lg p-4 text-left text-sm mb-6">
-          <p><span className="font-medium">Order ID:</span> {orderId}</p>
-          {addressId && (
-            <p><span className="font-medium">Shipping Address ID:</span> {addressId}</p>
-          )}
-          {/* Show more order data if you want */}
-        </div>
+    
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
