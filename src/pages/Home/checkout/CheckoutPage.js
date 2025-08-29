@@ -1,9 +1,9 @@
 // src/pages/CheckoutPage.js
 import React, { useState, useEffect } from 'react';
-import RazorpayButton from '../../../components/payments/RazorpayButton';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import qs from 'qs';
+import loadRazorpay from '../../../utils/loadRazorpay';
 import {
   XMarkIcon,
   PlusIcon,
@@ -16,6 +16,12 @@ import AuthModal from '../../../Authmodal/AuthModal';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
+/**
+ * Checkout Page
+ * - Creates internal order via /checkout
+ * - Creates Razorpay order via /payment/create-order
+ * - Opens Razorpay Checkout and verifies via /payment
+ */
 export default function CheckoutPage() {
   const { user, token } = useAuth();
   const navigate = useNavigate();
@@ -40,7 +46,7 @@ export default function CheckoutPage() {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [refresh]);
 
-  /* Totals */
+  /* Totals (rupees) */
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
   const total = subtotal;
 
@@ -84,12 +90,12 @@ export default function CheckoutPage() {
     deflt: a.deflt,
   });
 
-  const addrLabel = (a) =>
+  const addrLabel = (a = {}) =>
     [a.doorno, a.house, a.street, a.city, a.district, a.state, a.country, a.pincode]
       .filter(Boolean)
       .join(', ');
 
-  // ←─── helper to push the selected address to the top
+  // helper to push the selected address to the top
   const ordered = (list, selectedId) => {
     const first = list.find(a => a.id === selectedId);
     const rest  = list.filter(a => a.id !== selectedId);
@@ -133,13 +139,9 @@ export default function CheckoutPage() {
 
   const fetchDefaultAddresses = async () => {
     try {
-      // const payload = qs.stringify({ userid: user.id, address_id: 1 });
       const payload = qs.stringify({ userid: user.id });
-
       const { data } = await axios.post(
-        // `${API_BASE}/address/default`,
         `${API_BASE}/address`,
-
         payload,
         {
           headers: {
@@ -224,7 +226,7 @@ export default function CheckoutPage() {
 
   const handleAddAddress = async () => {
     for (let k of Object.keys(form)) {
-      if (!form[k].trim()) {
+      if (!String(form[k] ?? '').trim()) {
         setError(`Please fill in ${k}`);
         return;
       }
@@ -295,6 +297,111 @@ export default function CheckoutPage() {
     setStep('confirm');
   };
 
+  // ---------------------------
+  // Razorpay Pay Click Handler
+  // ---------------------------
+const handlePayClick = async (order_id) => {
+  try {
+    if (!order_id) throw new Error('Missing internal order id');
+    setError('');
+    setLoading(true);
+
+    const payload = qs.stringify({
+      order_id,
+      userid: user?.id,
+      client_hint_amount: Math.round(Number(total) * 100), // paise hint (server must recompute)
+      receipt: `ikonix_${order_id}`,
+      notes: JSON.stringify({ source: 'web', cart: cartItems.length }),
+    });
+
+    const { data: raw } = await axios.post(
+      `${API_BASE}/payment/create-order`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }
+    );
+
+    // Normalize your API shape
+    const res = raw?.data ?? raw ?? {};
+
+    // Use the SAME key as the server's mode/account
+    const keyId = 'rzp_test_R8MrWyxyABfzGy';
+
+    // Must be a Razorpay order id like "order_***"
+    const rzpOrderId = res.porder_id;
+
+    if (!keyId || !/^rzp_(test|live)_/.test(String(keyId))) {
+      console.error('Create-order response:', res);
+      throw new Error('Invalid Razorpay keyId from create-order');
+    }
+    if (!rzpOrderId || !String(rzpOrderId).startsWith('order_')) {
+      console.error('Create-order response:', res);
+      throw new Error('Invalid Razorpay order id from create-order');
+    }
+
+    // Load SDK & open checkout
+    await loadRazorpay();
+    if (!window.Razorpay) throw new Error('Razorpay SDK not available');
+
+    const rzp = new window.Razorpay({
+      key: keyId,            // DO NOT hard-code; must match the server's mode
+      order_id: rzpOrderId,  // must be order_****
+      name: 'Ikonix Perfumer',
+      description: 'Order Payment',
+      image: '/favicon.ico',
+      prefill: {
+        name:    res.customer?.name  ?? user?.name  ?? '',
+        email:   res.customer?.email ?? user?.email ?? '',
+        contact: res.customer?.phone ?? '',
+      },
+      theme: { color: '#b49d91' },
+      handler: async (resp) => {
+        try {
+          const form = new FormData();
+          form.append('userid', String(user.id));
+          form.append('order_id', String(order_id));              // your internal id
+          form.append('porder_id', resp.razorpay_order_id);       // Razorpay order_****
+          form.append('payment_id', resp.razorpay_payment_id);
+          form.append('signature', resp.razorpay_signature);
+
+          const verifyRes = await fetch(`${API_BASE}/payment`, {
+            method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            body: form,
+          });
+          const result = await verifyRes.json().catch(() => ({}));
+          if (!verifyRes.ok || result?.status === false) {
+            throw new Error(result?.message || 'Signature verification failed');
+          }
+
+          await clear?.();
+          // navigate('/order-confirmation', { state: { orderId: order_id }});
+        } catch (err) {
+          setError(err.message || 'Payment verification failed');
+        } finally {
+          setLoading(false);
+        }
+      },
+      modal: { ondismiss: () => setLoading(false) },
+    });
+
+    rzp.on('payment.failed', (resp) => {
+      setLoading(false);
+      setError(resp?.error?.description || 'Payment failed');
+    });
+
+    rzp.open();
+  } catch (e) {
+    setLoading(false);
+    setError(e.message || 'Unable to start payment');
+  }
+};
+
+
   const handleCheckout = async () => {
     const billId = sameAsShip ? shippingId : billingId;
     try {
@@ -326,9 +433,8 @@ export default function CheckoutPage() {
         data = second.data;
       }
       if (data?.status === true) {
-        navigate('/order-confirmation', {
-          state: { order: data, address_id: shippingId },
-        });
+        // After internal order created, launch payment
+        handlePayClick(data.order_id);
       } else {
         setError(data?.message || 'Checkout failed, please try again');
       }
@@ -705,13 +811,12 @@ export default function CheckoutPage() {
                       <div className="flex items-start gap-3">
                         <input type="radio" className="mt-1 accent-[#1e2633]" checked readOnly />
                         <div>
-                          {addrLabel(addresses.find(a => a.id === shippingId) || {})}
+                          {addrLabel(addresses.find(a => a.id === shippingId))}
                           {shippingId && billingId && (
                             <>
                               {addresses.find(a => a.id === shippingId)?.company && (
                                 <div>
-                                  Company:{' '}
-                                  {addresses.find(a => a.id === shippingId)?.company}
+                                  Company: {addresses.find(a => a.id === shippingId)?.company}
                                 </div>
                               )}
                               {addresses.find(a => a.id === shippingId)?.gst && (
@@ -721,8 +826,7 @@ export default function CheckoutPage() {
                               )}
                               {addresses.find(a => a.id === shippingId)?.type && (
                                 <div>
-                                  Type:{' '}
-                                  {addresses.find(a => a.id === shippingId)?.type}
+                                  Type: {addresses.find(a => a.id === shippingId)?.type}
                                 </div>
                               )}
                             </>
@@ -744,8 +848,10 @@ export default function CheckoutPage() {
                     </div>
                   </div>
                 </div>
+
                 {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-                {/* <div className="flex justify-end gap-4 mt-6">
+
+                <div className="flex justify-end gap-4 mt-6">
                   <button
                     onClick={() => setStep('select')}
                     className="px-12 py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]"
@@ -759,41 +865,16 @@ export default function CheckoutPage() {
                   >
                     {loading ? 'Processing…' : 'Proceed to Checkout'}
                   </button>
-                </div> */}
-               <div className="flex justify-end gap-4 mt-6">
-  <button
-    onClick={() => setStep('select')}
-    className="px-12 py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]"
-  >
-    Back
-  </button>
+                </div>
 
-  {/* Pay Online via Razorpay */}
-  <RazorpayButton
-    amountInRupees={Number(total) || 0}
-    orderMeta={{
-      receipt: `rcpt_${Date.now()}`,
-      notes: {
-        userid: user?.id,
-        shippingId,
-        billingId: sameAsShip ? shippingId : billingId,
-        deliveryMethod,
-      },
-    }}
-    onSuccess={(result) => {
-      // Navigate ONLY after server verification succeeds
-      navigate('/order-confirmation', {
-        state: { order: result?.order || null, address_id: shippingId },
-      });
-    }}
-    onError={(err) => {
-      console.error(err);
-      setError(err?.message || 'Payment failed/aborted');
-    }}
-  />
-</div>
-
-
+                <div className="flex justify-end gap-4 mt-6">
+                  <button
+                    onClick={() => setStep('select')}
+                    className="px-12 py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]"
+                  >
+                    Back
+                  </button>
+                </div>
               </>
             )}
           </div>
