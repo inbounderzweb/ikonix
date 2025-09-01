@@ -9,6 +9,8 @@ import AboutUs from "../pages/AboutPage/AboutUs";
 import AppLayout from "../Layout/AppLayout";
 import UserProfile from "../pages/userprofile/UserProfile";
 import OrderConfirmation from "../pages/OrderConfirmation";
+import Orders from "../pages/userprofile/Orders";
+import AddresList from "../pages/userprofile/AddresList";
 
 
 
@@ -23,7 +25,9 @@ const AppRoutes = () => {
       <Route path='/about' element={<AboutUs />}/>
       <Route path='/profile' element={<UserProfile />} />
       <Route path='/user-profile' element={<UserProfile/>} />
-      <Route path='/order-confirmation' element={<OrderConfirmation />} />
+      <Route path='/orders' element={<Orders />} />
+      <Route path='/addresses' element={<AddresList />} />
+
     </Routes>
   );
 };
