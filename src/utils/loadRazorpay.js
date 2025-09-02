@@ -13,6 +13,7 @@ let _rzpPromise;
  * @param {number} [opts.timeoutMs] Abort load if it takes longer (default 15000ms)
  * @returns {Promise<typeof window.Razorpay>}
  */
+
 export default function loadRazorpay({ src, timeoutMs = 15000 } = {}) {
   const SDK_SRC = src || 'https://checkout.razorpay.com/v1/checkout.js';
 
@@ -94,3 +95,4 @@ export function unloadRazorpay() {
   try { delete window.Razorpay; } catch { /* ignore */ }
   _rzpPromise = undefined;
 }
+

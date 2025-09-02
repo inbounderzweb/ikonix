@@ -58,9 +58,9 @@ export default function CheckoutPage() {
 
   /* Address state */
   const [form, setForm] = useState({
-    doorno: '', house: '', street: '', city: '',
+    street: '', city: '',
     pincode: '', district: '', state: '', country: '',
-    company: '', gst: '', type: ''
+    
   });
   const [addresses, setAddresses] = useState([]);
   const [shippingId, setShippingId] = useState(null);
@@ -601,10 +601,10 @@ const handlePayClick = async (order_id) => {
 
                 <div className="grid grid-cols-2 gap-4 text-[#6d5a52]">
                   {[
-                    ['doorno','Door No'], ['house','House'], ['street','Street'],
+                    ['street','Street'],
                     ['city','City'], ['pincode','Pincode'], ['district','District'],
-                    ['state','State'], ['country','Country'], ['company','Company'],
-                    ['gst','GST'], ['type','Type'],
+                    ['state','State'], ['country','Country'],
+                   
                   ].map(([k, l]) => (
                     <div key={k} className="flex flex-col gap-1">
                       <label className="text-sm">{l}</label>
