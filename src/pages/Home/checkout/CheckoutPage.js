@@ -379,10 +379,10 @@ const handlePayClick = async (order_id) => {
             throw new Error(result?.message || 'Signature verification failed');
           }
           // console.log(result,'finalout')
-        
 
         } catch (err) {
           setError(err.message || 'Payment verification failed');
+          alert(err)
         } finally {
           setLoading(false);
           navigate('/order-confirmation')
@@ -437,6 +437,7 @@ const handlePayClick = async (order_id) => {
       if (data?.status === true) {
         // After internal order created, launch payment
         setShowAddressModal(false);
+        navigate('/payment-landing')
         handlePayClick(data.order_id);
       } else {
         setError(data?.message || 'Checkout failed, please try again');
@@ -445,6 +446,8 @@ const handlePayClick = async (order_id) => {
       setError('Checkout failed, please try again');
     } finally {
       setLoading(false);
+      
+
     }
   };
 

@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import ReactDOM from "react-dom";
+import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const TRANSITION_MS = 600;               // duration-600 in Tailwind = 600 ms
 
@@ -8,6 +10,8 @@ const Drawer = ({ setSideBarOpen, onClose, width = "w-56", children }) => {
      1.  Create a portal node exactly once
   ----------------------------------------------------------- */
   const el = useMemo(() => document.createElement("div"), []);
+
+const navigate = useNavigate()
 
   useEffect(() => {
     document.body.appendChild(el);
@@ -81,10 +85,10 @@ const Drawer = ({ setSideBarOpen, onClose, width = "w-56", children }) => {
         {/* scrollable content */}
         <div className="p-6 overflow-y-auto">{children}</div>
 
-        <div className="grid grid-cols-1 gap-5 ml-5">
-          <p>About us</p>
-          <p>Products</p>
-          <p>contact</p>
+        <div className="grid grid-cols-1 gap-2 ml-5">
+         <p onClick={()=>{ navigate('/about')}} className="font-[luxia] text-[16px] text-[#c5a292] tracking-[0.5px]">About us</p>
+          <p onClick={()=>{ navigate('/shop')}} className="font-[luxia] text-[16px] text-[#c5a292] tracking-[0.5px]">Products</p>
+          <p onClick={()=>{ navigate('/contact')}} className="font-[luxia] text-[16px] text-[#c5a292] tracking-[0.5px]">contact</p>
         </div>
         
       </aside>

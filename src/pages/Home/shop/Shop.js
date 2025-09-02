@@ -130,20 +130,18 @@ const filtersFromNav = {
 
 console.log(filtersFromNav, 'valueeees');
 
+
 // Update selectedCategory only when activeFilter changes
-useEffect(() => {
-  if (filtersFromNav.women) {
-    setSelectedCategory(filters[1]);
-  } else if (filtersFromNav.men) {
-    setSelectedCategory(filters[2]);
-  } else if (filtersFromNav.bestSellers) {
-    setSelectedCategory(filters[0]);
-  }
-}, [activeFilter, filters]); // <-- dependency array
-
-
-
-
+// useEffect(() => {
+//   if (filtersFromNav.women) {
+//     setSelectedCategory(filters[1]);
+//   } else if (filtersFromNav.men) {
+//     setSelectedCategory(filters[2]);
+//   } else if (filtersFromNav.bestSellers) {
+//     setSelectedCategory(filters[0]);
+//   }
+// }, [activeFilter, filters]);
+// <-- dependency array
 
 
 
@@ -175,6 +173,7 @@ useEffect(() => {
   }, [onScroll]);
 
   // add-to-cart logic (guest path numeric-safe + dedupe)
+
   const saveGuestCart = product => {
     const current = readGuest();
     const variant = product.variants?.[0] || {};

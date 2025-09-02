@@ -28,6 +28,7 @@ function DropDown({ onSelect = () => {} }) {
             <ul className="space-y-2 text-sm text-gray-700">
          
             </ul>
+            
             <div className="mt-4">
               <button
                 className="bg-[#BEC2C7] py-2 px-2 rounded-md w-full text-sm font-light tracking-wide text-black cursor-pointer"
@@ -36,9 +37,10 @@ function DropDown({ onSelect = () => {} }) {
                 View all collections
               </button>
             </div>
+
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-600 mb-2" onClick={() => handleNavigate('/shop', 'bestSellers')}>Our Best Sellers</h3>
+            <h3 className="text-lg font-semibold text-gray-600 mb-2 cursor-pointer" onClick={() => handleNavigate('/shop', 'bestSellers')}>Our Best Sellers</h3>
             <ul className="space-y-2 text-sm text-gray-700">
   
             </ul>
