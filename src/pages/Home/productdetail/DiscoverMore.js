@@ -153,7 +153,7 @@ function DiscoverMore() {
 
   return (
     <div className="px-4 py-8">
-      <h2 className="text-xl font-semibold mb-6">Discover More</h2>
+      <h2 className="text-xl font-semibold mb-6 text-center font-[luxia] text-[#8C7367] text-[27px] tracking-[0.5px]">Discover More</h2>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {moreProducts.map((item) => (
