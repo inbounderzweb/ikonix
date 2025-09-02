@@ -10,6 +10,8 @@ import { useCart } from '../../../context/CartContext';
 import checkedCircle from '../../../assets/checkcircle.svg';
 
 import DiscoverMore from './DiscoverMore';
+import OwnPerfume from '../../../components/ownperfume/OwnPerfume';
+import SpecialDealsSlider from '../../../components/SpecialDealsSlider/SpecialDealsSlider';
 
 
 
@@ -347,6 +349,8 @@ export default function ProductDetails() {
               {/* Discover more section */}
 
 <DiscoverMore currentId={product.id} />
+<SpecialDealsSlider />
+<OwnPerfume/>
 
 
               {/* end Discover more section */}

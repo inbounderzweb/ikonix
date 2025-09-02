@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useCallback,
 } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import qs from 'qs';
@@ -48,6 +49,13 @@ const readGuest = () => {
   }
   return Array.from(byKey.values());
 };
+
+
+  
+
+
+
+
 
 /** Write sanitized guest cart to localStorage */
 const writeGuest = arr => {
@@ -94,6 +102,12 @@ export default function Shop() {
   const { user, token } = useAuth();
   const { refresh } = useCart();
 
+const location = useLocation();
+  const { activeFilter } = location.state || {}; // default if nothing is passed
+
+
+
+
   // products array
   const products = useMemo(() => data?.data || [], [data]);
 
@@ -102,8 +116,36 @@ export default function Shop() {
     () => [...new Set(products.map(p => p.category_name))],
     [products]
   );
-  const filters = ['Our Bestsellers', ...categories];
-  const [selectedCategory, setSelectedCategory] = useState(filters[0]);
+
+
+const filters = ['Our Bestsellers', ...categories];
+const [selectedCategory, setSelectedCategory] = useState(filters[0]);
+
+// Setup filter states (only one true at a time)
+const filtersFromNav = {
+  women: activeFilter === 'women',
+  men: activeFilter === 'men',
+  bestSellers: activeFilter === 'bestSellers',
+};
+
+console.log(filtersFromNav, 'valueeees');
+
+// Update selectedCategory only when activeFilter changes
+useEffect(() => {
+  if (filtersFromNav.women) {
+    setSelectedCategory(filters[1]);
+  } else if (filtersFromNav.men) {
+    setSelectedCategory(filters[2]);
+  } else if (filtersFromNav.bestSellers) {
+    setSelectedCategory(filters[0]);
+  }
+}, [activeFilter, filters]); // <-- dependency array
+
+
+
+
+
+
 
   const filtered = useMemo(
     () =>
@@ -113,6 +155,10 @@ export default function Shop() {
     [selectedCategory, products]
   );
 
+
+
+
+  
   // infinite scroll
   const [visibleCount, setVisibleCount] = useState(12);
   const onScroll = useCallback(() => {
