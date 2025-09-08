@@ -97,7 +97,7 @@ export default function ProductDetails() {
   const [qty, setQty] = useState(1);
 
   // price calc
-  const unitPrice  = selectedVar?.sale_price < selectedVar?.price ? selectedVar?.sale_price : selectedVar?.price;
+  const unitPrice  = selectedVar?.sale_price < selectedVar?.price ? selectedVar?.sale_price : selectedVar?.sale_price;
   const totalPrice = (unitPrice || 0) * qty;
 
   // cart helpers
