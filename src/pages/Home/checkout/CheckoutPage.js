@@ -358,6 +358,7 @@ const handlePayClick = async (order_id) => {
         email:   res.customer?.email ?? user?.email ?? '',
         contact: res.customer?.phone ?? '',
       },
+        
       theme: { color: '#b49d91' },
       handler: async (resp) => {
         try {
@@ -378,6 +379,7 @@ const handlePayClick = async (order_id) => {
           if (!verifyRes.ok || result?.status === false) {
             throw new Error(result?.message || 'Signature verification failed');
           }
+          
           // console.log(result,'finalout')
 
         } catch (err) {
@@ -388,7 +390,7 @@ const handlePayClick = async (order_id) => {
           navigate('/order-confirmation')
         }
       },
-      modal: { ondismiss: () => setLoading(false) },
+      modal: { ondismiss: () => {setLoading(false); navigate('/');} }, 
     });
 
     rzp.on('payment.failed', (resp) => {
@@ -437,7 +439,7 @@ const handlePayClick = async (order_id) => {
       if (data?.status === true) {
         // After internal order created, launch payment
         setShowAddressModal(false);
-        navigate('/payment-landing')
+        // navigate('/payment-landing')
         handlePayClick(data.order_id);
       } else {
         setError(data?.message || 'Checkout failed, please try again');

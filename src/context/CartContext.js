@@ -54,7 +54,7 @@ export function CartProvider({ children }) {
       vid:   i.vid ?? i.variantid, // allow either field name
       name:  i.name,
       image: i.image,
-      price: Number(i.price) || 0,
+      price: Number(i.sale_price) || 0,
       qty:   Number(i.qty)   || 1,
     }));
     localStorage.setItem('guestCart', JSON.stringify(safe));
@@ -67,7 +67,7 @@ export function CartProvider({ children }) {
     variantid: i.variantid ?? i.vid,              // unify to variantid for UI
     name:      i.name,
     image:     i.image,
-    price:     Number(i.price) || 0,
+    price:     Number(i.sale_price) || 0,
     qty:       Number(i.qty)   || 1,
   });
 
@@ -103,7 +103,7 @@ export function CartProvider({ children }) {
           vid: it.variantid ?? it.vid,
           name: it.name,
           image: it.image,
-          price: Number(it.price) || 0,
+          price: Number(it.sale_price) || 0,
           qty: Number(it.qty) || 1,
         }))
       );
