@@ -2,6 +2,7 @@
 import React, { useMemo, useState, useEffect,useParams } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 import qs from 'qs';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import { MinusIcon, PlusIcon } from '@heroicons/react/24/outline';
@@ -114,7 +115,7 @@ export default function ProductDetails() {
       qty
     });
     localStorage.setItem('guestCart', JSON.stringify(guest));
-    alert(`${product.name} added to cart (guest)`);
+    Swal(`${product.name} added to cart (guest)`);
   };
 
   const addServer = () => axios.post(
@@ -128,9 +129,9 @@ export default function ProductDetails() {
     try {
       await addServer();
       await refresh();
-      alert(`${product.name} added to cart`);
+      Swal(`${product.name} added to cart`);
     } catch {
-      alert('Error adding to cart');
+      Swal('Error adding to cart');
     }
   };
 
@@ -144,7 +145,7 @@ export default function ProductDetails() {
       await refresh();
       navigate('/checkout');
     } catch {
-      alert('Error proceeding to checkout');
+      Swal('Error proceeding to checkout');
     }
   };
 

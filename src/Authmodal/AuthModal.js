@@ -1,5 +1,6 @@
 // src/components/AuthModal.js
 import React, { useState, useRef, useEffect } from 'react';
+import Swal from 'sweetalert';
 import axios from 'axios';
 import qs from 'qs';
 import { useAuth } from '../context/AuthContext';
@@ -55,7 +56,7 @@ export default function AuthModal({ open, onClose }) {
 
   /* STEP 1a: LOGIN or REGISTER → request OTP */
   const sendOtp = async () => {
-    if (!token) return alert('Auth token missing');
+    if (!token) return Swal('Auth token missing');
     const isLogin = tab === 'login';
     setOtpFlow(isLogin ? 'login' : 'register');
 
@@ -79,9 +80,9 @@ export default function AuthModal({ open, onClose }) {
       if (data.otp) {
         setVToken(data.verify_token || data.vtoken);
         setTab('otp');
-        alert(`Your code is ${data.otp}`);
+        Swal(`Your code is ${data.otp}`);
       } else {
-        alert(data.message || 'OTP not received');
+        Swal(data.message || 'OTP not received');
     
       }
     } catch (e) {
@@ -92,7 +93,7 @@ export default function AuthModal({ open, onClose }) {
   const messages = e.response.data.message;
   // Get the first error message (regardless of field: email, password, etc.)
   const firstError = Object.values(messages)[0];
-  alert(firstError);
+  Swal(firstError);
 }
       // alert('testing')
     }
@@ -100,7 +101,7 @@ export default function AuthModal({ open, onClose }) {
 
   /* STEP 1b: LOGIN with password */
   const loginWithPassword = async () => {
-    if (!token) return alert('Auth token missing');
+    if (!token) return Swal('Auth token missing');
 
     const payload = {
       name:     form.name,
@@ -113,19 +114,35 @@ export default function AuthModal({ open, onClose }) {
     try {
       const { data } = await apiPost(`${API_BASE}/login`, payload);
       if (!data.token || !data.user) {
-        alert(data.message || 'Login failed');
+        Swal(data.message || 'Login failed');
         return;
       }
       await finalizeLogin(data);
     } catch (e) {
-      console.error(e);
-      alert('Network error during password login');
+ console.error(e);
+
+if (e.response && e.response.data && e.response.data.message) {
+  const messages = e.response.data.message;
+
+  let firstError;
+
+  if (typeof messages === "string") {
+    // If it's already a string
+    firstError = messages;
+  } else if (typeof messages === "object") {
+    // If it's an object with field errors
+    firstError = Object.values(messages)[0];
+  }
+
+  Swal(firstError);
+}
+      // alert('Network error during password login');
     }
   };
 
   /* STEP 1c: RESET PASSWORD → request code (otp:0) */
   const resetPwd = async () => {
-    if (!token) return alert('Auth token missing');
+    if (!token) return Swal('Auth token missing');
     setOtpFlow('reset');
 
     const payload = {
@@ -141,20 +158,20 @@ export default function AuthModal({ open, onClose }) {
       if (data.otp) {
         setVToken(data.verify_token || data.vtoken);
         setTab('otp');
-        alert(`Your reset code is ${data.otp}`);
+        Swal(`Your reset code is ${data.otp}`);
       } else {
-        alert(data.message || 'Failed to send reset code');
+        Swal(data.message || 'Failed to send reset code');
       }
     } catch (e) {
       console.error(e);
-      alert('Network error during reset request');
+      Swal('Network error during reset request');
     }
   };
 
   /* STEP 2: VERIFY OTP for all flows */
   const verifyOtp = async () => {
     const entered = otpDigits.join('');
-    if (!entered) return alert('Enter OTP');
+    if (!entered) return Swal('Enter OTP');
 
     // RESET flow verify with same payload + otp:1
     if (otpFlow === 'reset') {
@@ -169,14 +186,14 @@ export default function AuthModal({ open, onClose }) {
       try {
         const { data } = await apiPost(`${API_BASE}/forgot-password`, payload);
         if (data.status === true) {
-          alert(data.message);
+          Swal(data.message);
           setTab('login');
         } else {
-          alert(data.message || 'Reset verification failed');
+          Swal(data.message || 'Reset verification failed');
         }
       } catch (e) {
         console.error(e);
-        alert('Server error on reset verify');
+        Swal('Server error on reset verify');
       }
       return;
     }
@@ -199,13 +216,13 @@ export default function AuthModal({ open, onClose }) {
         payload
       );
       if (!data.token || !data.user) {
-        alert(data.message || 'Verification failed');
+        Swal(data.message || 'Verification failed');
         return;
       }
       await finalizeLogin(data);
     } catch (e) {
       console.error(e);
-      alert('Server error on verify');
+      Swal('Server error on verify');
     }
   };
 

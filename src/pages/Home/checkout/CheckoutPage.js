@@ -13,6 +13,7 @@ import {
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import AuthModal from '../../../Authmodal/AuthModal';
+import Swal from 'sweetalert2';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
@@ -116,7 +117,7 @@ export default function CheckoutPage() {
         }
       );
       if (data.status === false) {
-        alert(data.message || 'Address not found – please add one');
+        Swal(data.message || 'Address not found – please add one');
         setStep('form');
         setShowAddressModal(true);
         return [];
@@ -151,7 +152,7 @@ export default function CheckoutPage() {
         }
       );
       if (data.status === false) {
-        alert(data.message || 'Address not found – please add one');
+        Swal(data.message || 'Address not found – please add one');
         setStep('form');
         setShowAddressModal(true);
         return [];
@@ -384,7 +385,7 @@ const handlePayClick = async (order_id) => {
 
         } catch (err) {
           setError(err.message || 'Payment verification failed');
-          alert(err)
+          Swal(err)
         } finally {
           setLoading(false);
           navigate('/order-confirmation')

@@ -5,6 +5,7 @@ import { useAuth } from '../../../context/AuthContext';
 import axios from 'axios';
 import qs from 'qs';
 import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 
 function DiscoverMore() {
@@ -71,7 +72,7 @@ function DiscoverMore() {
     }
 
     writeGuest(current);
-    alert(`${product.name} added to cart (guest)`);
+    Swal(`${product.name} added to cart (guest)`);
   };
 
   /** Sync guest cart with server */
@@ -130,14 +131,14 @@ function DiscoverMore() {
       );
 
       if (resp?.success) {
-        alert(`${product.name} added to cart`);
+        Swal(`${product.name} added to cart`);
         await syncGuestCartWithServer(user.id, token);
       } else {
-        alert(resp?.message || 'Failed to add to cart');
+        Swal(resp?.message || 'Failed to add to cart');
       }
     } catch (err) {
       console.error('Error adding to cart:', err?.response?.data || err);
-      alert('Error adding to cart. See console.');
+      Swal('Error adding to cart. See console.');
     }
   };
 
