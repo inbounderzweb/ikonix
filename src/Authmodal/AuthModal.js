@@ -82,10 +82,19 @@ export default function AuthModal({ open, onClose }) {
         alert(`Your code is ${data.otp}`);
       } else {
         alert(data.message || 'OTP not received');
+    
       }
     } catch (e) {
       console.error(e);
-      alert(e.response?.data?.message || 'Error sending OTP');
+      // alert(e.response?.data?.message || 'Error sending OTP');
+      console.log(e.response.data.message)
+      if (e.response && e.response.data && e.response.data.message) {
+  const messages = e.response.data.message;
+  // Get the first error message (regardless of field: email, password, etc.)
+  const firstError = Object.values(messages)[0];
+  alert(firstError);
+}
+      // alert('testing')
     }
   };
 
