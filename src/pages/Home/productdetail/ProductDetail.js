@@ -1,5 +1,5 @@
 // src/pages/product-details/ProductDetails.js
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import Swal from 'sweetalert2';
@@ -9,13 +9,11 @@ import { MinusIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import checkedCircle from '../../../assets/checkcircle.svg';
-import ValidateOnLoad from '../../../components/ValidateOnLoad';
 import DiscoverMore from './DiscoverMore';
 import OwnPerfume from '../../../components/ownperfume/OwnPerfume';
 import SpecialDealsSlider from '../../../components/SpecialDealsSlider/SpecialDealsSlider';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
-const VALIDATE_URL = 'https://ikonixperfumer.com/beta/api/validate';
 
 /* ------------------------------ Guest cart utils ------------------------------ */
 const readGuest = () => {
@@ -36,6 +34,7 @@ const readGuest = () => {
   }
   return Array.from(map.values());
 };
+
 const writeGuest = (arr) => {
   const safe = (Array.isArray(arr) ? arr : []).map(i => ({
     id: i.id,
@@ -51,7 +50,7 @@ const writeGuest = (arr) => {
 
 export default function ProductDetails() {
   const navigate = useNavigate();
-  const { user, token, setToken, setIsTokenReady } = useAuth(); // need setters for emergency token fetch
+  const { user, token, setToken } = useAuth();
   const { refresh } = useCart();
 
   // URL params
@@ -64,94 +63,69 @@ export default function ProductDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [qty, setQty] = useState(1);
+  const [selectedVar, setSelectedVar] = useState(null);
 
-  // to avoid infinite retry loops
-  const triedWithTokenRef = useRef(false);
-
-  /** Ensure we have a token (use existing, localStorage, or fetch a fresh one) */
-  const ensureToken = async () => {
-    // 1) already have
+  /* ----------------------- Ensure token before API calls ----------------------- */
+  const getToken = async () => {
     if (token) return token;
 
-    // 2) localStorage
     const stored = localStorage.getItem('authToken');
     if (stored) {
       setToken(stored);
-      setIsTokenReady?.(true);
       return stored;
     }
 
-    // 3) fetch once
     try {
       const { data } = await axios.post(
-        VALIDATE_URL,
-        qs.stringify({ email: 'api@ikonix.com', password: 'dvu1Fl]ZmiRoYlx5' }),
+        `${API_BASE}/validate`,
+        qs.stringify({
+          email: 'api@ikonix.com',
+          password: 'dvu1Fl]ZmiRoYlx5',
+        }),
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
+
       if (data?.token) {
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('authTokenTime', Date.now().toString());
         setToken(data.token);
-        setIsTokenReady?.(true);
         return data.token;
       }
-    } catch (e) {
-      console.error('Validate token failed:', e);
+    } catch (err) {
+      console.error('Failed to fetch token', err);
     }
-    // return null if couldn’t fetch (API may allow public GET anyway)
     return null;
   };
+  /* --------------------------------------------------------------------------- */
 
-  /** Fetch product; if unauthorized and we haven’t used a token yet, get token and retry once */
-  const fetchProduct = async () => {
+  // Fetch product by pid (and vid if present)
+  useEffect(() => {
     if (!pid) return;
-    setLoading(true);
-    setError('');
-    try {
-      const headers = {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        ...(token && { Authorization: `Bearer ${token}` }),
-      };
-      const url = `${API_BASE}/products/${pid}${vid ? `?vid=${vid}` : ''}`;
-      const { data } = await axios.get(url, { headers });
-      setProduct(data?.data || data);
-    } catch (e) {
-      const status = e?.response?.status;
-      // If API needs auth on first load (incognito), grab token and retry once
-      if ((status === 401 || status === 403) && !triedWithTokenRef.current) {
-        triedWithTokenRef.current = true;
-        const t = await ensureToken();
-        if (t) {
-          // retry with token
-          try {
-            const url = `${API_BASE}/products/${pid}${vid ? `?vid=${vid}` : ''}`;
-            const { data } = await axios.get(url, {
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                Authorization: `Bearer ${t}`,
-              },
-            });
-            setProduct(data?.data || data);
-            setLoading(false);
-            return;
-          } catch (e2) {
-            console.error('Retry fetch failed:', e2);
-            setError('Unable to load product');
-          }
-        } else {
-          setError('Unable to load product');
-        }
-      } else {
-        console.error(e);
-        setError('Unable to load product');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+    let cancelled = false;
 
-  // Fetch on mount or when pid/vid/token changes (token change means retry after ValidateOnLoad)
-  useEffect(() => { fetchProduct(); /* eslint-disable-next-line */ }, [pid, vid, token]);
+    const fetchProduct = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const authToken = await getToken();
+        const headers = {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          ...(authToken && { Authorization: `Bearer ${authToken}` }),
+        };
+        const url = `${API_BASE}/products/${pid}${vid ? `?vid=${vid}` : ''}`;
+        const { data } = await axios.get(url, { headers });
+        if (!cancelled) setProduct(data?.data || data);
+      } catch (e) {
+        console.error('Product fetch error:', e);
+        if (!cancelled) setError('Unable to load product');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchProduct();
+    return () => { cancelled = true; };
+  }, [pid, vid, token]);
 
   // Gallery images
   const images = useMemo(() => {
@@ -180,8 +154,6 @@ export default function ProductDetails() {
     })),
     [product]
   );
-
-  const [selectedVar, setSelectedVar] = useState(null);
 
   // Pick selected variant from URL, else first; keep URL in sync
   useEffect(() => {
@@ -279,9 +251,6 @@ export default function ProductDetails() {
 
   return (
     <div className="mx-auto w-[92%] md:w-[75%] py-6">
-      {/* Keep this — it refreshes token daily, but the page is already resilient without it */}
-      <ValidateOnLoad />
-
       {/* breadcrumb */}
       <nav className="text-sm text-[#6C5950]/70 mb-6">
         <Link to="/" className="hover:underline">Home</Link>
