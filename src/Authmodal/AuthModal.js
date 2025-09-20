@@ -89,11 +89,8 @@ export default function AuthModal({ open, onClose }) {
       console.error(e);
       // alert(e.response?.data?.message || 'Error sending OTP');
       console.log(e.response.data.message)
-      if (e.response && e.response.data && e.response.data.message) {
-  const messages = e.response.data.message;
-  // Get the first error message (regardless of field: email, password, etc.)
-  const firstError = Object.values(messages)[0];
-  Swal(firstError);
+     if (e.response && e.response.data && e.response.data.message) {
+    Swal(e.response.data.message);
 }
       // alert('testing')
     }
@@ -164,7 +161,10 @@ if (e.response && e.response.data && e.response.data.message) {
       }
     } catch (e) {
       console.error(e);
-      Swal('Network error during reset request');
+      console.log(e.response.data.message);
+      if (e.response && e.response.data && e.response.data.message) {
+    Swal(e.response.data.message);
+}
     }
   };
 
@@ -193,7 +193,10 @@ if (e.response && e.response.data && e.response.data.message) {
         }
       } catch (e) {
         console.error(e);
-        Swal('Server error on reset verify');
+        console.log(e.response.data.message);
+      if (e.response && e.response.data && e.response.data.message) {
+    Swal(e.response.data.message);
+}
       }
       return;
     }
@@ -222,7 +225,10 @@ if (e.response && e.response.data && e.response.data.message) {
       await finalizeLogin(data);
     } catch (e) {
       console.error(e);
-      Swal('Server error on verify');
+      console.log(e.response.data.message);
+      if (e.response && e.response.data && e.response.data.message) {
+    Swal(e.response.data.message);
+}
     }
   };
 

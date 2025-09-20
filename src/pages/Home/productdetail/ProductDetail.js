@@ -1,6 +1,6 @@
 // src/pages/product-details/ProductDetails.js
-import React, { useMemo, useState, useEffect,useParams } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import qs from 'qs';
@@ -9,42 +9,68 @@ import { MinusIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import checkedCircle from '../../../assets/checkcircle.svg';
-
+import ValidateOnLoad from '../../../components/ValidateOnLoad';
 import DiscoverMore from './DiscoverMore';
 import OwnPerfume from '../../../components/ownperfume/OwnPerfume';
 import SpecialDealsSlider from '../../../components/SpecialDealsSlider/SpecialDealsSlider';
 
-
-
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
+/* ------------------------------ Guest cart utils ------------------------------ */
+const readGuest = () => {
+  const raw = JSON.parse(localStorage.getItem('guestCart') || '[]');
+  const norm = (Array.isArray(raw) ? raw : []).map(x => ({
+    id: x.productid ?? x.id,
+    vid: x.variantid ?? x.vid,
+    name: x.name,
+    image: x.image,
+    price: Number(x.price) || 0,
+    qty: Number(x.qty) || 1,
+  }));
+  // dedupe id+vid and sum qty
+  const map = new Map();
+  for (const it of norm) {
+    const k = `${it.id}::${it.vid}`;
+    const prev = map.get(k);
+    map.set(k, prev ? { ...it, qty: (prev.qty || 0) + (it.qty || 0) } : it);
+  }
+  return Array.from(map.values());
+};
+
+const writeGuest = (arr) => {
+  const safe = (Array.isArray(arr) ? arr : []).map(i => ({
+    id: i.id,
+    vid: i.vid ?? i.variantid,
+    name: i.name,
+    image: i.image,
+    price: Number(i.price) || 0,
+    qty: Number(i.qty) || 1,
+  }));
+  localStorage.setItem('guestCart', JSON.stringify(safe));
+};
+/* ----------------------------------------------------------------------------- */
+
 export default function ProductDetails() {
-
-
-
-  const { state }   = useLocation();
-  const navigate    = useNavigate();
+  const navigate = useNavigate();
   const { user, token } = useAuth();
   const { refresh } = useCart();
 
-  const hintProd = state?.product;
-  const vid      = state?.vid;
-  const pid      = hintProd?.id;
+  // URL params
+  const { pid } = useParams();
+  const [sp, setSp] = useSearchParams();
+  const vid = sp.get('vid'); // may be null
 
-  const [product, setProduct] = useState(hintProd);
-  const [loading, setLoading] = useState(!hintProd);
-  const [error, setError]     = useState('');
+  // State
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [qty, setQty] = useState(1);
 
-
-
-
-
-
-
-  // fetch by variant ID (when navigated from elsewhere)
+  // Fetch product by pid (and vid if present)
   useEffect(() => {
-    if (!pid || !vid) return;
+    if (!pid) return;
     let cancelled = false;
+
     (async () => {
       setLoading(true);
       setError('');
@@ -53,7 +79,7 @@ export default function ProductDetails() {
           'Content-Type': 'application/x-www-form-urlencoded',
           ...(token && { Authorization: `Bearer ${token}` }),
         };
-        const url = `${API_BASE}/products/${pid}?vid=${vid}`;
+        const url = `${API_BASE}/products/${pid}${vid ? `?vid=${vid}` : ''}`;
         const { data } = await axios.get(url, { headers });
         if (!cancelled) setProduct(data?.data || data);
       } catch (e) {
@@ -63,10 +89,11 @@ export default function ProductDetails() {
         if (!cancelled) setLoading(false);
       }
     })();
+
     return () => { cancelled = true; };
   }, [pid, vid, token]);
 
-  // gallery
+  // Gallery images
   const images = useMemo(() => {
     if (!product) return [];
     const pics = [];
@@ -83,59 +110,89 @@ export default function ProductDetails() {
   const [activeImg, setActiveImg] = useState('');
   useEffect(() => { if (images.length) setActiveImg(images[0]); }, [images]);
 
-  // variants
-  const variantOptions = useMemo(() => (product?.variants || []).map(v => ({
-    vid: v.vid,
-    weight: v.weight,
-    price: Number(v.price),
-    sale_price: Number(v.sale_price),
-  })), [product]);
+  // Variants
+  const variantOptions = useMemo(
+    () => (product?.variants || []).map(v => ({
+      vid: v.vid,
+      weight: v.weight,
+      price: Number(v.price),
+      sale_price: Number(v.sale_price),
+    })),
+    [product]
+  );
 
-  const [selectedVar, setSelectedVar] = useState(variantOptions[0] || {});
-  useEffect(() => { if (variantOptions.length) setSelectedVar(variantOptions[0]); }, [variantOptions]);
+  const [selectedVar, setSelectedVar] = useState(null);
 
-  // qty
-  const [qty, setQty] = useState(1);
+  // Pick selected variant from URL, else first; keep URL in sync
+  useEffect(() => {
+    if (!variantOptions.length) return;
+    const fromUrl = vid && variantOptions.find(v => String(v.vid) === String(vid));
+    const next = fromUrl || variantOptions[0];
+    setSelectedVar(next);
 
-  // price calc
-  const unitPrice  = selectedVar?.sale_price < selectedVar?.price ? selectedVar?.sale_price : selectedVar?.sale_price;
+    if (!fromUrl) {
+      setSp(prev => {
+        const p = new URLSearchParams(prev);
+        p.set('vid', next.vid);
+        return p;
+      }, { replace: true });
+    }
+  }, [variantOptions, vid, setSp]);
+
+  // Pricing
+  const unitPrice = useMemo(() => {
+    if (!selectedVar) return 0;
+    const sale = Number(selectedVar.sale_price);
+    const mrp = Number(selectedVar.price);
+    return sale > 0 && sale < mrp ? sale : mrp;
+  }, [selectedVar]);
+
   const totalPrice = (unitPrice || 0) * qty;
 
-  // cart helpers
+  /* ---------------------------- Add to cart handlers --------------------------- */
   const addGuest = () => {
-    const guest = JSON.parse(localStorage.getItem('guestCart') || '[]');
-    const idx   = guest.findIndex(i => i.vid === selectedVar.vid);
-    if (idx > -1) guest[idx].qty += qty;
-    else guest.push({
-      id: pid,
+    if (!product || !selectedVar?.vid) return;
+    const current = readGuest();
+    const idx = current.findIndex(i => String(i.id) === String(pid) && String(i.vid) === String(selectedVar.vid));
+    const price = Number(selectedVar.sale_price || selectedVar.price || 0) || 0;
+
+    if (idx > -1) current[idx].qty += qty;
+    else current.push({
+      id: Number(pid),
       vid: selectedVar.vid,
       name: product.name,
       image: product.image,
-      price: unitPrice,
-      qty
+      price,
+      qty,
     });
-    localStorage.setItem('guestCart', JSON.stringify(guest));
-    Swal(`${product.name} added to cart (guest)`);
+
+    writeGuest(current);
+    Swal.fire(`${product.name} added to cart (guest)`);
   };
 
-  const addServer = () => axios.post(
-    `${API_BASE}/cart`,
-    qs.stringify({ userid: user.id, productid: pid, variantid: selectedVar.vid, qty }),
-    { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
-  );
+  const addServer = () => {
+    if (!product || !selectedVar?.vid) return Promise.reject(new Error('No variant'));
+    return axios.post(
+      `${API_BASE}/cart`,
+      qs.stringify({ userid: user.id, productid: pid, variantid: selectedVar.vid, qty }),
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+  };
 
   const handleAddToCart = async () => {
+    if (!product || !selectedVar?.vid) return;
     if (!token || !user) return addGuest();
     try {
       await addServer();
       await refresh();
-      Swal(`${product.name} added to cart`);
+      Swal.fire(`${product.name} added to cart`);
     } catch {
-      Swal('Error adding to cart');
+      Swal.fire('Error adding to cart');
     }
   };
 
   const handleBuyNow = async () => {
+    if (!product || !selectedVar?.vid) return;
     if (!token || !user) {
       addGuest();
       return navigate('/checkout');
@@ -145,9 +202,10 @@ export default function ProductDetails() {
       await refresh();
       navigate('/checkout');
     } catch {
-      Swal('Error proceeding to checkout');
+      Swal.fire('Error proceeding to checkout');
     }
   };
+  /* --------------------------------------------------------------------------- */
 
   if (loading) return <p className="p-6 text-center">Loading…</p>;
   if (error || !product) {
@@ -159,18 +217,11 @@ export default function ProductDetails() {
     );
   }
 
-  /** Palette (from reference)
-   *  text main: #8C7367
-   *  sub text:  #6C5950
-   *  pill bg:   #EDE2DD
-   *  pill brd:  #B39384
-   *  accent:    #b49d91
-   *  CTA dark:  #2A3443
-   */
-
   return (
     <div className="mx-auto w-[92%] md:w-[75%] py-6">
-      {/* breadcrumb (kept minimal) */}
+      <ValidateOnLoad />
+
+      {/* breadcrumb */}
       <nav className="text-sm text-[#6C5950]/70 mb-6">
         <Link to="/" className="hover:underline">Home</Link>
         <span className="mx-2">/</span>
@@ -210,22 +261,16 @@ export default function ProductDetails() {
                 </button>
               ))}
             </div>
-            
-          )}         
-{/*           
-           <hr className="border-[#B39384]/60 mt-6 mb-2" />
-
-          <span className='text-[#53443D] font-[Lato] text-[27px] font-[700] tracking-[0.5%] leading-[150%]'>Reviews</span> */}
+          )}
         </div>
 
         {/* DETAILS */}
         <div className="flex flex-col">
-          {/* Title */}
           <h1 className="text-[#8C7367] font-[Lato] text-[32px] md:text-[36px] font-[700] tracking-[0.5px]">
             {product.name}
           </h1>
 
-          {/* Feature ticks – two columns */}
+          {/* Feature ticks */}
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             {[
               'Premium fragrances',
@@ -263,15 +308,10 @@ export default function ProductDetails() {
 
           <hr className="border-[#B39384]/60 my-6" />
 
-          {/* Price + Qty + Variant pills (3 columns on large) */}
+          {/* Price + Qty + Variants */}
           <div className="grid grid-cols-1 lg:grid-cols-3 items-center justify-between gap-5">
-            {/* Price (left), shows strike when sale */}
+            {/* Price */}
             <div className="flex items-baseline gap-3">
-              {/* {selectedVar?.sale_price < selectedVar?.price && (
-                <span className="line-through text-[#6C5950]/60 text-xl">
-                  ₹{(selectedVar.price * qty).toFixed(0)}/-
-                </span>
-              )} */}
               <div className="text-[28px] md:text-[30px] font-semibold text-[#2A3443]">
                 ₹{totalPrice.toFixed(0)}/-
               </div>
@@ -306,7 +346,15 @@ export default function ProductDetails() {
                 return (
                   <button
                     key={v.vid}
-                    onClick={() => { setSelectedVar(v); setQty(1); }}
+                    onClick={() => {
+                      setSelectedVar(v);
+                      setQty(1);
+                      setSp(prev => {
+                        const p = new URLSearchParams(prev);
+                        p.set('vid', v.vid);
+                        return p;
+                      }, { replace: true });
+                    }}
                     className={[
                       'h-12 px-2 w-full rounded-[12px] text-[15px] transition border',
                       selected
@@ -324,14 +372,16 @@ export default function ProductDetails() {
           {/* CTA buttons */}
           <div className="mt-7 grid grid-cols-1 lg:grid-cols-2 gap-5">
             <button
+              disabled={!selectedVar?.vid}
               onClick={handleAddToCart}
-              className="w-full h-12 rounded-md bg-[#b49d91] text-white font-medium hover:opacity-95"
+              className="w-full h-12 rounded-md bg-[#b49d91] text-white font-medium hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Add to Cart
             </button>
             <button
+              disabled={!selectedVar?.vid}
               onClick={handleBuyNow}
-              className="w-full h-12 rounded-md bg-[#2A3443] text-white font-medium hover:opacity-95"
+              className="w-full h-12 rounded-md bg-[#2A3443] text-white font-medium hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Buy Now
             </button>
@@ -341,20 +391,12 @@ export default function ProductDetails() {
         </div>
       </div>
 
+      <hr className="border-[#B39384]/60 mt-7 w-full" />
 
-          <hr className="border-[#B39384]/60 mt-7 w-full" />
-
-
-
-
-              {/* Discover more section */}
-
-<DiscoverMore currentId={product.id} />
-<SpecialDealsSlider />
-<OwnPerfume/>
-
-
-              {/* end Discover more section */}
+      {/* Discover more section */}
+      <DiscoverMore currentId={product.id} />
+      <SpecialDealsSlider />
+      <OwnPerfume />
     </div>
   );
 }

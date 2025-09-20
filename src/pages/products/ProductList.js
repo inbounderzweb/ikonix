@@ -240,10 +240,10 @@ export default function ProductList() {
 
                 {/* Product Image */}
                 <img
-                  onClick={() =>
-                    navigate('/product-details', {
-                      state: { product, vid },
-                    })
+                  onClick={() => navigate(`/product-details/${product.id}?vid=${vid ?? ''}`)
+                    // navigate('/product-details', {
+                    //   state: { product, vid },
+                    // })
                   }
                   src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
                   alt={product.name}
