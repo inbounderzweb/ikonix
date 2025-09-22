@@ -38,8 +38,14 @@ export default function CheckoutPage() {
     clear,
   } = useCart();
 
-  /* ✅ Refresh only when user/token changes (prevents duplicate increments on reload) */
-  useEffect(() => { refresh(); }, [user, token, refresh]);
+  /* Always refresh on mount + on auth change */
+  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { if (user && token) refresh(); }, [user, token, refresh]);
+  useEffect(() => {
+    const onVis = () => document.visibilityState === 'visible' && refresh();
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [refresh]);
 
   /* Totals (rupees) */
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
@@ -295,110 +301,110 @@ export default function CheckoutPage() {
   // ---------------------------
   // Razorpay Pay Click Handler
   // ---------------------------
-const handlePayClick = async (order_id) => {
-  try {
-    if (!order_id) throw new Error('Missing internal order id');
-    setError('');
-    setLoading(true);
+  const handlePayClick = async (order_id) => {
+    try {
+      if (!order_id) throw new Error('Missing internal order id');
+      setError('');
+      setLoading(true);
 
-    const payload = qs.stringify({
-      order_id,
-      userid: user?.id,
-      client_hint_amount: Math.round(Number(total)), // paise hint (server must recompute)
-      receipt: `ikonix_${order_id}`,
-      notes: JSON.stringify({ source: 'web', cart: cartItems.length }),
-    });
+      const payload = qs.stringify({
+        order_id,
+        userid: user?.id,
+        client_hint_amount: Math.round(Number(total)), // paise hint (server must recompute)
+        receipt: `ikonix_${order_id}`,
+        notes: JSON.stringify({ source: 'web', cart: cartItems.length }),
+      });
 
-    const { data: raw } = await axios.post(
-      `${API_BASE}/payment/create-order`,
-      payload,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }
-    );
-
-    // Normalize your API shape
-    const res = raw?.data ?? raw ?? {};
-
-    // Use the SAME key as the server's mode/account
-    const keyId = 'rzp_test_R8MrWyxyABfzGy';
-
-    // Must be a Razorpay order id like "order_***"
-    const rzpOrderId = res.porder_id;
-
-    if (!keyId || !/^rzp_(test|live)_/.test(String(keyId))) {
-      console.error('Create-order response:', res);
-      throw new Error('Invalid Razorpay keyId from create-order');
-    }
-    if (!rzpOrderId || !String(rzpOrderId).startsWith('order_')) {
-      console.error('Create-order response:', res);
-      throw new Error('Invalid Razorpay order id from create-order');
-    }
-
-    // Load SDK & open checkout
-    await loadRazorpay();
-    if (!window.Razorpay) throw new Error('Razorpay SDK not available');
-
-    const rzp = new window.Razorpay({
-      key: keyId,            // DO NOT hard-code; must match the server's mode
-      order_id: rzpOrderId,  // must be order_****
-      name: 'Ikonix Perfumer',
-      description: 'Order Payment',
-      image: '/favicon.ico',
-      prefill: {
-        name:    res.customer?.name  ?? user?.name  ?? '',
-        email:   res.customer?.email ?? user?.email ?? '',
-        contact: res.customer?.phone ?? '',
-      },
-        
-      theme: { color: '#b49d91' },
-      handler: async (resp) => {
-        try {
-          const form = new FormData();
-          form.append('userid', String(user.id));
-          form.append('order_id', String(order_id));              // your internal id
-          form.append('porder_id', resp.razorpay_order_id);       // Razorpay order_****
-          form.append('payment_id', resp.razorpay_payment_id);
-          form.append('signature', resp.razorpay_signature);
-
-          const verifyRes = await fetch(`${API_BASE}/payment/callback`, {
-            method: 'POST',
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-            body: form,
-          });
-          const result = await verifyRes.json().catch(() => ({}));
-        
-          if (!verifyRes.ok || result?.status === false) {
-            throw new Error(result?.message || 'Signature verification failed');
-          }
-          
-          // console.log(result,'finalout')
-
-        } catch (err) {
-          setError(err.message || 'Payment verification failed');
-          Swal(err)
-        } finally {
-          setLoading(false);
-          navigate('/order-confirmation')
+      const { data: raw } = await axios.post(
+        `${API_BASE}/payment/create-order`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
         }
-      },
-      modal: { ondismiss: () => {setLoading(false); navigate('/');} }, 
-    });
+      );
 
-    rzp.on('payment.failed', (resp) => {
+      // Normalize your API shape
+      const res = raw?.data ?? raw ?? {};
+
+      // Use the SAME key as the server's mode/account
+      const keyId = 'rzp_test_R8MrWyxyABfzGy';
+
+      // Must be a Razorpay order id like "order_***"
+      const rzpOrderId = res.porder_id;
+
+      if (!keyId || !/^rzp_(test|live)_/.test(String(keyId))) {
+        console.error('Create-order response:', res);
+        throw new Error('Invalid Razorpay keyId from create-order');
+      }
+      if (!rzpOrderId || !String(rzpOrderId).startsWith('order_')) {
+        console.error('Create-order response:', res);
+        throw new Error('Invalid Razorpay order id from create-order');
+      }
+
+      // Load SDK & open checkout
+      await loadRazorpay();
+      if (!window.Razorpay) throw new Error('Razorpay SDK not available');
+
+      const rzp = new window.Razorpay({
+        key: keyId,            // DO NOT hard-code; must match the server's mode
+        order_id: rzpOrderId,  // must be order_****
+        name: 'Ikonix Perfumer',
+        description: 'Order Payment',
+        image: '/favicon.ico',
+        prefill: {
+          name:    res.customer?.name  ?? user?.name  ?? '',
+          email:   res.customer?.email ?? user?.email ?? '',
+          contact: res.customer?.phone ?? '',
+        },
+          
+        theme: { color: '#b49d91' },
+        handler: async (resp) => {
+          try {
+            const form = new FormData();
+            form.append('userid', String(user.id));
+            form.append('order_id', String(order_id));              // your internal id
+            form.append('porder_id', resp.razorpay_order_id);       // Razorpay order_****
+            form.append('payment_id', resp.razorpay_payment_id);
+            form.append('signature', resp.razorpay_signature);
+
+            const verifyRes = await fetch(`${API_BASE}/payment/callback`, {
+              method: 'POST',
+              headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+              body: form,
+            });
+            const result = await verifyRes.json().catch(() => ({}));
+          
+            if (!verifyRes.ok || result?.status === false) {
+              throw new Error(result?.message || 'Signature verification failed');
+            }
+            
+            // console.log(result,'finalout')
+
+          } catch (err) {
+            setError(err.message || 'Payment verification failed');
+            Swal(err)
+          } finally {
+            setLoading(false);
+            navigate('/order-confirmation')
+          }
+        },
+        modal: { ondismiss: () => {setLoading(false); navigate('/');} }, 
+      });
+
+      rzp.on('payment.failed', (resp) => {
+        setLoading(false);
+        setError(resp?.error?.description || 'Payment failed');
+      });
+
+      rzp.open();
+    } catch (e) {
       setLoading(false);
-      setError(resp?.error?.description || 'Payment failed');
-    });
-
-    rzp.open();
-  } catch (e) {
-    setLoading(false);
-    setError(e.message || 'Unable to start payment');
-  }
-};
+      setError(e.message || 'Unable to start payment');
+    }
+  };
 
 
   const handleCheckout = async () => {
