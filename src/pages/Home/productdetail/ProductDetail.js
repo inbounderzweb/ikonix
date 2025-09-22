@@ -14,6 +14,7 @@ import OwnPerfume from '../../../components/ownperfume/OwnPerfume';
 import SpecialDealsSlider from '../../../components/SpecialDealsSlider/SpecialDealsSlider';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
+const VALIDATE_URL = 'https://ikonixperfumer.com/beta/api/validate';
 
 /* ------------------------------ Guest cart utils ------------------------------ */
 const readGuest = () => {
@@ -82,7 +83,7 @@ export default function ProductDetails() {
     // 3) fetch fresh token
     try {
       const { data } = await axios.post(
-        `${API_BASE}/validate`,
+        `${VALIDATE_URL}`,
         qs.stringify({ email: 'api@ikonix.com', password: 'dvu1Fl]ZmiRoYlx5' }),
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
