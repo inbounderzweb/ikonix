@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { useGetProductsQuery } from '../../features/product/productApi';
+import { useAuth } from '../../context/AuthContext';
 
 /**
  * SearchModal – centred popup with blurred backdrop and Tailwind-only animations.
@@ -21,9 +22,23 @@ export default function SearchModal({ open, onClose, onSubmit = () => {}, onPick
   const listRef               = useRef(null);
   const navigate              = useNavigate();
 
-  // fetch all products once
-  const { data, isLoading }   = useGetProductsQuery();
-  const allProducts           = data?.data || [];
+  // 🔑 Auth
+  const { isTokenReady } = useAuth();
+
+  // fetch products only once token is ready
+  const {
+    data,
+    isLoading,
+    refetch,
+  } = useGetProductsQuery(undefined, { skip: !isTokenReady });
+
+  useEffect(() => {
+    if (isTokenReady) {
+      refetch();
+    }
+  }, [isTokenReady, refetch]);
+
+  const allProducts = data?.data || [];
 
   // mount/animate
   useEffect(() => {
@@ -74,7 +89,7 @@ export default function SearchModal({ open, onClose, onSubmit = () => {}, onPick
       if (onPick) {
         onPick(prod, vid);
       } else {
-        navigate('/product-details', { state: { product: prod, vid } });
+        navigate(`/product-details/${prod.id}?vid=${vid ?? ''}`);
       }
       closeAndReset();
     },
