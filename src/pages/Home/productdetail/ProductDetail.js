@@ -26,11 +26,12 @@ const readGuest = () => {
     price: Number(x.price) || 0,
     qty: Number(x.qty) || 1,
   }));
+  // dedupe id+vid and sum qty
   const map = new Map();
   for (const it of norm) {
     const k = `${it.id}::${it.vid}`;
     const prev = map.get(k);
-    map.set(k, prev ? { ...it, qty: (prev.qty || 0) + (it.qty || 0) } : it);
+    map.set(k, prev ? { ...it, qty: (Number(prev.qty) || 0) + (Number(it.qty) || 0) } : it);
   }
   return Array.from(map.values());
 };
@@ -54,37 +55,37 @@ export default function ProductDetails() {
   const { refresh } = useCart();
 
   // URL params
-  const { pid } = useParams();
-  const [sp, setSp] = useSearchParams();
-  const vid = sp.get('vid'); // may be null
+  const { pid } = useParams();                // /product/:pid
+  const [sp, setSp] = useSearchParams();      // ?vid=123
+  const vid = sp.get('vid');                  // may be null
 
   // State
   const [product, setProduct] = useState(null);
+  const [selectedVar, setSelectedVar] = useState(null);
+  const [qty, setQty] = useState(1);
+  const [activeImg, setActiveImg] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [qty, setQty] = useState(1);
-  const [selectedVar, setSelectedVar] = useState(null);
 
   /* ----------------------- Ensure token before API calls ----------------------- */
   const getToken = async () => {
+    // 1) already in context
     if (token) return token;
 
+    // 2) localStorage
     const stored = localStorage.getItem('authToken');
     if (stored) {
       setToken(stored);
       return stored;
     }
 
+    // 3) fetch fresh token
     try {
       const { data } = await axios.post(
         `${API_BASE}/validate`,
-        qs.stringify({
-          email: 'api@ikonix.com',
-          password: 'dvu1Fl]ZmiRoYlx5',
-        }),
+        qs.stringify({ email: 'api@ikonix.com', password: 'dvu1Fl]ZmiRoYlx5' }),
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
-
       if (data?.token) {
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('authTokenTime', Date.now().toString());
@@ -92,8 +93,9 @@ export default function ProductDetails() {
         return data.token;
       }
     } catch (err) {
-      console.error('Failed to fetch token', err);
+      console.error('❌ Failed to fetch token', err);
     }
+    // Even if token fails, we’ll try a public GET (in case your API allows it)
     return null;
   };
   /* --------------------------------------------------------------------------- */
@@ -114,7 +116,10 @@ export default function ProductDetails() {
         };
         const url = `${API_BASE}/products/${pid}${vid ? `?vid=${vid}` : ''}`;
         const { data } = await axios.get(url, { headers });
-        if (!cancelled) setProduct(data?.data || data);
+        if (!cancelled) {
+          const prod = data?.data || data;
+          setProduct(prod);
+        }
       } catch (e) {
         console.error('Product fetch error:', e);
         if (!cancelled) setError('Unable to load product');
@@ -125,6 +130,7 @@ export default function ProductDetails() {
 
     fetchProduct();
     return () => { cancelled = true; };
+    // token in deps ensures refetch if token arrives slightly later
   }, [pid, vid, token]);
 
   // Gallery images
@@ -135,14 +141,15 @@ export default function ProductDetails() {
     if (product.more_images) {
       const extras = Array.isArray(product.more_images)
         ? product.more_images
-        : String(product.more_images).split(',').map(s => s.trim());
-      extras.forEach(img => pics.includes(img) || pics.push(img));
+        : String(product.more_images).split(',').map(s => s.trim()).filter(Boolean);
+      extras.forEach(img => { if (!pics.includes(img)) pics.push(img); });
     }
     return pics;
   }, [product]);
 
-  const [activeImg, setActiveImg] = useState('');
-  useEffect(() => { if (images.length) setActiveImg(images[0]); }, [images]);
+  useEffect(() => {
+    if (images.length) setActiveImg(images[0]);
+  }, [images]);
 
   // Variants
   const variantOptions = useMemo(
@@ -162,6 +169,7 @@ export default function ProductDetails() {
     const next = fromUrl || variantOptions[0];
     setSelectedVar(next);
 
+    // ensure URL is always shareable with a vid
     if (!fromUrl) {
       setSp(prev => {
         const p = new URLSearchParams(prev);
@@ -185,7 +193,9 @@ export default function ProductDetails() {
   const addGuest = () => {
     if (!product || !selectedVar?.vid) return;
     const current = readGuest();
-    const idx = current.findIndex(i => String(i.id) === String(pid) && String(i.vid) === String(selectedVar.vid));
+    const idx = current.findIndex(
+      i => String(i.id) === String(pid) && String(i.vid) === String(selectedVar.vid)
+    );
     const price = Number(selectedVar.sale_price || selectedVar.price || 0) || 0;
 
     if (idx > -1) current[idx].qty += qty;
@@ -203,7 +213,9 @@ export default function ProductDetails() {
   };
 
   const addServer = () => {
-    if (!product || !selectedVar?.vid) return Promise.reject(new Error('No variant'));
+    if (!product || !selectedVar?.vid || !user?.id) {
+      return Promise.reject(new Error('No user or variant'));
+    }
     return axios.post(
       `${API_BASE}/cart`,
       qs.stringify({ userid: user.id, productid: pid, variantid: selectedVar.vid, qty }),
@@ -218,7 +230,8 @@ export default function ProductDetails() {
       await addServer();
       await refresh();
       Swal.fire(`${product.name} added to cart`);
-    } catch {
+    } catch (err) {
+      console.error('add to cart error:', err);
       Swal.fire('Error adding to cart');
     }
   };
@@ -226,14 +239,15 @@ export default function ProductDetails() {
   const handleBuyNow = async () => {
     if (!product || !selectedVar?.vid) return;
     if (!token || !user) {
-      addGuest();
+      addGuest();         // keep guest flow consistent
       return navigate('/checkout');
     }
     try {
       await addServer();
       await refresh();
       navigate('/checkout');
-    } catch {
+    } catch (err) {
+      console.error('buy now error:', err);
       Swal.fire('Error proceeding to checkout');
     }
   };
@@ -381,7 +395,7 @@ export default function ProductDetails() {
                       setQty(1);
                       setSp(prev => {
                         const p = new URLSearchParams(prev);
-                        p.set('vid', v.vid);
+                        p.set('vid', v.vid); // keep URL shareable
                         return p;
                       }, { replace: true });
                     }}
@@ -423,7 +437,7 @@ export default function ProductDetails() {
 
       <hr className="border-[#B39384]/60 mt-7 w-full" />
 
-      {/* Discover more section */}
+      {/* Discover more */}
       <DiscoverMore currentId={product.id} />
       <SpecialDealsSlider />
       <OwnPerfume />
