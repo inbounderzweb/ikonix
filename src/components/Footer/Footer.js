@@ -1,8 +1,10 @@
 import React from "react";
 import { FaFacebookF, FaInstagram, FaXTwitter } from "react-icons/fa6";
 import footerlogo from '../../assets/footerlogo.svg';
+import { useNavigate } from "react-router-dom";
 
 function Footer() {
+  const Navigate = useNavigate();
   return (
     <footer className="bg-[#EDE2DD] text-[#7E675F] py-12">
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -26,10 +28,10 @@ function Footer() {
         <div>
           <h4 className="text-[#BFA290] font-medium mb-4">Links</h4>
           <ul className="space-y-2">
-            <li>About Us</li>
-            <li>Products</li>
-            <li>Blog</li>
-            <li>Contact Us</li>
+            <li className="cursor-pointer" onClick={()=>Navigate(`/about`)}>About Us</li>
+            <li className="cursor-pointer" onClick={()=>Navigate(`/shop`)}>Products</li>
+            <li className="cursor-pointer" onClick={()=>Navigate(`/`)}>Blog</li>
+            <li className="cursor-pointer" onClick={()=>Navigate(`/contact`)}>Contact Us</li>
           </ul>
         </div>
 
@@ -37,18 +39,32 @@ function Footer() {
         <div>
           <h4 className="text-[#BFA290] font-medium mb-4">Follow us</h4>
           <ul className="space-y-3">
-            <li className="flex items-center gap-2">
+
+            <a href="https://www.instagram.com/ikonix_perfumer/?hl=en" target="blank" rel="noopener noreferrer">
+            <li className="flex items-center gap-3 cursor-pointer">
               <FaFacebookF />
               <span>Facebook</span>
             </li>
-            <li className="flex items-center gap-2">
+          </a>
+
+
+           <a href="https://www.instagram.com/ikonix_perfumer/?hl=en" target="blank" rel="noopener noreferrer">
+            
+            <li className="flex items-center gap-3 cursor-pointer">
               <FaInstagram />
               <span>Instagram</span>
             </li>
-            <li className="flex items-center gap-2">
+            </a> 
+
+            <a href="https://www.instagram.com/ikonix_perfumer/?hl=en" target="blank" rel="noopener noreferrer">
+            <li className="flex items-center gap-3 cursor-pointer">
               <FaXTwitter />
               <span>X.com</span>
             </li>
+            </a>
+
+
+
           </ul>
         </div>
       </div>

@@ -17,6 +17,7 @@ const API_BASE = 'https://ikonixperfumer.com/beta/api';
 const VALIDATE_URL = 'https://ikonixperfumer.com/beta/api/validate';
 
 /* ------------------------------ Guest cart utils ------------------------------ */
+
 const readGuest = () => {
   const raw = JSON.parse(localStorage.getItem('guestCart') || '[]');
   const norm = (Array.isArray(raw) ? raw : []).map(x => ({

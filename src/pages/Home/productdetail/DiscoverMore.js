@@ -5,29 +5,31 @@ import { useAuth } from '../../../context/AuthContext';
 import axios from 'axios';
 import qs from 'qs';
 import { useNavigate } from 'react-router-dom';
-import Swal from 'sweetalert2';
-
+import swal from 'sweetalert';
 
 function DiscoverMore() {
 
 
     const navigate = useNavigate()
   const [moreProducts, setMoreProducts] = useState([]);
-  const { data, isLoading, isError } = useGetProductsQuery();
-  const { user, token } = useAuth();
+   const { user, token,isTokenReady } = useAuth();
+  const { data, isLoading, isError,refetch } = useGetProductsQuery(undefined, { skip: !isTokenReady });
+ 
 
   const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
 
+useEffect(() => {
+  if (isTokenReady) refetch();
+}, [isTokenReady, refetch]);
 
 
 
 
-
-
-
-
-
+const handleViewDetails = (item) => {
+  const variant = item.variants?.[0] || {};
+  navigate(`/product-details/${item.id}?vid=${variant.vid}`);
+};
 
 
 
@@ -72,7 +74,7 @@ function DiscoverMore() {
     }
 
     writeGuest(current);
-    Swal(`${product.name} added to cart (guest)`);
+    swal(`${product.name} added to cart (guest)`);
   };
 
   /** Sync guest cart with server */
@@ -131,14 +133,14 @@ function DiscoverMore() {
       );
 
       if (resp?.success) {
-        Swal(`${product.name} added to cart`);
+        swal(`${product.name} added to cart`);
         await syncGuestCartWithServer(user.id, token);
       } else {
-        Swal(resp?.message || 'Failed to add to cart');
+        swal(resp?.message || 'Failed to add to cart');
       }
     } catch (err) {
       console.error('Error adding to cart:', err?.response?.data || err);
-      Swal('Error adding to cart. See console.');
+      swal('Error adding to cart. See console.');
     }
   };
 
@@ -159,14 +161,15 @@ function DiscoverMore() {
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {moreProducts.map((item) => (
           <div
+          onClick={() => handleViewDetails(item)}
             key={`${item.id}-${item.vid}`}
             className="relative overflow-hidden rounded-[10px] shadow hover:shadow-lg transition"
-             onClick={() => {
-    const firstVid = item.variants?.[0]?.vid; // may be undefined in list payload
-    navigate(`/product/${item.id}`, {
-      state: { product: item, vid: firstVid ?? null },
-    });
-  }}
+  //            onClick={() => {
+  //   const firstVid = item.variants?.[0]?.vid; // may be undefined in list payload
+  //   navigate(`/product/${item.id}`, {
+  //     state: { product: item, vid: firstVid ?? null },
+  //   });
+  // }}
           >
             {/* Category badge */}
             <span className="absolute top-2 left-2 inline-block rounded-full border border-[#8C7367] bg-white px-3 py-1 text-xs text-[#8C7367]">

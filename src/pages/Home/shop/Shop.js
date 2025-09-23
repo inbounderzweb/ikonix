@@ -21,6 +21,7 @@ import { useGetProductsQuery } from '../../../features/product/productApi';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 
+
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
 /* ----------------------------- Guest Cart Utils ---------------------------- */
@@ -97,10 +98,21 @@ async function syncGuestCartWithServer(userId, token) {
 /* -------------------------------------------------------------------------- */
 
 export default function Shop() {
-  const { data, isLoading, isError } = useGetProductsQuery();
+
+ 
   const navigate = useNavigate();
-  const { user, token } = useAuth();
+  const { user, token, isTokenReady } = useAuth();
+   const { data, isLoading, isError, refetch } = useGetProductsQuery(undefined, { skip: !isTokenReady });
   const { refresh } = useCart();
+
+
+useEffect(() => {
+  if (isTokenReady) refetch();
+}, [isTokenReady, refetch]);
+
+
+
+
 
 const location = useLocation();
   const { activeFilter } = location.state || {}; // default if nothing is passed
@@ -234,12 +246,10 @@ console.log(filtersFromNav, 'valueeees');
   };
 
   // view details
-  const handleViewDetails = product => {
-    const variant = product.variants?.[0] || {};
-    navigate('/product-details', {
-      state: { product, vid: variant.vid },
-    });
-  };
+ const handleViewDetails = (product) => {
+  const variant = product.variants?.[0] || {};
+  navigate(`/product-details/${product.id}?vid=${variant.vid}`);
+};
 
   if (isLoading) return <p className="text-center py-20">Loading…</p>;
   if (isError)   return <p className="text-center py-20">Something went wrong.</p>;

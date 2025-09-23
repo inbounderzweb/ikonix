@@ -1,9 +1,11 @@
 import React from "react";
-import makeperfume from '../../assets/makeperfume.svg'
+import makeperfume from '../../assets/makeperfume.svg';
+import { useNavigate } from "react-router-dom";
 // bg-brand is the #e8d5cf tint you’ve been using.
 // Add it once in tailwind.config.js if you haven’t yet:
 // theme: { extend: { colors: { "bg-brand": "#e8d5cf" } } }
 export default function OwnPerfume() {
+  const Navigate = useNavigate();
   return (
     <section className="bg-bg-brand">
       <div className=" w-[95%] md:w-[75%] mx-auto px-4 py-16">
@@ -29,7 +31,7 @@ export default function OwnPerfume() {
               aliquam.
             </p>
 
-            <button className="mt-2 w-max rounded-full bg-[#dab6a7] px-8 py-3 text-base font-medium text-[#44403c] transition hover:bg-[#e2c4b8]">
+            <button onClick={()=>Navigate(`contact`)} className="mt-2 w-max rounded-full bg-[#dab6a7] px-8 py-3 text-base font-medium text-[#44403c] transition hover:bg-[#e2c4b8]">
               Reach out now
             </button>
           </div>

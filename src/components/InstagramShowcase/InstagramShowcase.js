@@ -7,7 +7,7 @@
 import React from "react";
 import Slider from "react-slick";
 import { HiOutlineArrowRight, HiOutlineArrowLeft } from "react-icons/hi";
-
+import { useNavigate } from "react-router-dom";
 import instapage from "../../assets/instapage.svg";
 import post1 from "../../assets/post1.svg";
 import post2 from "../../assets/post2.svg";
@@ -56,6 +56,9 @@ const settings = {
 };
 
 export default function InstagramShowcase() {
+
+const Navigate = useNavigate();
+
   return (
     <section className="bg-gradient-to-b lg:bg-gradient-to-r from-[#c7a895] to-[#EDE2DD] lg:to-white pt-[40px] w-full">
       {/*
@@ -105,7 +108,7 @@ export default function InstagramShowcase() {
             </div>
 
             <div>
-                <button className="bg-[#C5A291] font-[lato] px-[24px] py-[8px] rounded-[24px]">Click here</button>
+                <button  className="bg-[#C5A291] font-[lato] px-[24px] py-[8px] rounded-[24px]"><a target="blank" rel="noopener noreferrer" href="https://www.instagram.com/ikonix_perfumer/?hl=en">Click here</a></button>
             </div>
 
           </div>

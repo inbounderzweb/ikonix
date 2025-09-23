@@ -4,6 +4,7 @@ import Slider from "react-slick";
 import { ArrowLeftIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
 import spl1 from '../../assets/spl1.svg';
 import spl2 from '../../assets/spl2.svg';
+import { useNavigate } from "react-router-dom";
 
 // Slide data
 const deals = [
@@ -14,6 +15,7 @@ const deals = [
     blurb: "Lorem ipsum + dolor sit amet ipsum",
     oldPrice: "Rs.899/-",
     newPrice: "Rs.699/-",
+    dataurl:`/product-details/68?vid=1`,
   },
   {
     id: 2,
@@ -22,6 +24,8 @@ const deals = [
     blurb: "Lorem ipsum + dolor sit amet ipsum",
     oldPrice: "Rs.899/-",
     newPrice: "Rs.699/-",
+    dataurl:`product-details/68?vid=1`,
+
   },
 ];
 
@@ -80,6 +84,10 @@ const settings = {
 };
 
 export default function SpecialDealsSlider() {
+
+const Navigate = useNavigate();
+
+
   return (
     <>
       {/* Override slick active-dot color */}
@@ -127,7 +135,7 @@ export default function SpecialDealsSlider() {
                           {deal.newPrice}
                         </span>
                       </div>
-                      <button className="text-[#13181F] font-[lato] text-[14px] bg-[#C5A291] py-[8px] px-[20px] rounded-[24px]">
+                      <button onClick={()=>Navigate(`${deal.dataurl}`)} className="text-[#13181F] font-[lato] text-[14px] bg-[#C5A291] py-[8px] px-[20px] rounded-[24px]">
                         Add To Cart
                       </button>
                     </div>

@@ -6,6 +6,7 @@ import "slick-carousel/slick/slick-theme.css";
 import mobilefirstBanner  from "../../../assets/mobilefirst.svg";
 import mobilesecondBanner from "../../../assets/mobilesecond.svg";
 import mobilethirdBanner  from "../../../assets/mobilethird.svg";
+import { Link } from "react-router-dom";
 
 const sliderData = [
   {
@@ -14,7 +15,7 @@ const sliderData = [
       "Lorem ipsum dolor sit amet, consectetuer adipiscing elit, ipsum dolor sit amet, consectetuer adipiscing",
     image: mobilefirstBanner,
     buttonText: "View Products",
-    buttonLink: "#",
+   buttonLink: '/shop',
   },
   {
     title: "Lorem ipsum dolor sit amet",
@@ -22,7 +23,7 @@ const sliderData = [
       "Lorem ipsum dolor sit amet, consectetuer adipiscing elit, ipsum dolor sit amet, consectetuer adipiscing",
     image: mobilesecondBanner,
     buttonText: "View Products",
-    buttonLink: "#",
+    buttonLink: '/shop',
   },
   {
     title: "Lorem ipsum dolor sit amet",
@@ -30,7 +31,7 @@ const sliderData = [
       "Lorem ipsum dolor sit amet, consectetuer adipiscing elit, ipsum dolor sit amet, consectetuer adipiscing",
     image: mobilethirdBanner,
     buttonText: "View Products",
-    buttonLink: "#",
+    buttonLink: '/shop',
   },
 ];
 
@@ -66,12 +67,12 @@ const MobileSlider = () => {
               <p className="text-white text-sm leading-relaxed mb-5">
                 {slide.subtitle}
               </p>
-              <a
-                href={slide.buttonLink}
-                className="bg-[#E2C4AD] text-black text-base px-6 py-2 rounded-xl font-medium hover:bg-[#d5b49b] transition-all duration-300"
+              <Link
+                to={slide.buttonLink}
+                className="bg-[#E2C4AD] cursor-pointer text-black text-base px-6 py-2 rounded-xl font-medium hover:bg-[#d5b49b] transition-all duration-300"
               >
                 {slide.buttonText}
-              </a>
+              </Link>
             </div>
           </div>
         ))}

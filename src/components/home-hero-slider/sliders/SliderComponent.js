@@ -6,6 +6,7 @@ import secondBanner from '../../../assets/secondBanner.svg';
 import thirdbanner from '../../../assets/thirdBanner.svg';
 import arrowleft from '../../../assets/Arrow-left.svg';
 import arrowright from '../../../assets/Arrow-right.svg'
+import { Link } from 'react-router-dom';
 
 
 const sliderData = [
@@ -14,21 +15,21 @@ const sliderData = [
     subtitle: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, ipsum dolor sit amet, consectetur adipiscing.',
     image: firstBanner,
     buttonText: 'View Products',
-    buttonLink: '#',
+    buttonLink: '/shop',
   },
   {
     title: 'Lorem ipsum dolo',
     subtitle: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, ipsum dolor sit amet, consectetur adipiscing.',
     image: secondBanner,
     buttonText: 'View Products',
-    buttonLink: '#',
+    buttonLink: '/shop',
   },
   {
     title: 'Lorem ipsum dolo',
     subtitle: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, ipsum dolor sit amet, consectetur adipiscing.',
     image: thirdbanner,
     buttonText: 'View Products',
-    buttonLink: '#',
+    buttonLink: '/shop',
   },
 ];
 
@@ -82,12 +83,12 @@ const SliderComponent = () => {
             <div className="absolute top-1/2 transform -translate-y-1/2 text-left text-white pl-[40px] lg:pl-[60px] xl:pl-[90px] w-[450px]">
               <h2 className="font-sans mb-[8px] text-[20px] lg:text-[40px] xl:text-[61px] text-base-[96%]">{slide.title}</h2>
               <p className="font-fancy text-[16px] font-normal mb-[16px]">{slide.subtitle}</p>
-              <a
-                href={slide.buttonLink}
-                className="inline-block bg-[#2A3443] text-white py-3 px-8 rounded-full font-fancy text-[16px] tracking-wide font-medium hover:bg-[#1c2733]"
+              <Link
+                to={slide.buttonLink}
+                className="inline-block cursor-pointer bg-[#2A3443] text-white py-3 px-8 rounded-full font-fancy text-[16px] tracking-wide font-medium hover:bg-[#1c2733]"
               >
                 {slide.buttonText}
-              </a>
+              </Link>
             </div>
           </div>
         ))}
