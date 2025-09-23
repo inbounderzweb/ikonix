@@ -56,9 +56,9 @@ export default function ProductDetails() {
   const { refresh } = useCart();
 
   // URL params
-  const { pid } = useParams();                // /product/:pid
-  const [sp, setSp] = useSearchParams();      // ?vid=123
-  const vid = sp.get('vid');                  // may be null
+  const { pid } = useParams();
+  const [sp, setSp] = useSearchParams();
+  const vid = sp.get('vid');
 
   // State
   const [product, setProduct] = useState(null);
@@ -69,21 +69,21 @@ export default function ProductDetails() {
   const [error, setError] = useState('');
 
   /* ----------------------- Ensure token before API calls ----------------------- */
-  const getToken = async () => {
-    // 1) already in context
+  const getOrCreateToken = async () => {
+    // 1) Context
     if (token) return token;
 
-    // 2) localStorage
+    // 2) LocalStorage
     const stored = localStorage.getItem('authToken');
     if (stored) {
       setToken(stored);
       return stored;
     }
 
-    // 3) fetch fresh token
+    // 3) Generate new
     try {
       const { data } = await axios.post(
-        `${VALIDATE_URL}`,
+        VALIDATE_URL,
         qs.stringify({ email: 'api@ikonix.com', password: 'dvu1Fl]ZmiRoYlx5' }),
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
@@ -96,12 +96,11 @@ export default function ProductDetails() {
     } catch (err) {
       console.error('❌ Failed to fetch token', err);
     }
-    // Even if token fails, we’ll try a public GET (in case your API allows it)
     return null;
   };
   /* --------------------------------------------------------------------------- */
 
-  // Fetch product by pid (and vid if present)
+  // Fetch product by pid
   useEffect(() => {
     if (!pid) return;
     let cancelled = false;
@@ -110,7 +109,7 @@ export default function ProductDetails() {
       setLoading(true);
       setError('');
       try {
-        const authToken = await getToken();
+        const authToken = await getOrCreateToken();
         const headers = {
           'Content-Type': 'application/x-www-form-urlencoded',
           ...(authToken && { Authorization: `Bearer ${authToken}` }),
@@ -131,7 +130,6 @@ export default function ProductDetails() {
 
     fetchProduct();
     return () => { cancelled = true; };
-    // token in deps ensures refetch if token arrives slightly later
   }, [pid, vid, token]);
 
   // Gallery images
@@ -163,14 +161,13 @@ export default function ProductDetails() {
     [product]
   );
 
-  // Pick selected variant from URL, else first; keep URL in sync
+  // Pick selected variant from URL, else first
   useEffect(() => {
     if (!variantOptions.length) return;
     const fromUrl = vid && variantOptions.find(v => String(v.vid) === String(vid));
     const next = fromUrl || variantOptions[0];
     setSelectedVar(next);
 
-    // ensure URL is always shareable with a vid
     if (!fromUrl) {
       setSp(prev => {
         const p = new URLSearchParams(prev);
@@ -231,8 +228,7 @@ export default function ProductDetails() {
       await addServer();
       await refresh();
       Swal.fire(`${product.name} added to cart`);
-    } catch (err) {
-      console.error('add to cart error:', err);
+    } catch {
       Swal.fire('Error adding to cart');
     }
   };
@@ -240,15 +236,14 @@ export default function ProductDetails() {
   const handleBuyNow = async () => {
     if (!product || !selectedVar?.vid) return;
     if (!token || !user) {
-      addGuest();         // keep guest flow consistent
+      addGuest();
       return navigate('/checkout');
     }
     try {
       await addServer();
       await refresh();
       navigate('/checkout');
-    } catch (err) {
-      console.error('buy now error:', err);
+    } catch {
       Swal.fire('Error proceeding to checkout');
     }
   };
@@ -344,7 +339,7 @@ export default function ProductDetails() {
           {/* Offer pills */}
           <div className="mt-6 grid gap-4">
             <span className="inline-block bg-[#EDE2DD] border border-[#B39384] py-[8px] px-[20px] rounded-[24px] font-[Lato] text-[16px] text-[#8C7367] tracking-[0.5px]">
-              Flat 20%off&nbsp; I&nbsp; No discount code required.
+              Flat 20%off — No discount code required.
             </span>
             <span className="inline-block bg-[#EDE2DD] border border-[#B39384] py-[8px] px-[20px] rounded-[24px] font-[Lato] text-[16px] text-[#8C7367] tracking-[0.5px]">
               Free Perfume 100ml on shopping above Rs 1800/-
@@ -355,11 +350,8 @@ export default function ProductDetails() {
 
           {/* Price + Qty + Variants */}
           <div className="grid grid-cols-1 lg:grid-cols-3 items-center justify-between gap-5">
-            {/* Price */}
-            <div className="flex items-baseline gap-3">
-              <div className="text-[28px] md:text-[30px] font-semibold text-[#2A3443]">
-                ₹{totalPrice.toFixed(0)}/-
-              </div>
+            <div className="text-[28px] md:text-[30px] font-semibold text-[#2A3443]">
+              ₹{totalPrice.toFixed(0)}/-
             </div>
 
             {/* Quantity */}
@@ -396,7 +388,7 @@ export default function ProductDetails() {
                       setQty(1);
                       setSp(prev => {
                         const p = new URLSearchParams(prev);
-                        p.set('vid', v.vid); // keep URL shareable
+                        p.set('vid', v.vid);
                         return p;
                       }, { replace: true });
                     }}
