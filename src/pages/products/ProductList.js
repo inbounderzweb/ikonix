@@ -1,5 +1,5 @@
 // src/components/ProductList.js
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import qs from 'qs';
@@ -13,172 +13,214 @@ import Spinner from '../../components/loader/Spinner';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
-// --- Guest cart helpers here match CartContext’s format & sanitation ---
-const readGuest = () => {
-  const raw = JSON.parse(localStorage.getItem('guestCart') || '[]');
-  const normalized = (Array.isArray(raw) ? raw : []).map(x => ({
-    id:    x.productid ?? x.id,
-    vid:   x.variantid ?? x.vid,
-    name:  x.name,
-    image: x.image,
-    price: Number(x.price) || 0,
-    qty:   Number(x.qty)   || 1,
-  }));
-  const byKey = new Map();
-  for (const it of normalized) {
-    const key = `${it.id}::${it.vid}`;
-    const prev = byKey.get(key);
-    byKey.set(
-      key,
-      prev
-        ? { ...it, qty: (Number(prev.qty) || 0) + (Number(it.qty) || 0) }
-        : it
-    );
+/**
+ * NOTE:
+ * - Guest cart is stored in localStorage("guestCart")
+ * - We keep ONE consistent shape for guest items here:
+ *   { id, variantid, name, image, price, qty }
+ * - For logged-in users we do OPTIMISTIC updates using CartContext.addOrIncLocal()
+ *   so Header badge updates instantly (no need to open drawer).
+ */
+
+/* ---------------- Guest cart helpers (consistent shape) ---------------- */
+
+const safeJsonParse = (val, fallback) => {
+  try {
+    return JSON.parse(val);
+  } catch {
+    return fallback;
   }
+};
+
+const toKey = (id, variantid) => `${String(id)}::${String(variantid ?? '')}`;
+
+const readGuest = () => {
+  const raw = safeJsonParse(localStorage.getItem('guestCart') || '[]', []);
+  const arr = Array.isArray(raw) ? raw : [];
+
+  // Normalize to { id, variantid, qty, ... } and merge duplicates
+  const byKey = new Map();
+  for (const x of arr) {
+    const id = x.productid ?? x.id;
+    const variantid = x.variantid ?? x.vid ?? '';
+    const qty = Math.max(1, Number(x.qty) || 1);
+
+    const item = {
+      id,
+      variantid,
+      name: x.name,
+      image: x.image,
+      price: Number(x.price) || 0,
+      qty,
+    };
+
+    const key = toKey(item.id, item.variantid);
+    const prev = byKey.get(key);
+    byKey.set(key, prev ? { ...item, qty: (prev.qty || 0) + item.qty } : item);
+  }
+
   return Array.from(byKey.values());
 };
 
-const writeGuest = arr => {
-  const safe = (Array.isArray(arr) ? arr : []).map(i => ({
-    id:    i.id,
-    vid:   i.vid ?? i.variantid,
-    name:  i.name,
+const writeGuest = (arr) => {
+  const safe = (Array.isArray(arr) ? arr : []).map((i) => ({
+    id: i.id,
+    variantid: i.variantid ?? '',
+    name: i.name,
     image: i.image,
     price: Number(i.price) || 0,
-    qty:   Number(i.qty)   || 1,
+    qty: Math.max(1, Number(i.qty) || 1),
   }));
   localStorage.setItem('guestCart', JSON.stringify(safe));
 };
 
-// Sync guest → server cart
-async function syncGuestCartWithServer(userId, token) {
-  const resp = await axios.post(
-    `${API_BASE}/cart`,
-    qs.stringify({ userid: userId }),
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    }
-  );
-  const items = resp.data?.data || [];
-  writeGuest(
-    items.map(it => ({
-      id:    it.id,
-      vid:   it.variantid ?? it.vid,
-      name:  it.name,
-      image: it.image,
-      price: Number(it.price) || 0,
-      qty:   Number(it.qty)   || 1,
-    }))
-  );
-}
-
 export default function ProductList() {
   const navigate = useNavigate();
   const { user, token, isTokenReady } = useAuth();
-  const { refresh } = useCart();
+
+  // ✅ Use CartContext as source of truth + realtime badge updates
+  const { refresh, addOrIncLocal } = useCart();
 
   // ▶︎ Fire the products request—but only after token is ready:
-  const {
-    data,
-    isLoading,
-    isError,
-    refetch,
-  } = useGetProductsQuery(
-    undefined,
-    { skip: !isTokenReady }
-  );
+  const { data, isLoading, isError, refetch } = useGetProductsQuery(undefined, {
+    skip: !isTokenReady,
+  });
 
   // ▶︎ Once token lands, retry the fetch
   useEffect(() => {
-    if (isTokenReady) {
-      refetch();
-    }
+    if (isTokenReady) refetch();
   }, [isTokenReady, refetch]);
 
   const products = data?.data || [];
 
   // Build category filters
   const categoryList = useMemo(
-    () => [...new Set(products.map(p => p.category_name))],
+    () => [...new Set(products.map((p) => p.category_name))],
     [products]
   );
-  const filters = ['Our Bestsellers', ...categoryList];
+
+  const filters = useMemo(() => ['Our Bestsellers', ...categoryList], [categoryList]);
+
   const [selectedCategory, setSelectedCategory] = useState(filters[0]);
-  const filtered = useMemo(
-    () =>
-      selectedCategory === 'Our Bestsellers'
-        ? products
-        : products.filter(p => p.category_name === selectedCategory),
-    [selectedCategory, products]
+
+  // keep selectedCategory valid when filters change (first render / data refetch)
+  useEffect(() => {
+    if (!filters.includes(selectedCategory)) {
+      setSelectedCategory(filters[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
+
+  const filtered = useMemo(() => {
+    return selectedCategory === 'Our Bestsellers'
+      ? products
+      : products.filter((p) => p.category_name === selectedCategory);
+  }, [selectedCategory, products]);
+
+  /* ---------------- Guest: add item ---------------- */
+  const saveGuestCart = useCallback(
+    (product) => {
+      const variant = product.variants?.[0] || {};
+      const variantid = variant.vid ?? '';
+      const price = Number(variant.sale_price || variant.price || 0) || 0;
+
+      const current = readGuest();
+      const key = toKey(product.id, variantid);
+      const idx = current.findIndex((i) => toKey(i.id, i.variantid) === key);
+
+      if (idx > -1) {
+        current[idx].qty = Math.max(1, Number(current[idx].qty) || 1) + 1;
+      } else {
+        current.push({
+          id: product.id,
+          variantid,
+          name: product.name,
+          image: product.image,
+          price,
+          qty: 1,
+        });
+      }
+
+      writeGuest(current);
+
+      // Refresh context so header badge updates instantly in guest mode
+      refresh();
+    },
+    [refresh]
   );
 
-  const saveGuestCart = product => {
-    const current = readGuest();
-    const variant = product.variants?.[0] || {};
-    const vid     = variant.vid;
-    const price   = Number(variant.sale_price || variant.price || 0) || 0;
+  /* ---------------- Add to cart handler ---------------- */
+  const handleAddToCart = useCallback(
+    async (product) => {
+      const variant = product.variants?.[0] || {};
+      const variantid = variant.vid ?? '';
+      const price = Number(variant.sale_price || variant.price || 0) || 0;
 
-    const idx = current.findIndex(i => i.id === product.id && i.vid === vid);
-    if (idx > -1) {
-      current[idx].qty = (Number(current[idx].qty) || 0) + 1;
-    } else {
-      current.push({
-        id:    product.id,
-        vid,
-        name:  product.name,
-        image: product.image,
-        price,
-        qty:   1,
-      });
-    }
-    writeGuest(current);
-    alert(`${product.name} added to cart (guest)`);
-    refresh();
-  };
-
-  // Add to cart handler
-  const handleAddToCart = async product => {
-    if (!token || !user) {
-      saveGuestCart(product);
-      return;
-    }
-    const variant = product.variants?.[0] || {};
-    try {
-      const { data: resp } = await axios.post(
-        `${API_BASE}/cart`,
-        qs.stringify({
-          userid:    user.id,
-          productid: product.id,
-          variantid: variant.vid,
-          qty:       1,
-        }),
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        }
-      );
-      if (resp?.success) {
-        alert(`${product.name} added to cart`);
-        await syncGuestCartWithServer(user.id, token);
-        refresh();
-      } else {
-        alert(resp?.message || 'Failed to add to cart');
+      // ✅ Guest
+      if (!token || !user) {
+        saveGuestCart(product);
+        return;
       }
-    } catch (error) {
-      console.error('❌ Error adding to cart:', error?.response?.data || error);
-      alert('Error adding to cart. Check console.');
-    }
-  };
 
-  if (isLoading) return <p className="text-center py-8">
-    <Spinner/>
-  </p>;
-  if (isError)   return <p className="text-center py-8">Error loading products..</p>;
+      // ✅ Logged-in: OPTIMISTIC update (instant header badge update)
+      addOrIncLocal(
+        {
+          id: product.id,
+          variantid,
+          name: product.name,
+          image: product.image,
+          price,
+          qty: 1,
+        },
+        1
+      );
+
+      try {
+        const { data: resp } = await axios.post(
+          `${API_BASE}/cart`,
+          qs.stringify({
+            userid: user.id,
+            productid: product.id,
+            variantid,
+            qty: 1,
+          }),
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+          }
+        );
+
+        if (resp?.success) {
+          // Keep server as source-of-truth (also fixes any server-side adjustments)
+          refresh();
+        } else {
+          // Rollback by refetch
+          refresh();
+          alert(resp?.message || 'Failed to add to cart');
+        }
+      } catch (error) {
+        console.error('❌ Error adding to cart:', error?.response?.data || error);
+        // Rollback by refetch
+        refresh();
+        alert('Error adding to cart. Check console.');
+      }
+    },
+    [token, user, addOrIncLocal, refresh, saveGuestCart]
+  );
+
+  if (isLoading) {
+    return (
+      <p className="text-center py-8">
+        <Spinner />
+      </p>
+    );
+  }
+
+  if (isError) {
+    return <p className="text-center py-8">Error loading products..</p>;
+  }
 
   return (
     <>
@@ -188,15 +230,17 @@ export default function ProductList() {
       <section className="mx-auto w-[90%] md:w-[75%] py-8">
         {/* Filter Pills */}
         <div className="flex gap-4 mb-6 overflow-x-auto scrollbar-hide pb-4">
-          {filters.map(cat => (
+          {filters.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
               className={`
                 px-4 py-2 rounded-full flex-shrink-0 transition
-                ${selectedCategory === cat
-                  ? 'bg-[#b49d91] text-white'
-                  : 'bg-white text-[#b49d91] border border-[#b49d91]'}
+                ${
+                  selectedCategory === cat
+                    ? 'bg-[#b49d91] text-white'
+                    : 'bg-white text-[#b49d91] border border-[#b49d91]'
+                }
               `}
             >
               {cat}
@@ -211,11 +255,11 @@ export default function ProductList() {
             sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:pb-0
           "
         >
-          {filtered.map(product => {
+          {filtered.map((product) => {
             const variant = product.variants?.[0] || {};
-            const vid     = variant.vid;
-            const msrp    = Number(variant.price)      || 0;
-            const sale    = Number(variant.sale_price) || msrp;
+            const vid = variant.vid ?? '';
+            const msrp = Number(variant.price) || 0;
+            const sale = Number(variant.sale_price) || msrp;
 
             return (
               <div
@@ -229,7 +273,7 @@ export default function ProductList() {
 
                 {/* Add-to-cart button */}
                 <button
-                  onClick={e => {
+                  onClick={(e) => {
                     e.stopPropagation();
                     handleAddToCart(product);
                   }}
@@ -240,11 +284,7 @@ export default function ProductList() {
 
                 {/* Product Image */}
                 <img
-                  onClick={() => navigate(`/product-details/${product.id}?vid=${vid ?? ''}`)
-                    // navigate('/product-details', {
-                    //   state: { product, vid },
-                    // })
-                  }
+                  onClick={() => navigate(`/product-details/${product.id}?vid=${vid}`)}
                   src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
                   alt={product.name}
                   className="w-full h-72 object-cover cursor-pointer"
@@ -260,6 +300,7 @@ export default function ProductList() {
                       {product.category_name}
                     </p>
                   </div>
+
                   <div className="text-right">
                     {sale < msrp && (
                       <span className="text-xs line-through text-[#2A3443] font-[Lato] block">

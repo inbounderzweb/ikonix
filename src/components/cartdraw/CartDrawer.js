@@ -1,24 +1,26 @@
-// src/components/CartDrawer.js
-import React, { useEffect, useState, useRef } from 'react';
+// src/components/cartdraw/CartDrawer.js
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 
 export default function CartDrawer({ open, onClose }) {
   const [show, setShow] = useState(open);
-  const { items, inc, dec, remove, refresh } = useCart();
+  const { items, inc, dec, remove, refresh, loading, syncing } = useCart();
+
   const navigate = useNavigate();
   const location = useLocation();
+
   const prevOpen = useRef(open);
   const ANIM_MS = 300;
 
-  // 1) refresh on open
+  // refresh on open (only when opening)
   useEffect(() => {
     if (!prevOpen.current && open) refresh();
     prevOpen.current = open;
   }, [open, refresh]);
 
-  // 2) mount/unmount for animation
+  // mount/unmount for animation
   useEffect(() => {
     if (open) setShow(true);
     else {
@@ -27,25 +29,24 @@ export default function CartDrawer({ open, onClose }) {
     }
   }, [open]);
 
-  // 3) keep checkout in sync
+  // keep checkout in sync
   useEffect(() => {
     if (location.pathname === '/checkout') {
       navigate('/checkout', { state: { cartItems: items }, replace: true });
     }
   }, [items, location.pathname, navigate]);
 
-  if (!show) return null;
-
-  // SAFE reduce: coerce qty to numbers
-  const totalCount = items.reduce(
-    (sum, i) => (Number(sum) || 0) + (Number(i.qty) || 0),
-    0
+  const totalCount = useMemo(
+    () => items.reduce((sum, i) => sum + (Number(i.qty) || 0), 0),
+    [items]
   );
 
   const goCheckout = () => {
     onClose();
     navigate('/checkout', { state: { cartItems: items } });
   };
+
+  if (!show) return null;
 
   return (
     <div className={`fixed inset-0 z-[100] flex ${!open ? 'pointer-events-none' : ''}`}>
@@ -66,12 +67,22 @@ export default function CartDrawer({ open, onClose }) {
         {/* Header */}
         <div className="p-4 border-b flex items-center justify-between">
           <div className="font-semibold font-[luxia] text-[#53443D] flex gap-2 items-center">
-           <span className='text-[18px]'>Cart</span> <p className='text-[#8C7367] text-[14px]'>({totalCount > 0 && <>{totalCount} items</>})</p>
+            <span className="text-[18px]">Cart</span>
+            <p className="text-[#8C7367] text-[14px]">
+              {totalCount > 0 ? `(${totalCount} items)` : `(0 items)`}
+            </p>
           </div>
           <button onClick={onClose}>
             <XMarkIcon className="h-6 w-6 text-gray-600" />
           </button>
         </div>
+
+        {/* Loader */}
+        {(loading || syncing) && (
+          <div className="px-4 py-3 text-sm text-gray-600 border-b">
+            {syncing ? "Syncing your cart..." : "Loading cart..."}
+          </div>
+        )}
 
         {/* Items */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -80,84 +91,59 @@ export default function CartDrawer({ open, onClose }) {
           ) : (
             items.map(item => (
               <div
-                key={`${item.id}-${item.variantid}`} // stable composite key
-                className="flex items-center justify-between border-b-[1px] border-[#B39384] pb-6"
+                key={`${item.id}-${item.variantid}`}
+                className="flex items-start justify-between border-b border-[#B39384] pb-6"
               >
-
-                <div className="flex items-center gap-3">
-
+                <div className="flex items-start gap-3 w-full">
                   <img
                     src={`https://ikonixperfumer.com/beta/assets/uploads/${item.image}`}
                     alt={item.name}
                     className="w-40 object-cover rounded"
                   />
 
-                  <div className='flex flex-col justify-between gap-3'>
+                  <div className="flex flex-col gap-3 flex-1">
+                    <p className="text-[#8C7367] font-[lato] text-[21px] font-[700] tracking-[0.5px] leading-[150%]">
+                      {item.name}
+                    </p>
 
-                    <p className="text-[#8C7367] font-[lato] text-[21px] font-[700] tracking-[0.5px] leading-[150%]">{item.name}</p>
-                    {/* <p className="text-xs text-gray-500">Qty: {Number(item.qty) || 0}</p> */}
-                    <span className='text-[#2A3443] font-[lato] text-[21px] font-[700] tracking-[0.5px] leading-[150%]'>Rs.{item.price}</span>
-                    {/* <p className="text-xs text-gray-500">variationid:{item.variantid}</p> */}
+                    <span className="text-[#2A3443] font-[lato] text-[21px] font-[700] tracking-[0.5px] leading-[150%]">
+                      Rs.{item.price}
+                    </span>
 
+                    <div className="flex gap-2 items-center">
+                      <span className="text-[#53443D] font-[lato] text-[16px] tracking-[0.5px] leading-[150%]">
+                        Qty
+                      </span>
 
+                      <div className="border rounded-[24px] border-[#53443D] w-full text-center">
+                        <div className="flex items-center justify-between w-full">
+                          <button
+                            onClick={() => dec(item.cartid, item.id, item.variantid)}
+                            className="w-1/3 py-1"
+                          >
+                            −
+                          </button>
 
+                          <span className="w-1/3 text-center">{Number(item.qty) || 0}</span>
 
-<div className='flex gap-2 items-center'>
+                          <button
+                            onClick={() => inc(item.cartid, item.id, item.variantid)}
+                            className="w-1/3 py-1"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
 
-
-<span className='text-[#53443D] font-[lato] text-[16px tracking-[0.5px] leading-[150%]'>Qty</span>
-
- <div className='border-[1px] rounded-[24px] border-[#53443D] w-full text-center'>
-                  <div className='felx items-center justify-between w-full'>
-                  {/* Decrement */}
-                  <button
-                    onClick={() => dec(item.cartid, item.id, item.variantid)}
-                    className="w-[33.3%]"
-                  >−</button>
-
-                  {/* Current qty */}
-                  <span className="w-[33.3%] text-center">{Number(item.qty) || 0}</span>
-
-                  {/* Increment */}
-                  <button
-                    onClick={() => inc(item.cartid, item.id, item.variantid)}
-                    className="w-[33.3%]"
-                  >+</button>
+                      <button
+                        onClick={() => remove(item.cartid, item.id, item.variantid)}
+                        className="text-[#53443D] underline text-sm hover:underline whitespace-nowrap"
+                      >
+                        Remove
+                      </button>
                     </div>
-                  </div>
-
-
-
-                  <div> 
-                  {/* Remove */}
-                  <button
-                    onClick={() => remove(item.cartid, item.id, item.variantid)}
-                    className="text-[#53443D] underline text-sm hover:underline"
-                  >
-                    Remove
-                  </button>
 
                   </div>
-
-
-
-
-
-</div>
-                 
-
-
-
-
-
-
-                  
-
-
-
-                  </div>
-
-
                 </div>
               </div>
             ))
@@ -168,7 +154,9 @@ export default function CartDrawer({ open, onClose }) {
         <div className="border-t px-6 py-6">
           <button
             onClick={goCheckout}
-            className="w-full py-3 bg-[#b49d91] text-white text-lg rounded-md hover:opacity-90 transition"
+            disabled={items.length === 0}
+            className={`w-full py-3 text-white text-lg rounded-md transition
+              ${items.length === 0 ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#b49d91] hover:opacity-90'}`}
           >
             Checkout
           </button>

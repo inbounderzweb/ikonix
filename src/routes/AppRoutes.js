@@ -12,12 +12,15 @@ import OrderConfirmation from "../pages/OrderConfirmation";
 import Orders from "../pages/userprofile/Orders";
 import AddresList from "../pages/userprofile/AddresList";
 import PaymentLanding from "../pages/Home/checkout/PaymentLanding";
+import ValidateOnLoad from "../components/ValidateOnLoad";
 
 
 
 
 const AppRoutes = () => {
   return (
+    <>
+    <ValidateOnLoad />
     <Routes>
       <Route path="/" element={<AppLayout />} />
       <Route path="/shop" element={<Shop />} />
@@ -37,6 +40,8 @@ const AppRoutes = () => {
 
 
     </Routes>
+    </>
+    
   );
 };
 

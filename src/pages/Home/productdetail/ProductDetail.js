@@ -1,5 +1,5 @@
 // src/pages/product-details/ProductDetails.js
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import Swal from 'sweetalert2';
@@ -9,43 +9,54 @@ import { MinusIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import checkedCircle from '../../../assets/checkcircle.svg';
-import DiscoverMore from './DiscoverMore';
-import OwnPerfume from '../../../components/ownperfume/OwnPerfume';
-import SpecialDealsSlider from '../../../components/SpecialDealsSlider/SpecialDealsSlider';
+// import DiscoverMore from './DiscoverMore';
+// import OwnPerfume from '../../../components/ownperfume/OwnPerfume';
+// import SpecialDealsSlider from '../../../components/SpecialDealsSlider/SpecialDealsSlider';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 const VALIDATE_URL = 'https://ikonixperfumer.com/beta/api/validate';
 
 /* ------------------------------ Guest cart utils ------------------------------ */
+const safeJsonParse = (val, fallback) => {
+  try { return JSON.parse(val); } catch { return fallback; }
+};
+const toKey = (id, variantid) => `${String(id)}::${String(variantid ?? '')}`;
 
 const readGuest = () => {
-  const raw = JSON.parse(localStorage.getItem('guestCart') || '[]');
-  const norm = (Array.isArray(raw) ? raw : []).map(x => ({
-    id: x.productid ?? x.id,
-    vid: x.variantid ?? x.vid,
-    name: x.name,
-    image: x.image,
-    price: Number(x.price) || 0,
-    qty: Number(x.qty) || 1,
-  }));
-  // dedupe id+vid and sum qty
-  const map = new Map();
-  for (const it of norm) {
-    const k = `${it.id}::${it.vid}`;
-    const prev = map.get(k);
-    map.set(k, prev ? { ...it, qty: (Number(prev.qty) || 0) + (Number(it.qty) || 0) } : it);
+  const raw = safeJsonParse(localStorage.getItem('guestCart') || '[]', []);
+  const arr = Array.isArray(raw) ? raw : [];
+  const byKey = new Map();
+
+  for (const x of arr) {
+    const id = x.productid ?? x.id;
+    const variantid = x.variantid ?? x.vid ?? '';
+    const qty = Math.max(1, Number(x.qty) || 1);
+
+    const item = {
+      id,
+      variantid,
+      name: x.name,
+      image: x.image,
+      price: Number(x.price) || 0,
+      qty,
+    };
+
+    const key = toKey(item.id, item.variantid);
+    const prev = byKey.get(key);
+    byKey.set(key, prev ? { ...item, qty: (prev.qty || 0) + item.qty } : item);
   }
-  return Array.from(map.values());
+
+  return Array.from(byKey.values());
 };
 
 const writeGuest = (arr) => {
-  const safe = (Array.isArray(arr) ? arr : []).map(i => ({
+  const safe = (Array.isArray(arr) ? arr : []).map((i) => ({
     id: i.id,
-    vid: i.vid ?? i.variantid,
+    variantid: i.variantid ?? '',
     name: i.name,
     image: i.image,
     price: Number(i.price) || 0,
-    qty: Number(i.qty) || 1,
+    qty: Math.max(1, Number(i.qty) || 1),
   }));
   localStorage.setItem('guestCart', JSON.stringify(safe));
 };
@@ -53,15 +64,13 @@ const writeGuest = (arr) => {
 
 export default function ProductDetails() {
   const navigate = useNavigate();
-  const { user, token, setToken } = useAuth();
-  const { refresh } = useCart();
+  const { user, token, setToken, isTokenReady } = useAuth();
+  const { refresh, addOrIncLocal } = useCart();
 
-  // URL params
   const { pid } = useParams();
   const [sp, setSp] = useSearchParams();
   const vid = sp.get('vid');
 
-  // State
   const [product, setProduct] = useState(null);
   const [selectedVar, setSelectedVar] = useState(null);
   const [qty, setQty] = useState(1);
@@ -69,59 +78,82 @@ export default function ProductDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  /* ----------------------- Ensure token before API calls ----------------------- */
-  const getOrCreateToken = async () => {
-    // 1) Context
-    if (token) return token;
+  const retried401Ref = useRef(false);
 
-    // 2) LocalStorage
-    const stored = localStorage.getItem('authToken');
-    if (stored) {
-      setToken(stored);
-      return stored;
-    }
-
-    // 3) Generate new
+  // ✅ Force validate (used only when 401 happens)
+  const forceValidate = useCallback(async () => {
     try {
       const { data } = await axios.post(
         VALIDATE_URL,
         qs.stringify({ email: 'api@ikonix.com', password: 'dvu1Fl]ZmiRoYlx5' }),
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
+
       if (data?.token) {
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('authTokenTime', Date.now().toString());
         setToken(data.token);
         return data.token;
       }
-    } catch (err) {
-      console.error('❌ Failed to fetch token', err);
+    } catch (e) {
+      console.error('❌ forceValidate failed', e);
     }
     return null;
-  };
-  /* --------------------------------------------------------------------------- */
+  }, [setToken]);
 
-  // Fetch product by pid
+  // Fetch product (wait until token readiness is known)
   useEffect(() => {
     if (!pid) return;
+
+    // wait for ValidateOnLoad to run (or decide it's ready)
+    if (!isTokenReady) return;
+
     let cancelled = false;
 
     const fetchProduct = async () => {
       setLoading(true);
       setError('');
+
       try {
-        const authToken = await getOrCreateToken();
+        // read latest token from context or storage
+        const authToken = token || localStorage.getItem('authToken');
+
         const headers = {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          ...(authToken && { Authorization: `Bearer ${authToken}` }),
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         };
+
         const url = `${API_BASE}/products/${pid}${vid ? `?vid=${vid}` : ''}`;
         const { data } = await axios.get(url, { headers });
+
         if (!cancelled) {
           const prod = data?.data || data;
           setProduct(prod);
         }
       } catch (e) {
+        const status = e?.response?.status;
+
+        // ✅ If token invalid / missing, retry once by forcing validate
+        if (status === 401 && !retried401Ref.current) {
+          retried401Ref.current = true;
+          const newTok = await forceValidate();
+          if (newTok) {
+            // retry once
+            try {
+              const url = `${API_BASE}/products/${pid}${vid ? `?vid=${vid}` : ''}`;
+              const { data } = await axios.get(url, {
+                headers: { Authorization: `Bearer ${newTok}` },
+              });
+              if (!cancelled) {
+                const prod = data?.data || data;
+                setProduct(prod);
+              }
+              return;
+            } catch (e2) {
+              console.error('Retry after validate failed:', e2);
+            }
+          }
+        }
+
         console.error('Product fetch error:', e);
         if (!cancelled) setError('Unable to load product');
       } finally {
@@ -130,8 +162,10 @@ export default function ProductDetails() {
     };
 
     fetchProduct();
-    return () => { cancelled = true; };
-  }, [pid, vid, token]);
+    return () => {
+      cancelled = true;
+    };
+  }, [pid, vid, token, isTokenReady, forceValidate]);
 
   // Gallery images
   const images = useMemo(() => {
@@ -141,8 +175,14 @@ export default function ProductDetails() {
     if (product.more_images) {
       const extras = Array.isArray(product.more_images)
         ? product.more_images
-        : String(product.more_images).split(',').map(s => s.trim()).filter(Boolean);
-      extras.forEach(img => { if (!pics.includes(img)) pics.push(img); });
+        : String(product.more_images)
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+      extras.forEach((img) => {
+        if (!pics.includes(img)) pics.push(img);
+      });
     }
     return pics;
   }, [product]);
@@ -153,32 +193,35 @@ export default function ProductDetails() {
 
   // Variants
   const variantOptions = useMemo(
-    () => (product?.variants || []).map(v => ({
-      vid: v.vid,
-      weight: v.weight,
-      price: Number(v.price),
-      sale_price: Number(v.sale_price),
-    })),
+    () =>
+      (product?.variants || []).map((v) => ({
+        vid: v.vid,
+        weight: v.weight,
+        price: Number(v.price),
+        sale_price: Number(v.sale_price),
+      })),
     [product]
   );
 
-  // Pick selected variant from URL, else first
+  // Pick selected variant
   useEffect(() => {
     if (!variantOptions.length) return;
-    const fromUrl = vid && variantOptions.find(v => String(v.vid) === String(vid));
+    const fromUrl = vid && variantOptions.find((v) => String(v.vid) === String(vid));
     const next = fromUrl || variantOptions[0];
     setSelectedVar(next);
 
     if (!fromUrl) {
-      setSp(prev => {
-        const p = new URLSearchParams(prev);
-        p.set('vid', next.vid);
-        return p;
-      }, { replace: true });
+      setSp(
+        (prev) => {
+          const p = new URLSearchParams(prev);
+          p.set('vid', next.vid);
+          return p;
+        },
+        { replace: true }
+      );
     }
   }, [variantOptions, vid, setSp]);
 
-  // Pricing
   const unitPrice = useMemo(() => {
     if (!selectedVar) return 0;
     const sale = Number(selectedVar.sale_price);
@@ -188,69 +231,128 @@ export default function ProductDetails() {
 
   const totalPrice = (unitPrice || 0) * qty;
 
-  /* ---------------------------- Add to cart handlers --------------------------- */
-  const addGuest = () => {
+  /* ---------------------------- Guest add ---------------------------- */
+  const addGuest = useCallback(() => {
     if (!product || !selectedVar?.vid) return;
+
     const current = readGuest();
-    const idx = current.findIndex(
-      i => String(i.id) === String(pid) && String(i.vid) === String(selectedVar.vid)
-    );
     const price = Number(selectedVar.sale_price || selectedVar.price || 0) || 0;
 
-    if (idx > -1) current[idx].qty += qty;
-    else current.push({
-      id: Number(pid),
-      vid: selectedVar.vid,
-      name: product.name,
-      image: product.image,
-      price,
-      qty,
-    });
+    const key = toKey(pid, selectedVar.vid);
+    const idx = current.findIndex((i) => toKey(i.id, i.variantid) === key);
+
+    if (idx > -1) current[idx].qty = (Number(current[idx].qty) || 0) + qty;
+    else
+      current.push({
+        id: Number(pid),
+        variantid: selectedVar.vid,
+        name: product.name,
+        image: product.image,
+        price,
+        qty,
+      });
 
     writeGuest(current);
+    refresh();
     Swal.fire(`${product.name} added to cart (guest)`);
-  };
+  }, [product, selectedVar, pid, qty, refresh]);
 
-  const addServer = () => {
+  /* ---------------------------- Server add ---------------------------- */
+  const addServer = useCallback(async () => {
     if (!product || !selectedVar?.vid || !user?.id) {
-      return Promise.reject(new Error('No user or variant'));
+      throw new Error('No user or variant');
     }
+
+    const authToken = token || localStorage.getItem('authToken');
+    if (!authToken) throw new Error('No auth token');
+
     return axios.post(
       `${API_BASE}/cart`,
-      qs.stringify({ userid: user.id, productid: pid, variantid: selectedVar.vid, qty }),
-      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
+      qs.stringify({
+        userid: user.id,
+        productid: pid,
+        variantid: selectedVar.vid,
+        qty,
+      }),
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }
     );
-  };
+  }, [product, selectedVar, user, pid, qty, token]);
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = useCallback(async () => {
     if (!product || !selectedVar?.vid) return;
-    if (!token || !user) return addGuest();
+
+    const variantid = selectedVar.vid;
+    const price = Number(selectedVar.sale_price || selectedVar.price || 0) || 0;
+
+    // guest
+    if (!token || !user) {
+      addGuest();
+      return;
+    }
+
+    // optimistic
+    addOrIncLocal(
+      { id: Number(pid), variantid, name: product.name, image: product.image, price, qty: 1 },
+      qty
+    );
+
     try {
-      await addServer();
-      await refresh();
-      Swal.fire(`${product.name} added to cart`);
-    } catch {
+      const resp = await addServer();
+      if (resp?.data?.success) {
+        refresh();
+        Swal.fire(`${product.name} added to cart`);
+      } else {
+        refresh();
+        Swal.fire(resp?.data?.message || 'Failed to add to cart');
+      }
+    } catch (e) {
+      console.error('❌ Error adding to cart:', e?.response?.data || e);
+      refresh();
       Swal.fire('Error adding to cart');
     }
-  };
+  }, [product, selectedVar, pid, qty, token, user, addGuest, addOrIncLocal, addServer, refresh]);
 
-  const handleBuyNow = async () => {
+  const handleBuyNow = useCallback(async () => {
     if (!product || !selectedVar?.vid) return;
+
+    const variantid = selectedVar.vid;
+    const price = Number(selectedVar.sale_price || selectedVar.price || 0) || 0;
+
     if (!token || !user) {
       addGuest();
       return navigate('/checkout');
     }
+
+    addOrIncLocal(
+      { id: Number(pid), variantid, name: product.name, image: product.image, price, qty: 1 },
+      qty
+    );
+
     try {
-      await addServer();
-      await refresh();
-      navigate('/checkout');
-    } catch {
+      const resp = await addServer();
+      if (resp?.data?.success) {
+        refresh();
+        navigate('/checkout');
+      } else {
+        refresh();
+        Swal.fire(resp?.data?.message || 'Error proceeding to checkout');
+      }
+    } catch (e) {
+      console.error('❌ Buy now error:', e?.response?.data || e);
+      refresh();
       Swal.fire('Error proceeding to checkout');
     }
-  };
-  /* --------------------------------------------------------------------------- */
+  }, [product, selectedVar, pid, qty, token, user, addGuest, addOrIncLocal, addServer, refresh, navigate]);
 
+  /* ---------------------------- UI states ---------------------------- */
+  if (!isTokenReady) return <p className="p-6 text-center">Loading…</p>;
   if (loading) return <p className="p-6 text-center">Loading…</p>;
+
   if (error || !product) {
     return (
       <div className="p-6">
@@ -262,7 +364,6 @@ export default function ProductDetails() {
 
   return (
     <div className="mx-auto w-[92%] md:w-[75%] py-6">
-      {/* breadcrumb */}
       <nav className="text-sm text-[#6C5950]/70 mb-6">
         <Link to="/" className="hover:underline">Home</Link>
         <span className="mx-2">/</span>
@@ -286,7 +387,7 @@ export default function ProductDetails() {
 
           {images.length > 1 && (
             <div className="mt-4 gap-3 flex">
-              {images.map(img => (
+              {images.map((img) => (
                 <button
                   key={img}
                   onClick={() => setActiveImg(img)}
@@ -311,14 +412,8 @@ export default function ProductDetails() {
             {product.name}
           </h1>
 
-          {/* Feature ticks */}
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            {[
-              'Premium fragrances',
-              'Long-lasting freshness',
-              'A perfume for every mood',
-              'Perfect for everyday use',
-            ].map((f) => (
+            {['Premium fragrances', 'Long-lasting freshness', 'A perfume for every mood', 'Perfect for everyday use'].map((f) => (
               <div key={f} className="flex items-center gap-2">
                 <img src={checkedCircle} alt="" className="h-5 w-5" />
                 <span className="text-[#6C5950] font-[Lato] text-[16px]">{f}</span>
@@ -326,7 +421,6 @@ export default function ProductDetails() {
             ))}
           </div>
 
-          {/* Stars + reviews */}
           <div className="mt-4 flex items-center gap-2 text-[#6C5950]">
             {Array.from({ length: 5 }).map((_, i) => (
               <StarSolid key={i} className="h-5 w-5 text-[#8C7367]" />
@@ -337,7 +431,6 @@ export default function ProductDetails() {
 
           <hr className="border-[#B39384]/60 mt-6" />
 
-          {/* Offer pills */}
           <div className="mt-6 grid gap-4">
             <span className="inline-block bg-[#EDE2DD] border border-[#B39384] py-[8px] px-[20px] rounded-[24px] font-[Lato] text-[16px] text-[#8C7367] tracking-[0.5px]">
               Flat 20%off — No discount code required.
@@ -349,35 +442,27 @@ export default function ProductDetails() {
 
           <hr className="border-[#B39384]/60 my-6" />
 
-          {/* Price + Qty + Variants */}
           <div className="grid grid-cols-1 lg:grid-cols-3 items-center justify-between gap-5">
             <div className="text-[28px] md:text-[30px] font-semibold text-[#2A3443]">
               ₹{totalPrice.toFixed(0)}/-
             </div>
 
-            {/* Quantity */}
             <div className="w-full">
               <div className="flex items-center justify-between w-full border border-[#B39384]/60 rounded-full h-12">
                 <button
-                  onClick={() => setQty(q => Math.max(1, q - 1))}
+                  onClick={() => setQty((q) => Math.max(1, q - 1))}
                   disabled={qty === 1}
                   className="px-4 py-2 disabled:opacity-40"
-                  aria-label="Decrease quantity"
                 >
                   <MinusIcon className="h-5 w-5 text-[#6C5950]" />
                 </button>
                 <span className="min-w-[2rem] text-center text-[#2A3443]">{qty}</span>
-                <button
-                  onClick={() => setQty(q => q + 1)}
-                  className="px-4 py-2"
-                  aria-label="Increase quantity"
-                >
+                <button onClick={() => setQty((q) => q + 1)} className="px-4 py-2">
                   <PlusIcon className="h-5 w-5 text-[#6C5950]" />
                 </button>
               </div>
             </div>
 
-            {/* Variant pills */}
             <div className="flex gap-3">
               {variantOptions.map((v) => {
                 const selected = v.vid === selectedVar?.vid;
@@ -387,11 +472,14 @@ export default function ProductDetails() {
                     onClick={() => {
                       setSelectedVar(v);
                       setQty(1);
-                      setSp(prev => {
-                        const p = new URLSearchParams(prev);
-                        p.set('vid', v.vid);
-                        return p;
-                      }, { replace: true });
+                      setSp(
+                        (prev) => {
+                          const p = new URLSearchParams(prev);
+                          p.set('vid', v.vid);
+                          return p;
+                        },
+                        { replace: true }
+                      );
                     }}
                     className={[
                       'h-12 px-2 w-full rounded-[12px] text-[15px] transition border',
@@ -407,7 +495,6 @@ export default function ProductDetails() {
             </div>
           </div>
 
-          {/* CTA buttons */}
           <div className="mt-7 grid grid-cols-1 lg:grid-cols-2 gap-5">
             <button
               disabled={!selectedVar?.vid}
@@ -430,11 +517,6 @@ export default function ProductDetails() {
       </div>
 
       <hr className="border-[#B39384]/60 mt-7 w-full" />
-
-      {/* Discover more */}
-      <DiscoverMore currentId={product.id} />
-      <SpecialDealsSlider />
-      <OwnPerfume />
     </div>
   );
 }
