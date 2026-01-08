@@ -1,36 +1,87 @@
 // src/pages/shop/Shop.js
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import axios from "axios";
 import qs from "qs";
-
 import bag from "../../../assets/bag.svg";
 import Spinner from "../../../components/loader/Spinner";
-
 import shopherobg from "../../../assets/shopherobg.svg";
 import shopherobgmob from "../../../assets/shopheromobbg.svg";
 import ValidateOnLoad from "../../../components/ValidateOnLoad";
-
 import { useGetProductsQuery } from "../../../features/product/productApi";
 import { useAuth } from "../../../context/AuthContext";
 import { useCart } from "../../../context/CartContext";
+import { createApiClient } from "../../../api/client";
 
 const API_BASE = "https://ikonixperfumer.com/beta/api";
 
-const norm = (s) =>
-  String(s ?? "")
-    .toLowerCase()
-    .replace(/\s+/g, "")
-    .trim();
+/* ---------------- Guest helpers (same as CartContext) ---------------- */
+const safeJsonParse = (val, fallback) => {
+  try {
+    return JSON.parse(val);
+  } catch {
+    return fallback;
+  }
+};
+const toKey = (id, variantid) => `${String(id)}::${String(variantid ?? "")}`;
+
+const readGuest = () => {
+  const raw = safeJsonParse(localStorage.getItem("guestCart") || "[]", []);
+  const arr = Array.isArray(raw) ? raw : [];
+  const byKey = new Map();
+
+  for (const x of arr) {
+    const id = x.productid ?? x.id;
+    const variantid = x.variantid ?? x.vid ?? "";
+    const qty = Math.max(1, Number(x.qty) || 1);
+
+    const item = {
+      id: Number(id),
+      variantid: String(variantid),
+      name: x.name,
+      image: x.image,
+      price: Number(x.price) || 0,
+      qty,
+    };
+
+    const key = toKey(item.id, item.variantid);
+    const prev = byKey.get(key);
+    byKey.set(key, prev ? { ...item, qty: prev.qty + item.qty } : item);
+  }
+
+  return Array.from(byKey.values());
+};
+
+const writeGuest = (arr) => {
+  const safe = (Array.isArray(arr) ? arr : []).map((i) => ({
+    id: Number(i.id),
+    variantid: String(i.variantid ?? ""),
+    name: i.name,
+    image: i.image,
+    price: Number(i.price) || 0,
+    qty: Math.max(1, Number(i.qty) || 1),
+  }));
+  localStorage.setItem("guestCart", JSON.stringify(safe));
+};
+/* ------------------------------------------------------------------- */
 
 export default function Shop() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { user, token, isTokenReady } = useAuth();
+  const { user, token, setToken, setIsTokenReady, isTokenReady } = useAuth();
   const { refresh, addOrIncLocal } = useCart();
 
-  // products fetch
+  const api = useMemo(
+    () =>
+      createApiClient({
+        getToken: () => token,
+        setToken,
+        setIsTokenReady,
+      }),
+    [token, setToken, setIsTokenReady]
+  );
+
+  // RTK products (token-ready)
   const { data, isLoading, isError, refetch } = useGetProductsQuery(undefined, {
     skip: !isTokenReady,
   });
@@ -41,94 +92,108 @@ export default function Shop() {
 
   const products = data?.data || [];
 
-  // ✅ Tabs are fixed, no duplicates
-  const tabs = useMemo(() => ["All", "Men", "Women", "Best Sellers"], []);
+  // Filters
+  const categoryList = useMemo(
+    () => [...new Set(products.map((p) => p.category_name).filter(Boolean))],
+    [products]
+  );
 
-  // ✅ internal selected tab state
-  const [selectedTab, setSelectedTab] = useState("All");
+  const filters = useMemo(() => ["All", "Our Bestsellers", ...categoryList], [categoryList]);
 
-  // ✅ apply default tab from Header/Home navigation state
-  useEffect(() => {
-    const filter = location.state?.activeFilter; // "men" | "women" | "bestSellers" | "all"
-    if (!filter) return;
-
-    if (filter === "men") setSelectedTab("Men");
-    else if (filter === "women") setSelectedTab("Women");
-    else if (filter === "bestSellers") setSelectedTab("Best Sellers");
-    else setSelectedTab("All");
-
-    // ✅ prevent it from re-applying on back/forward or re-render
-    // clear the state after using it
-    navigate(location.pathname, { replace: true, state: {} });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // ✅ default tab from header navigation state
+  // DropDown sends: navigate("/shop", { state: { activeFilter: "women" }})
+  const initialFromHeader = useMemo(() => {
+    const f = location.state?.activeFilter;
+    if (!f) return "All";
+    if (f === "men") return "Men’s Perfume";
+    if (f === "women") return "Women’s Perfume";
+    if (f === "bestSellers") return "Our Bestsellers";
+    return "All";
   }, [location.state]);
 
-  // ✅ Filtered products based on selected tab
+  const [selectedCategory, setSelectedCategory] = useState(initialFromHeader);
+
+  // When we come from header again, update the selected tab
+  useEffect(() => {
+    setSelectedCategory(initialFromHeader);
+  }, [initialFromHeader]);
+
+  // Keep selected valid after refetch
+  useEffect(() => {
+    if (!filters.includes(selectedCategory)) setSelectedCategory("All");
+  }, [filters, selectedCategory]);
+
   const filtered = useMemo(() => {
-    if (selectedTab === "All") return products;
+    if (selectedCategory === "All") return products;
+    if (selectedCategory === "Our Bestsellers") return products; // adjust if you have a real bestseller flag
+    return products.filter((p) => p.category_name === selectedCategory);
+  }, [selectedCategory, products]);
 
-    if (selectedTab === "Men") {
-      return products.filter((p) => {
-        const c = norm(p.category_name);
-        return c.includes("men") || c.includes("mens");
-      });
-    }
+  // guest add
+  const saveGuestCart = useCallback(
+    (product) => {
+      const variant = product.variants?.[0] || {};
+      const variantid = variant.vid ?? "";
+      const price = Number(variant.sale_price || variant.price || 0) || 0;
 
-    if (selectedTab === "Women") {
-      return products.filter((p) => {
-        const c = norm(p.category_name);
-        return c.includes("women") || c.includes("womens") || c.includes("ladies");
-      });
-    }
+      const current = readGuest();
+      const key = toKey(product.id, variantid);
+      const idx = current.findIndex((i) => toKey(i.id, i.variantid) === key);
 
-    // Best sellers: replace with real condition if your API provides a flag.
-    if (selectedTab === "Best Sellers") {
-      return products; // fallback
-    }
+      if (idx > -1) current[idx].qty = (Number(current[idx].qty) || 0) + 1;
+      else {
+        current.push({
+          id: product.id,
+          variantid,
+          name: product.name,
+          image: product.image,
+          price,
+          qty: 1,
+        });
+      }
 
-    return products;
-  }, [selectedTab, products]);
+      writeGuest(current);
+      refresh();
+    },
+    [refresh]
+  );
 
-  // ✅ Add to cart (optimistic + refresh)
   const handleAddToCart = useCallback(
     async (product) => {
       const variant = product.variants?.[0] || {};
       const variantid = variant.vid ?? "";
       const price = Number(variant.sale_price || variant.price || 0) || 0;
 
+      // guest
       if (!token || !user) {
-        alert("Please login to add to cart");
+        saveGuestCart(product);
         return;
       }
 
+      // optimistic
       addOrIncLocal(
         { id: product.id, variantid, name: product.name, image: product.image, price, qty: 1 },
         1
       );
 
       try {
-        await axios.post(
+        const { data: resp } = await api.post(
           `${API_BASE}/cart`,
-          qs.stringify({
-            userid: user.id,
-            productid: product.id,
-            variantid,
-            qty: 1,
-          }),
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-          }
+          qs.stringify({ userid: user.id, productid: product.id, variantid, qty: 1 }),
+          { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
+
+        if (resp?.success) refresh();
+        else {
+          refresh();
+          alert(resp?.message || "Failed to add to cart");
+        }
+      } catch (e) {
+        console.error("add to cart error:", e);
         refresh();
-      } catch (err) {
-        console.error("Add to cart failed:", err?.response?.data || err);
-        refresh(); // rollback by fetch
       }
     },
-    [token, user, addOrIncLocal, refresh]
+    [api, token, user, addOrIncLocal, refresh, saveGuestCart]
   );
 
   if (isLoading) {
@@ -138,7 +203,6 @@ export default function Shop() {
       </p>
     );
   }
-
   if (isError) return <p className="text-center py-8">Error loading products..</p>;
 
   return (
@@ -149,25 +213,35 @@ export default function Shop() {
       <div
         className="h-[242px] hidden md:flex w-[90%] xl:w-[75%] mx-auto bg-center bg-cover justify-end mt-6"
         style={{ backgroundImage: `url(${shopherobg})` }}
-      />
+      >
+        <span className="font-[luxia] text-[#53443D] text-[36px] leading-tight lg:mr-[80px] xl:mr-[200px] flex items-center">
+          Lorem Ipsum <br /> dolor sit amet
+        </span>
+      </div>
+
       <div
         className="h-[300px] flex md:hidden w-[98%] mx-auto bg-center bg-cover justify-center mt-6"
         style={{ backgroundImage: `url(${shopherobgmob})` }}
-      />
+      >
+        <p className="text-center mt-6 font-[luxia] text-[27px] leading-tight">
+          Lorem Ipsum <br /> dolor sit amet
+        </p>
+      </div>
 
       <section className="mx-auto w-[90%] md:w-[75%] py-8">
-        {/* ✅ Tabs */}
+        {/* Tabs */}
         <div className="flex gap-4 mb-6 overflow-x-auto scrollbar-hide pb-4">
-          {tabs.map((t) => (
+          {filters.map((cat) => (
             <button
-              key={t}
-              onClick={() => setSelectedTab(t)}
-              className={`
-                px-4 py-2 rounded-full flex-shrink-0 transition
-                ${selectedTab === t ? "bg-[#b49d91] text-white" : "bg-white text-[#b49d91] border border-[#b49d91]"}
-              `}
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-4 py-2 rounded-full flex-shrink-0 transition ${
+                selectedCategory === cat
+                  ? "bg-[#b49d91] text-white"
+                  : "bg-white text-[#b49d91] border border-[#b49d91]"
+              }`}
             >
-              {t}
+              {cat}
             </button>
           ))}
         </div>
@@ -208,17 +282,12 @@ export default function Shop() {
 
                 <div className="pt-4 flex justify-between items-start">
                   <div>
-                    <h3 className="text-[#2A3443] font-[Lato] text-[16px] leading-snug">
-                      {product.name}
-                    </h3>
+                    <h3 className="text-[#2A3443] font-[Lato] text-[16px] leading-snug">{product.name}</h3>
                     <p className="text-[#2A3443] font-[Lato] text-[14px]">{product.category_name}</p>
                   </div>
-
                   <div className="text-right">
                     {sale < msrp && (
-                      <span className="text-xs line-through text-[#2A3443] font-[Lato] block">
-                        ₹{msrp}/-
-                      </span>
+                      <span className="text-xs line-through text-[#2A3443] font-[Lato] block">₹{msrp}/-</span>
                     )}
                     <span className="font-semibold text-[#2A3443]">₹{sale}/-</span>
                   </div>

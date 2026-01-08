@@ -1,7 +1,6 @@
 // src/components/ProductList.js
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import qs from 'qs';
 import bag from '../../assets/bag.svg';
 import ValidateOnLoad from '../../components/ValidateOnLoad';
@@ -11,16 +10,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import Spinner from '../../components/loader/Spinner';
 
-const API_BASE = 'https://ikonixperfumer.com/beta/api';
+import { createApiClient } from '../../api/client';
 
-/**
- * NOTE:
- * - Guest cart is stored in localStorage("guestCart")
- * - We keep ONE consistent shape for guest items here:
- *   { id, variantid, name, image, price, qty }
- * - For logged-in users we do OPTIMISTIC updates using CartContext.addOrIncLocal()
- *   so Header badge updates instantly (no need to open drawer).
- */
+const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
 /* ---------------- Guest cart helpers (consistent shape) ---------------- */
 
@@ -46,8 +38,8 @@ const readGuest = () => {
     const qty = Math.max(1, Number(x.qty) || 1);
 
     const item = {
-      id,
-      variantid,
+      id: Number(id),
+      variantid: String(variantid),
       name: x.name,
       image: x.image,
       price: Number(x.price) || 0,
@@ -64,8 +56,8 @@ const readGuest = () => {
 
 const writeGuest = (arr) => {
   const safe = (Array.isArray(arr) ? arr : []).map((i) => ({
-    id: i.id,
-    variantid: i.variantid ?? '',
+    id: Number(i.id),
+    variantid: String(i.variantid ?? ''),
     name: i.name,
     image: i.image,
     price: Number(i.price) || 0,
@@ -76,10 +68,19 @@ const writeGuest = (arr) => {
 
 export default function ProductList() {
   const navigate = useNavigate();
-  const { user, token, isTokenReady } = useAuth();
+  const { user, token, setToken, setIsTokenReady, isTokenReady } = useAuth();
 
   // ✅ Use CartContext as source of truth + realtime badge updates
   const { refresh, addOrIncLocal } = useCart();
+
+  // ✅ Use shared client with auto refresh/retry
+  const api = useMemo(() => {
+    return createApiClient({
+      getToken: () => token,
+      setToken,
+      setIsTokenReady,
+    });
+  }, [token, setToken, setIsTokenReady]);
 
   // ▶︎ Fire the products request—but only after token is ready:
   const { data, isLoading, isError, refetch } = useGetProductsQuery(undefined, {
@@ -95,7 +96,7 @@ export default function ProductList() {
 
   // Build category filters
   const categoryList = useMemo(
-    () => [...new Set(products.map((p) => p.category_name))],
+    () => [...new Set(products.map((p) => p.category_name).filter(Boolean))],
     [products]
   );
 
@@ -176,7 +177,7 @@ export default function ProductList() {
       );
 
       try {
-        const { data: resp } = await axios.post(
+        const { data: resp } = await api.post(
           `${API_BASE}/cart`,
           qs.stringify({
             userid: user.id,
@@ -186,28 +187,26 @@ export default function ProductList() {
           }),
           {
             headers: {
-              Authorization: `Bearer ${token}`,
               'Content-Type': 'application/x-www-form-urlencoded',
             },
           }
         );
 
         if (resp?.success) {
-          // Keep server as source-of-truth (also fixes any server-side adjustments)
           refresh();
         } else {
-          // Rollback by refetch
-          refresh();
+          refresh(); // rollback by refetch
           alert(resp?.message || 'Failed to add to cart');
         }
       } catch (error) {
+        // client.js should re-auth + retry automatically; if it still fails, we rollback
         console.error('❌ Error adding to cart:', error?.response?.data || error);
-        // Rollback by refetch
         refresh();
-        alert('Error adding to cart. Check console.');
+        // optional: avoid alert spam
+        // alert('Error adding to cart.');
       }
     },
-    [token, user, addOrIncLocal, refresh, saveGuestCart]
+    [api, token, user, addOrIncLocal, refresh, saveGuestCart]
   );
 
   if (isLoading) {
