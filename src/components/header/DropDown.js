@@ -18,7 +18,9 @@ function DropDown({ onSelect = () => {} }) {
               className="text-lg font-semibold text-gray-600 mb-2 cursor-pointer"
               onClick={() => handleNavigate("/shop", "mens")}
             >
+              
               Men’s Perfume
+
             </h3>
           </div>
 

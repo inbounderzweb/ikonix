@@ -77,8 +77,8 @@ export default function CheckoutPage() {
   /* Helpers */
   const normalizeAddr = (a) => ({
     id: a.aid || a.id || a.address_id,
-    doorno: a.doorno,
-    house: a.house,
+    // doorno: a.doorno,
+    // house: a.house,
     street: a.street,
     city: a.city,
     pincode: a.pincode,
@@ -87,12 +87,13 @@ export default function CheckoutPage() {
     country: a.country,
     company: a.company,
     gst: a.gst,
-    type: a.atype || a.type,
+    // type: a.atype || a.type,
     deflt: a.deflt,
   });
 
   const addrLabel = (a = {}) =>
-    [a.doorno, a.house, a.street, a.city, a.district, a.state, a.country, a.pincode]
+    // [a.doorno, a.house, a.street, a.city, a.district, a.state, a.country, a.pincode]
+  [ a.street, a.city, a.district, a.state, a.country, a.pincode]
       .filter(Boolean)
       .join(', ');
 
@@ -265,17 +266,17 @@ export default function CheckoutPage() {
           }
         }
         setForm({
-          doorno: '',
-          house: '',
+          // doorno: '',
+          // house: '',
           street: '',
           city: '',
           pincode: '',
           district: '',
           state: '',
           country: '',
-          company: '',
-          gst: '',
-          type: ''
+          // company: '',
+          // gst: '',
+          // type: ''
         });
         setStep('select');
       } else {
@@ -330,7 +331,8 @@ export default function CheckoutPage() {
       const res = raw?.data ?? raw ?? {};
 
       // Use the SAME key as the server's mode/account
-      const keyId = 'rzp_test_R8MrWyxyABfzGy';
+      // const keyId = 'rzp_test_S9baA5PHdWgO0k';
+      const keyId = 'rzp_live_SEo0q24u3JYSFy'
 
       // Must be a Razorpay order id like "order_***"
       const rzpOrderId = res.porder_id;
@@ -407,52 +409,124 @@ export default function CheckoutPage() {
   };
 
 
-  const handleCheckout = async () => {
-    const billId = sameAsShip ? shippingId : billingId;
-    try {
-      setLoading(true);
-      setError('');
-      await ensureServerCartNotEmpty();
-      const payload = qs.stringify({
-        userid: user.id,
-        shipping_address: shippingId,
-        billing_address: billId,
-        delivery_method: deliveryMethod,
-      });
-      const doCheckout = () =>
-        axios.post(`${API_BASE}/checkout`, payload, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        });
-      let { data } = await doCheckout();
-      const needRetry =
-        data?.status === false &&
-        typeof data?.message === 'string' &&
-        data.message.toLowerCase().includes('no products added');
-      if (needRetry) {
-        await syncGuestToServer(readGuest());
-        await refresh();
-        const second = await doCheckout();
-        data = second.data;
-      }
-      if (data?.status === true) {
-        // After internal order created, launch payment
-        setShowAddressModal(false);
-        // navigate('/payment-landing')
-        handlePayClick(data.order_id);
-      } else {
-        setError(data?.message || 'Checkout failed, please try again');
-      }
-    } catch {
-      setError('Checkout failed, please try again');
-    } finally {
-      setLoading(false);
+  // const handleCheckout = async () => {
+  //   const billId = sameAsShip ? shippingId : billingId;
+  //   try {
+  //     setLoading(true);
+  //     setError('');
+  //     await ensureServerCartNotEmpty();
+  //     const payload = qs.stringify({
+  //       userid: user.id,
+  //       shipping_address: shippingId,
+  //       billing_address: billId,
+  //       delivery_method: deliveryMethod,
+  //     });
+  //     const doCheckout = () =>
+  //       axios.post(`${API_BASE}/checkout`, payload, {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //           'Content-Type': 'application/x-www-form-urlencoded',
+  //         },
+  //       });
+  //     let { data } = await doCheckout();
+  //     const needRetry =
+  //       data?.status === false &&
+  //       typeof data?.message === 'string' &&
+  //       data.message.toLowerCase().includes('no products added');
+  //     if (needRetry) {
+  //       await syncGuestToServer(readGuest());
+  //       await refresh();
+  //       const second = await doCheckout();
+  //       data = second.data;
+  //     }
+  //     if (data?.status === true) {
+  //       // After internal order created, launch payment
+  //       setShowAddressModal(false);
+  //       // navigate('/payment-landing')
+  //       handlePayClick(data.order_id);
+  //     } else {
+  //       setError(data?.message || 'Checkout failed, please try again');
+  //     }
+  //   } catch {
+  //     setError('Checkout failed, please try again');
+  //   } finally {
+  //     setLoading(false);
       
 
+  //   }
+  // };
+
+  const handleCheckout = async () => {
+  const billId = sameAsShip ? shippingId : billingId;
+
+  try {
+    setLoading(true);
+    setError('');
+
+    // ✅ Guard: avoid calling missing funcs
+    if (typeof ensureServerCartNotEmpty === "function") {
+      await ensureServerCartNotEmpty();
+    } else {
+      // fallback: basic check
+      if (!cartItems?.length) {
+        setError("Your cart is empty");
+        return;
+      }
     }
-  };
+
+    const payload = qs.stringify({
+      userid: user.id,
+      shipping_address: shippingId,
+      billing_address: billId,
+      delivery_method: deliveryMethod,
+    });
+
+    const doCheckout = () =>
+      axios.post(`${API_BASE}/checkout`, payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      });
+
+    let { data } = await doCheckout();
+
+    const needRetry =
+      data?.status === false &&
+      typeof data?.message === "string" &&
+      data.message.toLowerCase().includes("no products added");
+
+    if (needRetry) {
+      // ✅ Guard for guest->server sync
+      if (typeof syncGuestToServer === "function") {
+        await syncGuestToServer(); // do NOT pass args
+      }
+      if (typeof refresh === "function") {
+        await refresh();
+      }
+      const second = await doCheckout();
+      data = second.data;
+    }
+
+    if (data?.status === true) {
+      setShowAddressModal(false);
+      handlePayClick(data.order_id);
+    } else {
+      setError(data?.message || "Checkout failed, please try again");
+    }
+  } catch (err) {
+    // ✅ show real reason
+    console.error("CHECKOUT ERROR:", err?.response?.data || err);
+    setError(
+      err?.response?.data?.message ||
+        err?.message ||
+        "Checkout failed, please try again"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleCancel = () => {
     setShowAddressModal(false);
@@ -692,58 +766,72 @@ export default function CheckoutPage() {
                     </button>
                   </div>
 
-                  {/* Billing */}
-                  <div>
-                    <h3 className="text-xl font-semibold text-[#6d5a52] bg-[#eadcd5] px-4 py-2 rounded-md inline-block mb-4">
-                      Billing Address
-                    </h3>
-                    <label className="flex items-center gap-2 text-sm text-[#6d5a52] mb-4">
-                      <input
-                        type="checkbox"
-                        className="accent-[#1e2633]"
-                        checked={sameAsShip}
-                        onChange={(e) => {
-                          setSameAsShip(e.target.checked);
-                          if (e.target.checked) setBillingId(shippingId);
-                        }}
-                      />
-                      Billing address same as shipping
-                    </label>
-                    {!sameAsShip && (
-                      <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
-                        {ordered(addresses, billingId).map(a => (
-                          <label
-                            key={a.id}
-                            className={`block border rounded-2xl p-4 cursor-pointer text-sm leading-snug
-                              ${billingId === a.id ? 'border-[#b49d91] bg-white' : 'border-[#d7c6bfd7] bg-[#f6ebe6]'}
-                              ${newAddrId === a.id ? 'ring-2 ring-[#b49d91]' : ''}`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <input
-                                type="radio"
-                                className="mt-1 accent-[#1e2633]"
-                                name="billing"
-                                checked={billingId === a.id}
-                                onChange={() => setBillingId(a.id)}
-                              />
-                              <div>
-                                {addrLabel(a)}
-                                {a.company && <div>Company: {a.company}</div>}
-                                {a.gst && <div>GST: {a.gst}</div>}
-                                {a.type && <div>Type: {a.type}</div>}
-                              </div>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                    <button
-                      onClick={() => { setStep('form'); setNewAddrId(null); }}
-                      className="mt-6 w-full bg-[#eadcd5] text-[#6d5a52] py-4 rounded-2xl flex items-center justify-center gap-2"
-                    >
-                      <span className="text-xl">+</span> Add New
-                    </button>
-                  </div>
+                 {/* Billing */}
+<div>
+  <h3 className="text-xl font-semibold text-[#6d5a52] bg-[#eadcd5] px-4 py-2 rounded-md inline-block mb-4">
+    Billing Address
+  </h3>
+
+  <label className="flex items-center gap-2 text-sm text-[#6d5a52] mb-4">
+    <input
+      type="checkbox"
+      className="accent-[#1e2633]"
+      checked={sameAsShip}
+      onChange={(e) => {
+        const checked = e.target.checked;
+        setSameAsShip(checked);
+        if (checked) setBillingId(shippingId);
+      }}
+    />
+    Billing address same as shipping
+  </label>
+
+  {!sameAsShip && (
+    <>
+      <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
+        {ordered(addresses, billingId).map((a) => (
+          <label
+            key={a.id}
+            className={`block border rounded-2xl p-4 cursor-pointer text-sm leading-snug
+              ${billingId === a.id ? "border-[#b49d91] bg-white" : "border-[#d7c6bfd7] bg-[#f6ebe6]"}
+              ${newAddrId === a.id ? "ring-2 ring-[#b49d91]" : ""}`}
+          >
+            <div className="flex items-start gap-3">
+              <input
+                type="radio"
+                className="mt-1 accent-[#1e2633]"
+                name="billing"
+                checked={billingId === a.id}
+                onChange={() => setBillingId(a.id)}
+              />
+              <div>
+                {addrLabel(a)}
+                {a.company && <div>Company: {a.company}</div>}
+                {a.gst && <div>GST: {a.gst}</div>}
+                {a.type && <div>Type: {a.type}</div>}
+              </div>
+            </div>
+          </label>
+        ))}
+      </div>
+
+      {/* ✅ Show Add New ONLY when unchecked */}
+      <button
+        onClick={() => { setStep("form"); setNewAddrId(null); }}
+        className="mt-6 w-full bg-[#eadcd5] text-[#6d5a52] py-4 rounded-2xl flex items-center justify-center gap-2"
+      >
+        <span className="text-xl">+</span> Add New
+      </button>
+    </>
+  )}
+</div>
+
+               
+
+
+
+
+
                 </div>
 
                 <hr className="my-8 border-[#eadcd5]" />
@@ -873,15 +961,6 @@ export default function CheckoutPage() {
                     disabled={loading}
                   >
                     {loading ? 'Processing…' : 'Proceed to Checkout'}
-                  </button>
-                </div>
-
-                <div className="flex justify-end gap-4 mt-6">
-                  <button
-                    onClick={() => setStep('select')}
-                    className="px-12 py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]"
-                  >
-                    Back
                   </button>
                 </div>
               </>

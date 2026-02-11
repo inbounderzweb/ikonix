@@ -270,6 +270,111 @@ export default function ProductDetails() {
     }
   }, [product, selectedVar, pid, qty, token, user, addGuest, addOrIncLocal, addServer, refresh]);
 
+
+
+
+
+const handleBuyNow = useCallback(async () => {
+  if (!product || !selectedVar?.vid) return;
+
+  const variantid = selectedVar.vid;
+  const price = Number(selectedVar.sale_price || selectedVar.price || 0) || 0;
+
+  const isOk = (d) =>
+    d?.success === true ||
+    d?.success === "true" ||
+    d?.success === 1 ||
+    d?.success === "1" ||
+    d?.status === true ||
+    d?.status === "true" ||
+    d?.status === 1 ||
+    d?.status === "1";
+
+  try {
+    // ---------- GUEST ----------
+    if (!token || !user) {
+      const current = readGuest();
+      const key = toKey(pid, variantid);
+      const idx = current.findIndex((i) => toKey(i.id, i.variantid) === key);
+
+      if (idx > -1) current[idx].qty = (Number(current[idx].qty) || 0) + qty;
+      else {
+        current.push({
+          id: Number(pid),
+          variantid,
+          name: product.name,
+          image: product.image,
+          price,
+          qty,
+        });
+      }
+
+      writeGuest(current);
+      await refresh();
+      navigate("/checkout");
+      return;
+    }
+
+    // ---------- LOGGED IN ----------
+    // optimistic local
+    addOrIncLocal(
+      {
+        id: Number(pid),
+        variantid,
+        name: product.name,
+        image: product.image,
+        price,
+        qty: 1,
+      },
+      qty
+    );
+
+    const resp = await addServer();
+    const data = resp?.data;
+
+    // Always refresh so checkout sees latest
+    await refresh();
+
+    // ✅ Navigate when API indicates success (status OR success)
+    if (isOk(data)) {
+      navigate("/checkout");
+      return;
+    }
+
+    // If API replied but doesn't look OK
+    Swal.fire(data?.message || "Failed to add to cart");
+  } catch (e) {
+    console.error("BUY NOW error:", e?.response?.data || e);
+
+    // try to keep UI consistent
+    try {
+      await refresh();
+    } catch {}
+
+    Swal.fire(e?.response?.data?.message || e?.message || "Error adding product before checkout");
+  }
+}, [
+  product,
+  selectedVar,
+  pid,
+  qty,
+  token,
+  user,
+  refresh,
+  navigate,
+  addOrIncLocal,
+  addServer,
+]);
+
+
+
+
+
+
+
+
+
+
   // ✅ show loader while token validation + fetch
   if (!isTokenReady || loading) return <p className="p-6 text-center">Loading…</p>;
 
@@ -437,13 +542,22 @@ export default function ProductDetails() {
               >
                 Add to Cart
               </button>
-              <button
+              {/* <button
                 disabled={!selectedVar?.vid}
                 onClick={() => navigate("/checkout")}
                 className="w-full h-12 rounded-md bg-[#2A3443] text-white font-medium hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Buy Now
-              </button>
+              </button> */}
+
+              <button
+  disabled={!selectedVar?.vid}
+  onClick={handleBuyNow}
+  className="w-full h-12 rounded-md bg-[#2A3443] text-white font-medium hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  Buy Now
+</button>
+
             </div>
 
             <hr className="border-[#B39384]/60 mt-7" />
