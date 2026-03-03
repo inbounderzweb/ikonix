@@ -393,12 +393,58 @@ export default function CheckoutPage() {
             navigate('/order-confirmation')
           }
         },
-        modal: { ondismiss: () => { setLoading(false); navigate('/'); } },
+        modal: {
+          ondismiss: async () => {
+            setLoading(false);
+            // The backend /checkout API blindly empties the cart before payment is confirmed.
+            // If the user closes the modal, their cart is gone. We must dynamically restore it here.
+            try {
+              if (cartItems && cartItems.length > 0) {
+                for (const item of cartItems) {
+                  await axios.post(`${API_BASE}/cart`, qs.stringify({
+                    userid: user.id,
+                    productid: item.id,
+                    variantid: item.variantid,
+                    qty: item.qty
+                  }), {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                  });
+                }
+                await refresh(); // Refresh Cart UI globally to show restored items
+              }
+            } catch (err) {
+              console.error("Cart restore failed", err);
+            }
+            navigate('/checkout'); // keep them on checkout instead of forcefully booting them
+          }
+        },
       });
 
-      rzp.on('payment.failed', (resp) => {
+      rzp.on('payment.failed', async (resp) => {
         setLoading(false);
         setError(resp?.error?.description || 'Payment failed');
+        // Restore cart on payment failure too
+        try {
+          if (cartItems && cartItems.length > 0) {
+            for (const item of cartItems) {
+              await axios.post(`${API_BASE}/cart`, qs.stringify({
+                userid: user.id,
+                productid: item.id,
+                variantid: item.variantid,
+                qty: item.qty
+              }), {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/x-www-form-urlencoded'
+                }
+              });
+            }
+            await refresh();
+          }
+        } catch (err) { }
       });
 
       rzp.open();
