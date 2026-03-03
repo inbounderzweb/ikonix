@@ -60,7 +60,7 @@ export default function ContactPage() {
             );
 
             // This will open the user's default email client
-            window.location.href = `mailto:contact@ikonix.com?subject=${subject}&body=${body}`;
+            window.location.href = `mailto:555jinson@gmail.com?subject=${subject}&body=${body}`;
 
             // Reset form
             setForm({ first: "", last: "", email: "", phone: "", comment: "" });

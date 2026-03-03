@@ -30,9 +30,8 @@ export function isTokenExpired() {
 
   const now = Date.now();
   const tokenAge = now - parseInt(tokenTime, 10);
-  // Consider token expired after 23 hours (23 * 60 * 60 * 1000 ms)
-  // This gives a buffer before the actual 24-hour expiration
-  return tokenAge > 23 * 60 * 60 * 1000;
+  // Token expires in 1 hour on backend, so refresh after 55 minutes buffer
+  return tokenAge > 55 * 60 * 1000;
 }
 
 export function clearToken() {

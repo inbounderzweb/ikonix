@@ -25,7 +25,7 @@ function AboutUs() {
 >
 
 
-<span className='font-[luxia] text-[#53443D] text-[36px] leading-[112.5%] tracking-[0.5px] flex  align-middle items-center lg:mr-[80px] xl:mr-[150px]'>Lorem Ipsum <br/>dolor sit amet</span>
+<span className='font-[luxia] text-[#53443D] text-[36px] leading-[112.5%] tracking-[0.5px] flex  align-middle items-center lg:mr-[80px] xl:mr-[150px]'>Abouts Us</span>
   
 </div>
 {/* End Hero section for desktop  */}
@@ -39,7 +39,7 @@ function AboutUs() {
 >
 
 
-<p className='text-center mt-[24px] font-[luxia] font-[400] text-[27px] tracking-[0.5px]'>Lorem Ipsum <br/>dolor sit amet</p>
+<p className='text-center mt-[24px] font-[luxia] font-[400] text-[27px] tracking-[0.5px]'>Abouts Us</p>
   
 </div>
 {/* End Hero section mobile  */}

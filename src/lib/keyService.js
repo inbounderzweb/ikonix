@@ -13,9 +13,9 @@ export default function ValidateOnLoad() {
 
     checkToken(); // Initial check
 
-    // Check periodically, e.g., every hour.
+    // Check periodically, e.g., every 50 minutes.
     // ensureTokenReady will only fetch if actually expired.
-    const interval = setInterval(checkToken, 60 * 60 * 1000);
+    const interval = setInterval(checkToken, 50 * 60 * 1000);
     return () => clearInterval(interval);
   }, [setToken]);
 
