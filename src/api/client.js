@@ -6,7 +6,7 @@ const VALIDATE_URL = "https://ikonixperfumer.com/beta/api/validate";
 
 let refreshingPromise = null;
 
-async function fetchNewToken() {
+export async function fetchNewToken() {
   const { data } = await axios.post(
     VALIDATE_URL,
     qs.stringify({
@@ -24,7 +24,7 @@ async function fetchNewToken() {
   return data.token;
 }
 
-function isTokenExpired() {
+export function isTokenExpired() {
   const tokenTime = localStorage.getItem("authTokenTime");
   if (!tokenTime) return true; // No token time means it's expired or never set
 
@@ -35,21 +35,30 @@ function isTokenExpired() {
   return tokenAge > 23 * 60 * 60 * 1000;
 }
 
-function clearToken() {
+export function clearToken() {
   localStorage.removeItem("authToken");
   localStorage.removeItem("authTokenTime");
 }
 
-async function ensureTokenReady() {
+export async function ensureTokenReady() {
   let token = localStorage.getItem("authToken");
 
   if (!token || isTokenExpired()) {
     clearToken(); // Clear potentially expired or invalid token
+    if (!refreshingPromise) {
+      refreshingPromise = fetchNewToken()
+        .then((newToken) => {
+          return newToken;
+        })
+        .finally(() => {
+          refreshingPromise = null;
+        });
+    }
+
     try {
-      token = await fetchNewToken();
+      token = await refreshingPromise;
     } catch (error) {
       console.error("Failed to fetch new token:", error);
-      // Optionally, re-throw or handle more gracefully
       return null;
     }
   }

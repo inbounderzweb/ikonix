@@ -1,14 +1,12 @@
 // src/services/productApi.js
 import { createApi, fetchBaseQuery, retry } from '@reduxjs/toolkit/query/react';
-
-// helper to grab latest token
-const fetchAuthToken = () => localStorage.getItem('authToken');
+import { ensureTokenReady } from '../../api/client';
 
 // 1️⃣ Create your raw baseQuery
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: 'https://ikonixperfumer.com/beta/api/',
-  prepareHeaders: (headers) => {
-    const token = fetchAuthToken();
+  prepareHeaders: async (headers) => {
+    const token = await ensureTokenReady();
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }

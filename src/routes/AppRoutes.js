@@ -20,28 +20,28 @@ import ValidateOnLoad from "../components/ValidateOnLoad";
 const AppRoutes = () => {
   return (
     <>
-    <ValidateOnLoad />
-    <Routes>
-      <Route path="/" element={<AppLayout />} />
-      <Route path="/shop" element={<Shop />} />
-      <Route path="/product-details/:pid" element={<ProductDetail />}/>
-      <Route path='/checkout' element={<CheckoutPage />} />
-      <Route path='/contact' element={<ContactPage />} />
-      <Route path='/about' element={<AboutUs />}/>
-      <Route path='/profile' element={<UserProfile />} />
-      <Route path='/user-profile' element={<UserProfile/>} />
-      <Route path='/orders' element={<Orders />} />
-      <Route path='/addresses' element={<AddresList />} />
-      <Route path='/payment-landing' element={<PaymentLanding />} />
-      <Route path='/order-confirmation' element={<OrderConfirmation />} />
+      <ValidateOnLoad />
+      <Routes>
+        <Route path="/" element={<AppLayout />} />
+        <Route path="/shop" element={<Shop />} />
+        <Route path="/product-details/:pid" element={<ProductDetail />} />
+        <Route path='/checkout' element={<CheckoutPage />} />
+        <Route path='/contact' element={<ContactPage />} />
+        <Route path='/about' element={<AboutUs />} />
+        <Route path='/profile' element={<UserProfile />} />
+        <Route path='/user-profile' element={<UserProfile />} />
+        <Route path='/orders' element={<Orders />} />
+        <Route path='/addresses' element={<AddresList />} />
+        <Route path='/payment-landing' element={<PaymentLanding />} />
+        <Route path='/order-confirmation' element={<OrderConfirmation />} />
 
 
 
 
 
-    </Routes>
+      </Routes>
     </>
-    
+
   );
 };
 
