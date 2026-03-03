@@ -15,7 +15,7 @@ const deals = [
     blurb: "Lorem ipsum + dolor sit amet ipsum",
     oldPrice: "Rs.899/-",
     newPrice: "Rs.699/-",
-    dataurl:`/product-details/68?vid=1`,
+    dataurl: `/product-details/68?vid=1`,
   },
   {
     id: 2,
@@ -24,7 +24,7 @@ const deals = [
     blurb: "Lorem ipsum + dolor sit amet ipsum",
     oldPrice: "Rs.899/-",
     newPrice: "Rs.699/-",
-    dataurl:`product-details/68?vid=1`,
+    dataurl: `product-details/68?vid=1`,
 
   },
 ];
@@ -85,7 +85,7 @@ const settings = {
 
 export default function SpecialDealsSlider() {
 
-const Navigate = useNavigate();
+  const Navigate = useNavigate();
 
 
   return (
@@ -105,9 +105,7 @@ const Navigate = useNavigate();
             special deals
           </h1>
           <p className="text-[#53443D] text-[16px] font-[lato] text-center font-[400] w-full md:w-[710px] mx-auto">
-            Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed
-            diam nonummy nibh euismod tincidunt ut laoreet dolore magna
-            aliquam erat volutpat.
+            Our exclusive perfume creations blend rare ingredients and refined expertise. Discover captivating notes that tell your story with confidence and style.
           </p>
 
           {/* Slider */}
@@ -135,7 +133,7 @@ const Navigate = useNavigate();
                           {deal.newPrice}
                         </span>
                       </div>
-                      <button onClick={()=>Navigate(`${deal.dataurl}`)} className="text-[#13181F] font-[lato] text-[14px] bg-[#C5A291] py-[8px] px-[20px] rounded-[24px]">
+                      <button onClick={() => Navigate(`${deal.dataurl}`)} className="text-[#13181F] font-[lato] text-[14px] bg-[#C5A291] py-[8px] px-[20px] rounded-[24px]">
                         Add To Cart
                       </button>
                     </div>

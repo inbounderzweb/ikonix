@@ -11,22 +11,22 @@ import { Link } from 'react-router-dom';
 
 const sliderData = [
   {
-    title: 'Lorem ipsum dolor',
-    subtitle: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, ipsum dolor sit amet, consectetur adipiscing.',
+    title: 'Indulge in Signature Scents',
+    subtitle: 'Discover handcrafted fragrances that captivate the senses and define your presence.',
     image: firstBanner,
     buttonText: 'View Products',
     buttonLink: '/shop',
   },
   {
-    title: 'Lorem ipsum dolo',
-    subtitle: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, ipsum dolor sit amet, consectetur adipiscing.',
+    title: 'Awaken Your Senses',
+    subtitle: 'Where luxury meets emotion — find your perfect scent.',
     image: secondBanner,
     buttonText: 'View Products',
     buttonLink: '/shop',
   },
   {
-    title: 'Lorem ipsum dolo',
-    subtitle: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, ipsum dolor sit amet, consectetur adipiscing.',
+    title: 'Define Your Signature',
+    subtitle: 'Elevate every moment with an unforgettable scent.',
     image: thirdbanner,
     buttonText: 'View Products',
     buttonLink: '/shop',
@@ -49,7 +49,7 @@ const NextArrow = ({ onClick }) => (
     onClick={onClick}
     className="absolute bottom-4 right-4 z-10 cursor-pointer"
   >
-        <img src={arrowright} alt='arrow-right' />
+    <img src={arrowright} alt='arrow-right' />
     {/* <ChevronRightIcon className="text-white w-6 h-6" /> */}
   </div>
 );
@@ -68,7 +68,7 @@ const SliderComponent = () => {
     prevArrow: <PrevArrow />,
     nextArrow: <NextArrow />,
   };
-  
+
 
   return (
     <div className="relative w-[95%] lg:w-[75%] mx-auto">
@@ -80,7 +80,7 @@ const SliderComponent = () => {
               alt={`Product ${index + 1}`}
               className="w-full object-cover bg-center"
             />
-            <div className="absolute top-1/2 transform -translate-y-1/2 text-left text-white pl-[40px] lg:pl-[60px] xl:pl-[90px] w-[450px]">
+            <div className="absolute top-1/2 transform -translate-y-1/2 text-left text-white pl-[40px] lg:pl-[60px] xl:pl-[90px] w-[550px]">
               <h2 className="font-sans mb-[8px] text-[20px] lg:text-[40px] xl:text-[61px] text-base-[96%]">{slide.title}</h2>
               <p className="font-fancy text-[16px] font-normal mb-[16px]">{slide.subtitle}</p>
               <Link

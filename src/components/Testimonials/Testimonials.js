@@ -10,23 +10,23 @@ const deals = [
   {
     id: 1,
     img: test1,
-    name: "Full Name",
+    name: "Arjun Menon",
     testimonial:
-      "Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat."
+      "I’ve tried many fragrances, but Ikonix perfumes truly stand out. The scent feels premium, lasts the entire day, and always gets compliments. It has now become my everyday signature fragrance."
   },
   {
     id: 2,
     img: test2,
-    name: "Full name",
+    name: "Rahul Nair",
     testimonial:
-      "Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat."
+      "The quality of Ikonix perfumes is exceptional. The fragrance is rich, long-lasting, and perfectly balanced. I especially loved the custom perfume experience — it feels truly personal and unique."
   },
   {
     id: 3,
     img: test3,
-    name: "Full Name",
+    name: "Meera Thomas",
     testimonial:
-      "Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat."
+      "I absolutely love the elegance of Ikonix fragrances. The scent is sophisticated and stays for hours without fading. It’s now my go-to perfume for special occasions and daily wear."
   },
 ];
 
@@ -64,28 +64,28 @@ const settings = {
 function Testimonials() {
   return (
     <div className='bg-white w-full'>
-    <div className="w-[95%] md:w-[75%] mx-auto lg:py-16 py-8">
+      <div className="w-[95%] md:w-[75%] mx-auto lg:py-16 py-8">
         <div className='lg:w-[700px] w-[95%] mx-auto'>
-        <h1 className='text-[#B39384] font-[Luxia] text-center text-[27px] font-normal tracking-[0.5px]'>User Testimonials</h1>
-        <p className='font-[lato] text-[#53443D] text-center text-[16px] font-normal tracking-[0.5px]'>Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.</p>
+          <h1 className='text-[#B39384] font-[Luxia] text-center text-[27px] font-normal tracking-[0.5px]'>User Testimonials</h1>
+          <p className='font-[lato] text-[#53443D] text-center text-[16px] font-normal tracking-[0.5px]'>Hear what our customers say about their experience with Ikonix Perfumer. From signature scents to custom fragrances, our perfumes leave a lasting impression.</p>
         </div>
-        
-      <Slider {...settings}>
-        {deals.map((deal) => (
-          <div key={deal.id} className="flex flex-col items-start p-4 gap-5">
-            <div className="bg-[#EDE2DD] rounded-[24px]">
-              <div className="w-[300px] h-[250px] mx-auto flex flex-col items-center justify-center gap-3">
-                <img src={deal.img} alt="testimonial-profile" className="w-16 h-16 rounded-full object-cover" />
-                <div className="grid text-center p-2">
-                  <span className="text-[#C5A291] font-[lato] text-[21px] font-[700]">{deal.name}</span>
-                  <span className="text-[14px] font-[lato] text-gray-600">{deal.testimonial}</span>
+
+        <Slider {...settings}>
+          {deals.map((deal) => (
+            <div key={deal.id} className="flex flex-col items-start p-4 gap-5">
+              <div className="bg-[#EDE2DD] rounded-[24px]">
+                <div className="w-[300px] h-[250px] mx-auto flex flex-col items-center justify-center gap-3">
+                  <img src={deal.img} alt="testimonial-profile" className="w-16 h-16 rounded-full object-cover" />
+                  <div className="grid text-center p-2">
+                    <span className="text-[#C5A291] font-[lato] text-[21px] font-[700]">{deal.name}</span>
+                    <span className="text-[14px] font-[lato] text-gray-600">{deal.testimonial}</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-      </Slider>
-    </div>
+          ))}
+        </Slider>
+      </div>
     </div>
   );
 }

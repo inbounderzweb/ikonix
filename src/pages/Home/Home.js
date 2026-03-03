@@ -16,15 +16,15 @@ function Home() {
   return (
     <div className=''>
       <div className='hidden md:block'><SliderComponent /></div>
-        <div className='block md:hidden'><MobileSlider/></div>
-        <div><CollectionCards /></div>
-        <div><ProductList/></div>
-        <div><SpecialDealsSlider /></div>
-        <div><OwnPerfume /></div>
-        <div><UspSection /></div>
-        <div><InstagramShowcase /></div>
-        <div><Testimonials /></div>
-        <div><BlogList /></div>
+      <div className='block md:hidden'><MobileSlider /></div>
+      <div><CollectionCards /></div>
+      <div><ProductList /></div>
+      <div><SpecialDealsSlider /></div>
+      <div><OwnPerfume /></div>
+      <div><UspSection /></div>
+      <div><InstagramShowcase /></div>
+      <div><Testimonials /></div>
+      {/* <div><BlogList /></div> */}
 
 
     </div>

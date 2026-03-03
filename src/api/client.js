@@ -24,12 +24,44 @@ async function fetchNewToken() {
   return data.token;
 }
 
+function isTokenExpired() {
+  const tokenTime = localStorage.getItem("authTokenTime");
+  if (!tokenTime) return true; // No token time means it's expired or never set
+
+  const now = Date.now();
+  const tokenAge = now - parseInt(tokenTime, 10);
+  // Consider token expired after 23 hours (23 * 60 * 60 * 1000 ms)
+  // This gives a buffer before the actual 24-hour expiration
+  return tokenAge > 23 * 60 * 60 * 1000;
+}
+
+function clearToken() {
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("authTokenTime");
+}
+
+async function ensureTokenReady() {
+  let token = localStorage.getItem("authToken");
+
+  if (!token || isTokenExpired()) {
+    clearToken(); // Clear potentially expired or invalid token
+    try {
+      token = await fetchNewToken();
+    } catch (error) {
+      console.error("Failed to fetch new token:", error);
+      // Optionally, re-throw or handle more gracefully
+      return null;
+    }
+  }
+  return token;
+}
+
 export function createApiClient({ getToken, setToken, setIsTokenReady }) {
   const api = axios.create();
 
-  // Attach token to every request if present
-  api.interceptors.request.use((config) => {
-    const t = getToken?.() || localStorage.getItem("authToken");
+  // Attach token to every request, ensuring token is fresh
+  api.interceptors.request.use(async (config) => {
+    const t = getToken?.() || await ensureTokenReady();
     if (t) config.headers.Authorization = `Bearer ${t}`;
     return config;
   });

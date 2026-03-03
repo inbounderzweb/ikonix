@@ -61,7 +61,7 @@ export default function CheckoutPage() {
   const [form, setForm] = useState({
     street: '', city: '',
     pincode: '', district: '', state: '', country: '',
-    
+
   });
   const [addresses, setAddresses] = useState([]);
   const [shippingId, setShippingId] = useState(null);
@@ -93,14 +93,14 @@ export default function CheckoutPage() {
 
   const addrLabel = (a = {}) =>
     // [a.doorno, a.house, a.street, a.city, a.district, a.state, a.country, a.pincode]
-  [ a.street, a.city, a.district, a.state, a.country, a.pincode]
+    [a.street, a.city, a.district, a.state, a.country, a.pincode]
       .filter(Boolean)
       .join(', ');
 
   // helper to push the selected address to the top
   const ordered = (list, selectedId) => {
     const first = list.find(a => a.id === selectedId);
-    const rest  = list.filter(a => a.id !== selectedId);
+    const rest = list.filter(a => a.id !== selectedId);
     return first ? [first, ...rest] : rest;
   };
 
@@ -311,7 +311,7 @@ export default function CheckoutPage() {
       const payload = qs.stringify({
         order_id,
         userid: user?.id,
-        client_hint_amount: Math.round(Number(total)), // paise hint (server must recompute)
+        client_hint_amount: Math.round(Number(total) * 100), // convert to paise
         receipt: `ikonix_${order_id}`,
         notes: JSON.stringify({ source: 'web', cart: cartItems.length }),
       });
@@ -357,11 +357,11 @@ export default function CheckoutPage() {
         description: 'Order Payment',
         image: '/favicon.ico',
         prefill: {
-          name:    res.customer?.name  ?? user?.name  ?? '',
-          email:   res.customer?.email ?? user?.email ?? '',
+          name: res.customer?.name ?? user?.name ?? '',
+          email: res.customer?.email ?? user?.email ?? '',
           contact: res.customer?.phone ?? '',
         },
-          
+
         theme: { color: '#b49d91' },
         handler: async (resp) => {
           try {
@@ -378,11 +378,11 @@ export default function CheckoutPage() {
               body: form,
             });
             const result = await verifyRes.json().catch(() => ({}));
-          
+
             if (!verifyRes.ok || result?.status === false) {
               throw new Error(result?.message || 'Signature verification failed');
             }
-            
+
             // console.log(result,'finalout')
 
           } catch (err) {
@@ -393,7 +393,7 @@ export default function CheckoutPage() {
             navigate('/order-confirmation')
           }
         },
-        modal: { ondismiss: () => {setLoading(false); navigate('/');} }, 
+        modal: { ondismiss: () => { setLoading(false); navigate('/'); } },
       });
 
       rzp.on('payment.failed', (resp) => {
@@ -451,81 +451,81 @@ export default function CheckoutPage() {
   //     setError('Checkout failed, please try again');
   //   } finally {
   //     setLoading(false);
-      
+
 
   //   }
   // };
 
   const handleCheckout = async () => {
-  const billId = sameAsShip ? shippingId : billingId;
+    const billId = sameAsShip ? shippingId : billingId;
 
-  try {
-    setLoading(true);
-    setError('');
+    try {
+      setLoading(true);
+      setError('');
 
-    // ✅ Guard: avoid calling missing funcs
-    if (typeof ensureServerCartNotEmpty === "function") {
-      await ensureServerCartNotEmpty();
-    } else {
-      // fallback: basic check
-      if (!cartItems?.length) {
-        setError("Your cart is empty");
-        return;
+      // ✅ Guard: avoid calling missing funcs
+      if (typeof ensureServerCartNotEmpty === "function") {
+        await ensureServerCartNotEmpty();
+      } else {
+        // fallback: basic check
+        if (!cartItems?.length) {
+          setError("Your cart is empty");
+          return;
+        }
       }
-    }
 
-    const payload = qs.stringify({
-      userid: user.id,
-      shipping_address: shippingId,
-      billing_address: billId,
-      delivery_method: deliveryMethod,
-    });
-
-    const doCheckout = () =>
-      axios.post(`${API_BASE}/checkout`, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
+      const payload = qs.stringify({
+        userid: user.id,
+        shipping_address: shippingId,
+        billing_address: billId,
+        delivery_method: deliveryMethod,
       });
 
-    let { data } = await doCheckout();
+      const doCheckout = () =>
+        axios.post(`${API_BASE}/checkout`, payload, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        });
 
-    const needRetry =
-      data?.status === false &&
-      typeof data?.message === "string" &&
-      data.message.toLowerCase().includes("no products added");
+      let { data } = await doCheckout();
 
-    if (needRetry) {
-      // ✅ Guard for guest->server sync
-      if (typeof syncGuestToServer === "function") {
-        await syncGuestToServer(); // do NOT pass args
+      const needRetry =
+        data?.status === false &&
+        typeof data?.message === "string" &&
+        data.message.toLowerCase().includes("no products added");
+
+      if (needRetry) {
+        // ✅ Guard for guest->server sync
+        if (typeof syncGuestToServer === "function") {
+          await syncGuestToServer(); // do NOT pass args
+        }
+        if (typeof refresh === "function") {
+          await refresh();
+        }
+        const second = await doCheckout();
+        data = second.data;
       }
-      if (typeof refresh === "function") {
-        await refresh();
-      }
-      const second = await doCheckout();
-      data = second.data;
-    }
 
-    if (data?.status === true) {
-      setShowAddressModal(false);
-      handlePayClick(data.order_id);
-    } else {
-      setError(data?.message || "Checkout failed, please try again");
-    }
-  } catch (err) {
-    // ✅ show real reason
-    console.error("CHECKOUT ERROR:", err?.response?.data || err);
-    setError(
-      err?.response?.data?.message ||
+      if (data?.status === true) {
+        setShowAddressModal(false);
+        handlePayClick(data.order_id);
+      } else {
+        setError(data?.message || "Checkout failed, please try again");
+      }
+    } catch (err) {
+      // ✅ show real reason
+      console.error("CHECKOUT ERROR:", err?.response?.data || err);
+      setError(
+        err?.response?.data?.message ||
         err?.message ||
         "Checkout failed, please try again"
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
   const handleCancel = () => {
@@ -678,10 +678,10 @@ export default function CheckoutPage() {
 
                 <div className="grid grid-cols-2 gap-4 text-[#6d5a52]">
                   {[
-                    ['street','Street'],
-                    ['city','City'], ['pincode','Pincode'], ['district','District'],
-                    ['state','State'], ['country','Country'],
-                   
+                    ['street', 'Street'],
+                    ['city', 'City'], ['pincode', 'Pincode'], ['district', 'District'],
+                    ['state', 'State'], ['country', 'Country'],
+
                   ].map(([k, l]) => (
                     <div key={k} className="flex flex-col gap-1">
                       <label className="text-sm">{l}</label>
@@ -766,67 +766,67 @@ export default function CheckoutPage() {
                     </button>
                   </div>
 
-                 {/* Billing */}
-<div>
-  <h3 className="text-xl font-semibold text-[#6d5a52] bg-[#eadcd5] px-4 py-2 rounded-md inline-block mb-4">
-    Billing Address
-  </h3>
+                  {/* Billing */}
+                  <div>
+                    <h3 className="text-xl font-semibold text-[#6d5a52] bg-[#eadcd5] px-4 py-2 rounded-md inline-block mb-4">
+                      Billing Address
+                    </h3>
 
-  <label className="flex items-center gap-2 text-sm text-[#6d5a52] mb-4">
-    <input
-      type="checkbox"
-      className="accent-[#1e2633]"
-      checked={sameAsShip}
-      onChange={(e) => {
-        const checked = e.target.checked;
-        setSameAsShip(checked);
-        if (checked) setBillingId(shippingId);
-      }}
-    />
-    Billing address same as shipping
-  </label>
+                    <label className="flex items-center gap-2 text-sm text-[#6d5a52] mb-4">
+                      <input
+                        type="checkbox"
+                        className="accent-[#1e2633]"
+                        checked={sameAsShip}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setSameAsShip(checked);
+                          if (checked) setBillingId(shippingId);
+                        }}
+                      />
+                      Billing address same as shipping
+                    </label>
 
-  {!sameAsShip && (
-    <>
-      <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
-        {ordered(addresses, billingId).map((a) => (
-          <label
-            key={a.id}
-            className={`block border rounded-2xl p-4 cursor-pointer text-sm leading-snug
+                    {!sameAsShip && (
+                      <>
+                        <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
+                          {ordered(addresses, billingId).map((a) => (
+                            <label
+                              key={a.id}
+                              className={`block border rounded-2xl p-4 cursor-pointer text-sm leading-snug
               ${billingId === a.id ? "border-[#b49d91] bg-white" : "border-[#d7c6bfd7] bg-[#f6ebe6]"}
               ${newAddrId === a.id ? "ring-2 ring-[#b49d91]" : ""}`}
-          >
-            <div className="flex items-start gap-3">
-              <input
-                type="radio"
-                className="mt-1 accent-[#1e2633]"
-                name="billing"
-                checked={billingId === a.id}
-                onChange={() => setBillingId(a.id)}
-              />
-              <div>
-                {addrLabel(a)}
-                {a.company && <div>Company: {a.company}</div>}
-                {a.gst && <div>GST: {a.gst}</div>}
-                {a.type && <div>Type: {a.type}</div>}
-              </div>
-            </div>
-          </label>
-        ))}
-      </div>
+                            >
+                              <div className="flex items-start gap-3">
+                                <input
+                                  type="radio"
+                                  className="mt-1 accent-[#1e2633]"
+                                  name="billing"
+                                  checked={billingId === a.id}
+                                  onChange={() => setBillingId(a.id)}
+                                />
+                                <div>
+                                  {addrLabel(a)}
+                                  {a.company && <div>Company: {a.company}</div>}
+                                  {a.gst && <div>GST: {a.gst}</div>}
+                                  {a.type && <div>Type: {a.type}</div>}
+                                </div>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
 
-      {/* ✅ Show Add New ONLY when unchecked */}
-      <button
-        onClick={() => { setStep("form"); setNewAddrId(null); }}
-        className="mt-6 w-full bg-[#eadcd5] text-[#6d5a52] py-4 rounded-2xl flex items-center justify-center gap-2"
-      >
-        <span className="text-xl">+</span> Add New
-      </button>
-    </>
-  )}
-</div>
+                        {/* ✅ Show Add New ONLY when unchecked */}
+                        <button
+                          onClick={() => { setStep("form"); setNewAddrId(null); }}
+                          className="mt-6 w-full bg-[#eadcd5] text-[#6d5a52] py-4 rounded-2xl flex items-center justify-center gap-2"
+                        >
+                          <span className="text-xl">+</span> Add New
+                        </button>
+                      </>
+                    )}
+                  </div>
 
-               
+
 
 
 

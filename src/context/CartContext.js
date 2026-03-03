@@ -380,6 +380,8 @@ export function CartProvider({ children }) {
         refresh: fetchCart,
         addOrIncLocal,
         clear,
+        syncGuestToServer,
+        ensureServerCartNotEmpty: syncGuestToServer,
       }}
     >
       {children}

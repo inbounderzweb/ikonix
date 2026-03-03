@@ -3,32 +3,32 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
-import mobilefirstBanner  from "../../../assets/mobilefirst.svg";
+import mobilefirstBanner from "../../../assets/mobilefirst.svg";
 import mobilesecondBanner from "../../../assets/mobilesecond.svg";
-import mobilethirdBanner  from "../../../assets/mobilethird.svg";
+import mobilethirdBanner from "../../../assets/mobilethird.svg";
 import { Link } from "react-router-dom";
 
 const sliderData = [
   {
-    title: "Lorem ipsum dolor sit amet",
+    title: "Indulge in Signature Scents",
     subtitle:
-      "Lorem ipsum dolor sit amet, consectetuer adipiscing elit, ipsum dolor sit amet, consectetuer adipiscing",
+      "Discover handcrafted fragrances that captivate the senses and define your presence.",
     image: mobilefirstBanner,
     buttonText: "View Products",
-   buttonLink: '/shop',
+    buttonLink: '/shop',
   },
   {
-    title: "Lorem ipsum dolor sit amet",
+    title: "Awaken Your Senses",
     subtitle:
-      "Lorem ipsum dolor sit amet, consectetuer adipiscing elit, ipsum dolor sit amet, consectetuer adipiscing",
+      "Where luxury meets emotion — find your perfect scent.",
     image: mobilesecondBanner,
     buttonText: "View Products",
     buttonLink: '/shop',
   },
   {
-    title: "Lorem ipsum dolor sit amet",
+    title: "Define Your Signature",
     subtitle:
-      "Lorem ipsum dolor sit amet, consectetuer adipiscing elit, ipsum dolor sit amet, consectetuer adipiscing",
+      "Elevate every moment with an unforgettable scent.",
     image: mobilethirdBanner,
     buttonText: "View Products",
     buttonLink: '/shop',

@@ -218,7 +218,12 @@ export default function ProductList() {
   }
 
   if (isError) {
-    return <p className="text-center py-8">Error loading products..</p>;
+    return (
+      <div className="text-center py-8">
+        <p>Error loading products.</p>
+        <button onClick={refetch} className="mt-2 px-4 py-2 bg-[#b49d91] text-white rounded">Retry</button>
+      </div>
+    );
   }
 
   return (
@@ -235,10 +240,9 @@ export default function ProductList() {
               onClick={() => setSelectedCategory(cat)}
               className={`
                 px-4 py-2 rounded-full flex-shrink-0 transition
-                ${
-                  selectedCategory === cat
-                    ? 'bg-[#b49d91] text-white'
-                    : 'bg-white text-[#b49d91] border border-[#b49d91]'
+                ${selectedCategory === cat
+                  ? 'bg-[#b49d91] text-white'
+                  : 'bg-white text-[#b49d91] border border-[#b49d91]'
                 }
               `}
             >
