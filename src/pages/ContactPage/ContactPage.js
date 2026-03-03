@@ -43,11 +43,32 @@ export default function ContactPage() {
           />
 
           {/* form */}
-          <form className="flex-1 w-full order-1 md:order-2" onSubmit={(e) => e.preventDefault()}>
+          <form className="flex-1 w-full order-1 md:order-2" onSubmit={(e) => {
+            e.preventDefault();
+            const { first, last, email, phone, comment } = form;
+
+            if (!first || !email || !comment) {
+              alert("Please fill in First Name, Email, and Comment.");
+              return;
+            }
+
+            // Using pure client-side mailto option
+            // (Alternatively, use EmailJS / Web3Forms if you want it to send silently without opening an email app)
+            const subject = encodeURIComponent(`Ikonix Contact Form: Message from ${first} ${last}`);
+            const body = encodeURIComponent(
+              `Name: ${first} ${last}\nEmail: ${email}\nPhone: ${phone}\n\nMessage:\n${comment}`
+            );
+
+            // This will open the user's default email client
+            window.location.href = `mailto:contact@ikonix.com?subject=${subject}&body=${body}`;
+
+            // Reset form
+            setForm({ first: "", last: "", email: "", phone: "", comment: "" });
+          }}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <label htmlFor="first" className="font-[lato] text-[12px] font-[400] text-[#53443D] tracking-[0.5px]">
-                  First Name
+                  First Name *
                 </label>
                 <input
                   id="first"
@@ -56,6 +77,7 @@ export default function ContactPage() {
                   className={inputBase}
                   value={form.first}
                   onChange={(e) => setForm({ ...form, first: e.target.value })}
+                  required
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -73,7 +95,7 @@ export default function ContactPage() {
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="email" className="font-[lato] text-[12px] font-[400] text-[#53443D] tracking-[0.5px]">
-                  Email
+                  Email *
                 </label>
                 <input
                   id="email"
@@ -82,35 +104,36 @@ export default function ContactPage() {
                   className={inputBase}
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  required
                 />
               </div>
               <div className="flex flex-col gap-1">
-  <label
-    htmlFor="phone"
-    className="text-[13px] font-normal text-[#53443D] tracking-[0.5px]"
-  >
-    Phone Number
-  </label>
-  <div className="flex items-center bg-[#FDFBFA] border rounded-[8px] overflow-hidden w-full">
-    <span className="pl-4 pr-2">+91</span>
-    <div className="h-[24px] w-[1px] bg-[#4B3A34] mx-1" />
-    <input
-      id="phone"
-      type="tel"
-      placeholder="0000 000 000"
-      className="flex-1 px-2 py-[10px] "
-      value={form.phone}
-      onChange={(e) => setForm({ ...form, phone: e.target.value })}
-    />
-  </div>
-</div>
+                <label
+                  htmlFor="phone"
+                  className="text-[13px] font-normal text-[#53443D] tracking-[0.5px]"
+                >
+                  Phone Number
+                </label>
+                <div className="flex items-center bg-[#FDFBFA] border rounded-[8px] overflow-hidden w-full">
+                  <span className="pl-4 pr-2">+91</span>
+                  <div className="h-[24px] w-[1px] bg-[#4B3A34] mx-1" />
+                  <input
+                    id="phone"
+                    type="tel"
+                    placeholder="0000 000 000"
+                    className="flex-1 px-2 py-[10px] focus:outline-none"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  />
+                </div>
+              </div>
 
             </div>
 
             {/* comment */}
             <div className="flex flex-col gap-1 mt-4">
               <label htmlFor="comment" className="font-[lato] text-[12px] font-[400] text-[#53443D] tracking-[0.5px]">
-                Comment
+                Comment *
               </label>
               <textarea
                 id="comment"
@@ -119,6 +142,7 @@ export default function ContactPage() {
                 className={`${inputBase} resize-none`}
                 value={form.comment}
                 onChange={(e) => setForm({ ...form, comment: e.target.value })}
+                required
               />
             </div>
 
@@ -127,7 +151,7 @@ export default function ContactPage() {
               type="submit"
               className="mt-6 w-full md:w-auto px-16 bg-[#12131a] text-[#EAEBED] text-[lato] tracking-[0.5px] font-[400] py-3 rounded-md hover:opacity-90 transition block mx-auto"
             >
-              Submit
+              Send Message
             </button>
           </form>
         </div>
