@@ -72,7 +72,14 @@ export default function ProductDetails() {
   const vid = sp.get("vid");
 
   const { user, token, setToken, setIsTokenReady, isTokenReady } = useAuth();
-  const { refresh, addOrIncLocal } = useCart();
+  const { items, refresh, addOrIncLocal } = useCart();
+
+  const [product, setProduct] = useState(null);
+  const [selectedVar, setSelectedVar] = useState(null);
+  const [qty, setQty] = useState(1);
+  const [activeImg, setActiveImg] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   // ✅ shared client that auto-refreshes token if needed
   const api = useMemo(
@@ -85,12 +92,14 @@ export default function ProductDetails() {
     [token, setToken, setIsTokenReady]
   );
 
-  const [product, setProduct] = useState(null);
-  const [selectedVar, setSelectedVar] = useState(null);
-  const [qty, setQty] = useState(1);
-  const [activeImg, setActiveImg] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const checkInCart = useCallback(() => {
+    if (!selectedVar?.vid) return false;
+    return items.some(
+      (it) => 
+        Number(it.id) === Number(pid) && 
+        String(it.variantid) === String(selectedVar.vid)
+    );
+  }, [items, pid, selectedVar]);
 
   // ✅ Fetch product ONLY when token is ready (fresh browser fix)
   useEffect(() => {
@@ -201,8 +210,9 @@ export default function ProductDetails() {
     const key = toKey(pid, variantid);
     const idx = current.findIndex((i) => toKey(i.id, i.variantid) === key);
 
-    if (idx > -1) current[idx].qty = (Number(current[idx].qty) || 0) + qty;
-    else
+    if (idx > -1) {
+      // User requested: no need to increase if already in cart
+    } else {
       current.push({
         id: Number(pid),
         variantid,
@@ -211,10 +221,11 @@ export default function ProductDetails() {
         price,
         qty,
       });
+    }
 
     writeGuest(current);
     refresh();
-    Swal.fire(`${product.name} added to cart (guest)`);
+    Swal.fire(`${product.name} added to cart`);
   }, [pid, product, selectedVar, qty, refresh]);
 
   const addServer = useCallback(async () => {
@@ -233,10 +244,32 @@ export default function ProductDetails() {
   const handleAddToCart = useCallback(async () => {
     if (!product || !selectedVar?.vid) return;
 
+    // ✅ CHECK: no need to increase if already in cart
+    if (checkInCart()) {
+      Swal.fire({
+         title: "Already in cart",
+         text: `${product.name} is already in your cart.`,
+         icon: "info",
+         timer: 2000
+      });
+      return;
+    }
+
     const variantid = selectedVar.vid;
     const price = Number(selectedVar.sale_price || selectedVar.price || 0) || 0;
 
     if (!token || !user) {
+      addOrIncLocal(
+        {
+          id: Number(pid),
+          variantid,
+          name: product.name,
+          image: product.image,
+          price,
+          qty,
+        },
+        qty
+      );
       addGuest();
       return;
     }
@@ -256,7 +289,7 @@ export default function ProductDetails() {
 
     try {
       const resp = await addServer();
-      if (resp?.data?.success) {
+      if (resp?.data?.success || resp?.data?.status) {
         refresh();
         Swal.fire(`${product.name} added to cart`);
       } else {
@@ -268,103 +301,104 @@ export default function ProductDetails() {
       refresh();
       Swal.fire("Error adding to cart");
     }
-  }, [product, selectedVar, pid, qty, token, user, addGuest, addOrIncLocal, addServer, refresh]);
+  }, [product, selectedVar, pid, qty, token, user, addGuest, addOrIncLocal, addServer, refresh, checkInCart]);
 
 
 
 
 
-const handleBuyNow = useCallback(async () => {
-  if (!product || !selectedVar?.vid) return;
+  const handleBuyNow = useCallback(async () => {
+    if (!product || !selectedVar?.vid) return;
 
-  const variantid = selectedVar.vid;
-  const price = Number(selectedVar.sale_price || selectedVar.price || 0) || 0;
+    // ✅ CHECK: if already in cart, just go to checkout
+    if (checkInCart()) {
+      navigate("/checkout");
+      return;
+    }
 
-  const isOk = (d) =>
-    d?.success === true ||
-    d?.success === "true" ||
-    d?.success === 1 ||
-    d?.success === "1" ||
-    d?.status === true ||
-    d?.status === "true" ||
-    d?.status === 1 ||
-    d?.status === "1";
+    const variantid = selectedVar.vid;
+    const price = Number(selectedVar.sale_price || selectedVar.price || 0) || 0;
 
-  try {
-    // ---------- GUEST ----------
-    if (!token || !user) {
-      const current = readGuest();
-      const key = toKey(pid, variantid);
-      const idx = current.findIndex((i) => toKey(i.id, i.variantid) === key);
+    const isOk = (d) =>
+      d?.success === true ||
+      d?.success === "true" ||
+      d?.success === 1 ||
+      d?.success === "1" ||
+      d?.status === true ||
+      d?.status === "true" ||
+      d?.status === 1 ||
+      d?.status === "1";
 
-      if (idx > -1) current[idx].qty = (Number(current[idx].qty) || 0) + qty;
-      else {
-        current.push({
+    try {
+      // ---------- GUEST ----------
+      if (!token || !user) {
+        const current = readGuest();
+        const key = toKey(pid, variantid);
+        const idx = current.findIndex((i) => toKey(i.id, i.variantid) === key);
+
+        if (idx > -1) {
+           // Skip addition
+        } else {
+          current.push({
+            id: Number(pid),
+            variantid,
+            name: product.name,
+            image: product.image,
+            price,
+            qty,
+          });
+          addOrIncLocal(
+            { id: Number(pid), variantid, name: product.name, image: product.image, price, qty },
+            qty
+          );
+        }
+
+        writeGuest(current);
+        await refresh();
+        navigate("/checkout");
+        return;
+      }
+
+      // ---------- LOGGED IN ----------
+      addOrIncLocal(
+        {
           id: Number(pid),
           variantid,
           name: product.name,
           image: product.image,
           price,
-          qty,
-        });
+          qty: 1,
+        },
+        qty
+      );
+
+      const resp = await addServer();
+      const data = resp?.data;
+      await refresh();
+
+      if (isOk(data)) {
+        navigate("/checkout");
+        return;
       }
-
-      writeGuest(current);
-      await refresh();
-      navigate("/checkout");
-      return;
+      Swal.fire(data?.message || "Failed to add to cart");
+    } catch (e) {
+      console.error("BUY NOW error:", e?.response?.data || e);
+      try { await refresh(); } catch {}
+      Swal.fire(e?.response?.data?.message || e?.message || "Error adding product");
     }
-
-    // ---------- LOGGED IN ----------
-    // optimistic local
-    addOrIncLocal(
-      {
-        id: Number(pid),
-        variantid,
-        name: product.name,
-        image: product.image,
-        price,
-        qty: 1,
-      },
-      qty
-    );
-
-    const resp = await addServer();
-    const data = resp?.data;
-
-    // Always refresh so checkout sees latest
-    await refresh();
-
-    // ✅ Navigate when API indicates success (status OR success)
-    if (isOk(data)) {
-      navigate("/checkout");
-      return;
-    }
-
-    // If API replied but doesn't look OK
-    Swal.fire(data?.message || "Failed to add to cart");
-  } catch (e) {
-    console.error("BUY NOW error:", e?.response?.data || e);
-
-    // try to keep UI consistent
-    try {
-      await refresh();
-    } catch {}
-
-    Swal.fire(e?.response?.data?.message || e?.message || "Error adding product before checkout");
-  }
-}, [
-  product,
-  selectedVar,
-  pid,
-  qty,
-  token,
-  user,
-  refresh,
-  navigate,
-  addOrIncLocal,
-  addServer,
-]);
+  }, [
+    product,
+    selectedVar,
+    pid,
+    qty,
+    token,
+    user,
+    refresh,
+    navigate,
+    addOrIncLocal,
+    addServer,
+    checkInCart
+  ]);
 
 
 

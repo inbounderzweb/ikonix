@@ -215,7 +215,7 @@
 //         style={{ backgroundImage: `url(${shopherobg})` }}
 //       >
 //         <span className="font-[luxia] text-[#53443D] text-[36px] leading-tight lg:mr-[80px] xl:mr-[200px] flex items-center">
-//           Lorem Ipsum <br /> dolor sit amet
+//           Discover Your <br /> Perfect Scent
 //         </span>
 //       </div>
 
@@ -224,7 +224,7 @@
 //         style={{ backgroundImage: `url(${shopherobgmob})` }}
 //       >
 //         <p className="text-center mt-6 font-[luxia] text-[27px] leading-tight">
-//           Lorem Ipsum <br /> dolor sit amet
+//           Discover Your <br /> Perfect Scent
 //         </p>
 //       </div>
 
@@ -374,7 +374,15 @@ export default function Shop() {
   const location = useLocation();
 
   const { user, token, setToken, setIsTokenReady, isTokenReady } = useAuth();
-  const { refresh, addOrIncLocal } = useCart();
+  const { items, refresh, addOrIncLocal } = useCart();
+
+  const checkInCart = useCallback((pid, vid) => {
+    return items.some(
+      (it) => 
+        Number(it.id) === Number(pid) && 
+        String(it.variantid) === String(vid)
+    );
+  }, [items]);
 
   const api = useMemo(
     () =>
@@ -503,8 +511,9 @@ export default function Shop() {
       const key = toKey(product.id, variantid);
       const idx = current.findIndex((i) => toKey(i.id, i.variantid) === key);
 
-      if (idx > -1) current[idx].qty = (Number(current[idx].qty) || 0) + 1;
-      else {
+      if (idx > -1) {
+        // User requested: no need to increase if already in cart
+      } else {
         current.push({
           id: product.id,
           variantid,
@@ -527,8 +536,17 @@ export default function Shop() {
       const variantid = variant.vid ?? "";
       const price = Number(variant.sale_price || variant.price || 0) || 0;
 
+      // ✅ CHECK: no need to increase if already in cart
+      if (checkInCart(product.id, variantid)) {
+        return;
+      }
+
       // guest
       if (!token || !user) {
+        addOrIncLocal(
+          { id: product.id, variantid, name: product.name, image: product.image, price, qty: 1 },
+          1
+        );
         saveGuestCart(product);
         return;
       }
@@ -578,7 +596,7 @@ export default function Shop() {
         style={{ backgroundImage: `url(${shopherobg})` }}
       >
         <span className="font-[luxia] text-[#53443D] text-[36px] leading-tight lg:mr-[80px] xl:mr-[200px] flex items-center">
-          Lorem Ipsum <br /> dolor sit amet
+          Discover Your <br /> Perfect Scent
         </span>
       </div>
 
@@ -587,7 +605,7 @@ export default function Shop() {
         style={{ backgroundImage: `url(${shopherobgmob})` }}
       >
         <p className="text-center mt-6 font-[luxia] text-[27px] leading-tight">
-          Lorem Ipsum <br /> dolor sit amet
+          Discover Your <br /> Perfect Scent
         </p>
       </div>
 

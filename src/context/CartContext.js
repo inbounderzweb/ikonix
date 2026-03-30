@@ -123,7 +123,28 @@ const normalizeGuestItem = (i) => ({
 
 export function CartProvider({ children }) {
   const { user, token, setToken, setIsTokenReady } = useAuth();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(() => {
+    // 1) read guest items from local storage immediately to avoid 0 badge count
+    const guestItems = readGuest().map(normalizeGuestItem);
+    return guestItems.length > 0 ? guestItems : [];
+  });
+  const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  // Persistent guest UID for server-side guest cart tracking
+  const [guestId] = useState(() => {
+    let id = localStorage.getItem("guest_uid");
+    if (!id) {
+      // Use 0 as a standard guest ID or a session token
+      id = "0"; 
+      localStorage.setItem("guest_uid", id);
+    }
+    return id;
+  });
+
+  const getEffectiveUserId = useCallback(() => {
+    return user?.id || guestId;
+  }, [user, guestId]);
 
   // single API client with auto refresh + retry on 401/403
   const api = useMemo(
@@ -149,72 +170,84 @@ export function CartProvider({ children }) {
   const fetchCart = useCallback(async () => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
+    setLoading(true);
 
-    // guest
-    if (!user || !token) {
-      const guest = readGuest().map(normalizeGuestItem);
-      setItems(guest);
-      fetchingRef.current = false;
-      return;
-    }
+    // determine uid (user id or guest id)
+    const uid = getEffectiveUserId();
 
     try {
       const { data } = await api.post(
         `${API_BASE}/cart`,
-        qs.stringify({ userid: user.id }),
+        qs.stringify({ userid: uid }),
         { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
       );
 
       const server = Array.isArray(data?.data) ? data.data : [];
 
-      // ✅ normalize with sale/offer price preference
-      setItems(server.map(normalizeServerItem));
+      if (server.length === 0 && !user) {
+        // Fallback to local guest cart if server is empty and we're a guest
+        const guest = readGuest().map(normalizeGuestItem);
+        setItems(guest);
+      } else {
+        setItems(server.map(normalizeServerItem));
+      }
     } catch (err) {
-      console.error("Cart fetch error:", err);
-      setItems([]);
+      console.error("Cart fetch error (500 likely):", err?.response?.data || err);
+      // Fallback to local items if guest
+      if (!user) {
+        const guest = readGuest().map(normalizeGuestItem);
+        if (guest.length) setItems(guest);
+      }
     } finally {
       fetchingRef.current = false;
+      setLoading(false);
     }
-  }, [api, user, token]);
 
-  /* ---------------- Sync guest -> server (ONLY ON LOGIN, ONCE) ---------------- */
+  }, [api, user, getEffectiveUserId]);
+
+
+  /* ---------------- Sync guest -> server ---------------- */
   const syncGuestToServer = useCallback(async () => {
-    if (!user || !token) return;
-    if (syncingRef.current) return;
-
+    const uid = getEffectiveUserId();
     const guest = readGuest();
-    if (!guest.length) return;
+    if (!guest.length || syncingRef.current) return;
 
     syncingRef.current = true;
+    setSyncing(true);
+    console.log("Syncing Guest Cart items to server for UID:", uid);
 
     try {
-      // ✅ Add each guest item to server
-      await Promise.all(
-        guest.map((it) =>
-          api.post(
+      // Use for..of instead of Promise.all to isolate failures and avoid overwhelming the server
+      for (const it of guest) {
+        try {
+          await api.post(
             `${API_BASE}/cart`,
             qs.stringify({
-              userid: user.id,
+              userid: uid,
               productid: it.id,
-              variantid: it.variantid,
+              variantid: it.variantid || "",
               qty: Number(it.qty) || 1,
             }),
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-          )
-        )
-      );
+          );
+        } catch (itemErr) {
+          console.error(`Failed to sync item ${it.id}:`, itemErr?.response?.data || itemErr.message);
+        }
+      }
 
-      // ✅ Clear guest cart AFTER successful sync
-      localStorage.removeItem("guestCart");
-
-      // ✅ Refresh from server (source of truth)
+      if (user) {
+        localStorage.removeItem("guestCart");
+      }
+      
       await fetchCart();
     } catch (err) {
-      console.error("Guest sync failed:", err);
+      console.error("Critical error in syncGuestToServer:", err);
     } finally {
       syncingRef.current = false;
+      setSyncing(false);
     }
-  }, [api, user, token, fetchCart]);
+  }, [api, user, getEffectiveUserId, fetchCart]);
+
 
   /* ---------------- Optimistic local add/inc (for realtime badge) ---------------- */
   const addOrIncLocal = useCallback((item, addQty = 1) => {
@@ -227,8 +260,6 @@ export function CartProvider({ children }) {
       image: item.image,
       price: Number(item.price) || 0,
       qty: Math.max(1, Number(item.qty) || 1),
-
-      // optional fields if you pass them
       msrp: Number(item.msrp) || 0,
       sale_price: Number(item.sale_price) || 0,
     };
@@ -241,7 +272,6 @@ export function CartProvider({ children }) {
       if (idx > -1) {
         const prevQty = Number(arr[idx].qty) || 0;
         arr[idx] = { ...arr[idx], qty: prevQty + addN };
-        // keep existing price unless incoming has a better one
         const incPrice = Number(incoming.price) || 0;
         if (incPrice > 0) arr[idx].price = incPrice;
         return arr;
@@ -255,38 +285,35 @@ export function CartProvider({ children }) {
 
   const inc = useCallback(
     async (cartid, id, variantid) => {
-      // optimistic
       addOrIncLocal({ id, variantid }, 1);
+      const uid = getEffectiveUserId();
 
-      if (user && token) {
-        try {
-          await api.post(
-            `${API_BASE}/cart`,
-            qs.stringify({ userid: user.id, productid: id, variantid, qty: 1 }),
-            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-          );
-          fetchCart();
-        } catch (e) {
-          console.error("inc error:", e);
-          fetchCart(); // rollback via refetch
-        }
-      } else {
-        // guest
+      try {
+        await api.post(
+          `${API_BASE}/cart`,
+          qs.stringify({ userid: uid, productid: id, variantid, qty: 1 }),
+          { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+        );
+        fetchCart();
+      } catch (e) {
+        console.error("inc error:", e);
+        fetchCart();
+      }
+
+      if (!user) {
         const guest = readGuest();
         const key = toKey(id, variantid);
         const idx = guest.findIndex((x) => toKey(x.id, x.variantid) === key);
         if (idx > -1) guest[idx].qty = (Number(guest[idx].qty) || 0) + 1;
         else guest.push({ id: Number(id), variantid: String(variantid), qty: 1 });
         writeGuest(guest);
-        fetchCart();
       }
     },
-    [api, user, token, addOrIncLocal, fetchCart]
+    [api, user, getEffectiveUserId, addOrIncLocal, fetchCart]
   );
 
   const dec = useCallback(
     async (cartid, id, variantid) => {
-      // optimistic local dec (safe)
       setItems((prev) => {
         const arr = Array.isArray(prev) ? [...prev] : [];
         const key = toKey(id, variantid);
@@ -297,44 +324,44 @@ export function CartProvider({ children }) {
         return arr;
       });
 
-      if (user && token) {
-        try {
-          await api.post(
-            `${API_BASE}/cart`,
-            qs.stringify({ userid: user.id, productid: id, variantid, qty: -1 }),
-            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-          );
-          fetchCart();
-        } catch (e) {
-          console.error("dec error:", e);
-          fetchCart();
-        }
-      } else {
+      const uid = getEffectiveUserId();
+      try {
+        await api.post(
+          `${API_BASE}/cart`,
+          qs.stringify({ userid: uid, productid: id, variantid, qty: -1 }),
+          { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+        );
+        fetchCart();
+      } catch (e) {
+        console.error("dec error:", e);
+        fetchCart();
+      }
+
+      if (!user) {
         const guest = readGuest();
         const key = toKey(id, variantid);
         const idx = guest.findIndex((x) => toKey(x.id, x.variantid) === key);
         if (idx > -1) guest[idx].qty = Math.max(1, (Number(guest[idx].qty) || 1) - 1);
         writeGuest(guest);
-        fetchCart();
       }
     },
-    [api, user, token, fetchCart]
+    [api, user, getEffectiveUserId, fetchCart]
   );
 
   const remove = useCallback(
     async (cartid, id, variantid) => {
-      // optimistic local remove
       setItems((prev) => {
         const arr = Array.isArray(prev) ? prev : [];
         const key = toKey(id, variantid);
         return arr.filter((x) => toKey(x.id, x.variantid) !== key);
       });
 
-      if (user && token && cartid) {
+      const uid = getEffectiveUserId();
+      if (cartid || uid) {
         try {
           await api.post(
             `${API_BASE}/delete-cart`,
-            qs.stringify({ userid: user.id, cartid, variantid }),
+            qs.stringify({ userid: uid, cartid, variantid }),
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
           );
           fetchCart();
@@ -342,15 +369,16 @@ export function CartProvider({ children }) {
           console.error("remove error:", e);
           fetchCart();
         }
-      } else {
+      }
+
+      if (!user) {
         const guest = readGuest().filter(
           (x) => toKey(x.id, x.variantid) !== toKey(id, variantid)
         );
         writeGuest(guest);
-        fetchCart();
       }
     },
-    [api, user, token, fetchCart]
+    [api, user, getEffectiveUserId, fetchCart]
   );
 
   const clear = useCallback(() => {
@@ -364,7 +392,6 @@ export function CartProvider({ children }) {
     fetchCart();
   }, [fetchCart]);
 
-  // Only sync when user+token becomes available (login), not on every render
   useEffect(() => {
     if (user && token) syncGuestToServer();
   }, [user, token, syncGuestToServer]);
@@ -382,6 +409,9 @@ export function CartProvider({ children }) {
         clear,
         syncGuestToServer,
         ensureServerCartNotEmpty: syncGuestToServer,
+        guestId,
+        loading,
+        syncing,
       }}
     >
       {children}

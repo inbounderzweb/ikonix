@@ -16,6 +16,7 @@ import Drawer from "../Drawer";
 import AuthModal from "../../Authmodal/AuthModal";
 import CartDrawer from "../cartdraw/CartDrawer";
 import SearchModal from "../search/Search";
+import MobileBottomNav from "../MobileBottomNav";
 
 function Header() {
   const navigate = useNavigate();
@@ -138,6 +139,12 @@ function Header() {
         {/* mobile menu */}
       </Drawer>
 
+      <MobileBottomNav 
+        onSearchOpen={() => setSearchOpen(true)}
+        onCartOpen={() => setCartOpen(true)}
+        onAuthOpen={() => setAuthOpen(true)}
+      />
+
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
       <SearchModal
         open={searchOpen}
@@ -148,5 +155,6 @@ function Header() {
     </>
   );
 }
+
 
 export default Header;

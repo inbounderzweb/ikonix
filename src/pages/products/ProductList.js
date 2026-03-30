@@ -71,7 +71,15 @@ export default function ProductList() {
   const { user, token, setToken, setIsTokenReady, isTokenReady } = useAuth();
 
   // ✅ Use CartContext as source of truth + realtime badge updates
-  const { refresh, addOrIncLocal } = useCart();
+  const { items, refresh, addOrIncLocal } = useCart();
+
+  const checkInCart = useCallback((pid, vid) => {
+    return items.some(
+      (it) => 
+        Number(it.id) === Number(pid) && 
+        String(it.variantid) === String(vid)
+    );
+  }, [items]);
 
   // ✅ Use shared client with auto refresh/retry
   const api = useMemo(() => {
@@ -130,7 +138,7 @@ export default function ProductList() {
       const idx = current.findIndex((i) => toKey(i.id, i.variantid) === key);
 
       if (idx > -1) {
-        current[idx].qty = Math.max(1, Number(current[idx].qty) || 1) + 1;
+        // User requested: no need to increase if already in cart
       } else {
         current.push({
           id: product.id,
@@ -156,6 +164,11 @@ export default function ProductList() {
       const variant = product.variants?.[0] || {};
       const variantid = variant.vid ?? '';
       const price = Number(variant.sale_price || variant.price || 0) || 0;
+
+      // ✅ CHECK: if already in cart, don't add again
+      if (checkInCart(product.id, variantid)) {
+        return;
+      }
 
       // ✅ Guest
       if (!token || !user) {

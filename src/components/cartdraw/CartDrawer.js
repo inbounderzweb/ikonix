@@ -6,7 +6,7 @@ import { useCart } from '../../context/CartContext';
 
 export default function CartDrawer({ open, onClose }) {
   const [show, setShow] = useState(open);
-  const { items, inc, dec, remove, refresh, loading, syncing } = useCart();
+  const { items, inc, dec, remove, refresh, loading, syncing, cartCount } = useCart();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,10 +36,6 @@ export default function CartDrawer({ open, onClose }) {
     }
   }, [items, location.pathname, navigate]);
 
-  const totalCount = useMemo(
-    () => items.reduce((sum, i) => sum + (Number(i.qty) || 0), 0),
-    [items]
-  );
 
   const goCheckout = () => {
     onClose();
@@ -69,7 +65,7 @@ export default function CartDrawer({ open, onClose }) {
           <div className="font-semibold font-[luxia] text-[#53443D] flex gap-2 items-center">
             <span className="text-[18px]">Cart</span>
             <p className="text-[#8C7367] text-[14px]">
-              {totalCount > 0 ? `(${totalCount} items)` : `(0 items)`}
+              {cartCount > 0 ? `(${cartCount} items)` : `(0 items)`}
             </p>
           </div>
           <button onClick={onClose}>

@@ -33,9 +33,8 @@ export default function CheckoutPage() {
     remove,
     refresh,
     ensureServerCartNotEmpty,
-    readGuest,
     syncGuestToServer,
-    clear,
+    guestId,
   } = useCart();
 
   /* Always refresh on mount + on auth change */
@@ -61,8 +60,23 @@ export default function CheckoutPage() {
   const [form, setForm] = useState({
     street: '', city: '',
     pincode: '', district: '', state: '', country: '',
-
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.mobile || '',
   });
+
+  // Update form when user defaults change
+  useEffect(() => {
+    if (user) {
+      setForm(f => ({
+        ...f,
+        name: user.name || f.name,
+        email: user.email || f.email,
+        phone: user.mobile || f.phone,
+      }));
+    }
+  }, [user]);
+
   const [addresses, setAddresses] = useState([]);
   const [shippingId, setShippingId] = useState(null);
   const [billingId, setBillingId] = useState(null);
@@ -72,13 +86,24 @@ export default function CheckoutPage() {
   /* Status */
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
   const [newAddrId, setNewAddrId] = useState(null);
+
+  /* ✅ LOAD GUEST ADDRESS ONCE */
+  useEffect(() => {
+    if (!user) {
+      try {
+        const saved = JSON.parse(localStorage.getItem('guest_address') || '{}');
+        if (saved && saved.street) {
+          setForm(f => ({ ...f, ...saved }));
+        }
+      } catch {}
+    }
+  }, [user]);
 
   /* Helpers */
   const normalizeAddr = (a) => ({
-    id: a.aid || a.id || a.address_id,
-    // doorno: a.doorno,
-    // house: a.house,
+    id: a.aid || a.id || a.address_id || a.addressId,
     street: a.street,
     city: a.city,
     pincode: a.pincode,
@@ -87,12 +112,10 @@ export default function CheckoutPage() {
     country: a.country,
     company: a.company,
     gst: a.gst,
-    // type: a.atype || a.type,
     deflt: a.deflt,
   });
 
   const addrLabel = (a = {}) =>
-    // [a.doorno, a.house, a.street, a.city, a.district, a.state, a.country, a.pincode]
     [a.street, a.city, a.district, a.state, a.country, a.pincode]
       .filter(Boolean)
       .join(', ');
@@ -106,7 +129,7 @@ export default function CheckoutPage() {
 
   const fetchAddresses = async () => {
     try {
-      const payload = qs.stringify({ userid: user.id, address_id: 1 });
+      const payload = qs.stringify({ userid: user?.id || guestId, address_id: 1 });
       const { data } = await axios.post(
         `${API_BASE}/address`,
         payload,
@@ -118,7 +141,6 @@ export default function CheckoutPage() {
         }
       );
       if (data.status === false) {
-        Swal(data.message || 'Address not found – please add one');
         setStep('form');
         setShowAddressModal(true);
         return [];
@@ -141,23 +163,17 @@ export default function CheckoutPage() {
 
   const fetchDefaultAddresses = async () => {
     try {
-      const payload = qs.stringify({ userid: user.id });
+      const payload = qs.stringify({ userid: user?.id || guestId });
       const { data } = await axios.post(
         `${API_BASE}/address`,
         payload,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            ...(user && token ? { Authorization: `Bearer ${token}` } : {}),
             'Content-Type': 'application/x-www-form-urlencoded',
           },
         }
       );
-      if (data.status === false) {
-        Swal(data.message || 'Address not found – please add one');
-        setStep('form');
-        setShowAddressModal(true);
-        return [];
-      }
       const raw = data.data;
       const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
       const norm = list.map(normalizeAddr);
@@ -168,25 +184,43 @@ export default function CheckoutPage() {
       }
       return norm;
     } catch {
-      setStep('form');
-      setShowAddressModal(true);
       return [];
     }
   };
 
   const handlePlaceOrder = async () => {
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
     setError('');
     setLoading(true);
     try {
+      if (!user) {
+        try {
+          const saved = JSON.parse(localStorage.getItem('guest_address') || '{}');
+          if (saved && saved.street) {
+            const norm = normalizeAddr({
+              ...saved,
+              aid: saved.id || 'guest_local' // Ensure ID exists for selection
+            });
+            setAddresses([norm]);
+            setShippingId(norm.id);
+            setBillingId(norm.id);
+            setStep('select');
+            setShowAddressModal(true);
+            return;
+          }
+        } catch {}
+      }
+
       const list = await fetchDefaultAddresses();
-      setStep(list.length ? 'select' : 'form');
+      if (user && token && list.length) {
+        setStep('select');
+      } else {
+        setStep('form');
+      }
       setShowAddressModal(true);
-    } catch {
-      setError('Could not load addresses');
+    } catch (e) {
+      console.error("Place order step error:", e);
+      setStep('form');
+      setShowAddressModal(true);
     } finally {
       setLoading(false);
     }
@@ -226,68 +260,121 @@ export default function CheckoutPage() {
     );
   };
 
+
   const handleAddAddress = async () => {
-    for (let k of Object.keys(form)) {
+    // Only check name, email, phone if NOT logged in
+    const fieldsToCheck = [
+      'street', 'city', 'pincode', 'district', 'state', 'country'
+    ];
+    if (!user) {
+      fieldsToCheck.push('name', 'email', 'phone');
+    }
+
+    for (let k of fieldsToCheck) {
       if (!String(form[k] ?? '').trim()) {
-        setError(`Please fill in ${k}`);
+        setError(`Please fill in ${k === 'name' ? 'Full Name' : k === 'phone' ? 'Phone Number' : k}`);
         return;
       }
     }
+
     setError('');
     setLoading(true);
     try {
-      const payload = qs.stringify({ userid: user.id, ...form });
+      const uid = user?.id || guestId;
+      const payload = qs.stringify({ 
+        userid: uid, 
+        ...form, 
+        customer_name: form.name,
+        customer_email: form.email,
+        customer_phone: form.phone
+      });
+
+      console.log("Adding Address with UID:", uid, "Payload:", payload);
+
       const { data } = await axios.post(`${API_BASE}/address/add`, payload, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
           'Content-Type': 'application/x-www-form-urlencoded',
         },
       });
+      
+      console.log("Address Add Response:", data);
+
       const ok =
         data.success === true ||
         data.success === 'true' ||
         data.success === 1 ||
         data.success === '1' ||
-        data.status === true;
+        data.status === true ||
+        data.status === 'true' ||
+        data.status === 1;
+
       if (ok) {
-        const addedObj = data.data ? normalizeAddr(data.data) : null;
+        // Many backends return the new object, but some return it nested inside 'data' or 'address'
+        const rawAddr = data.data || data.address || data;
+        const addedObj = rawAddr ? normalizeAddr(rawAddr) : null;
+
+        // Save guest address locally as requested
+        if (!user) {
+          localStorage.setItem('guest_address', JSON.stringify({
+            ...form,
+            id: addedObj?.id // store ID too
+          }));
+        }
+
         if (addedObj?.id) {
           setAddresses((prev) => [addedObj, ...prev]);
           setShippingId(addedObj.id);
           setBillingId(addedObj.id);
           setNewAddrId(addedObj.id);
+          Swal.fire({
+            icon: 'success',
+            title: 'Address Saved',
+            timer: 1500,
+            showConfirmButton: false
+          });
         } else {
+          // If the response didn't have an ID, refetch everything to be sure
           const list = await fetchDefaultAddresses();
-          const last = list[list.length - 1];
-          if (last) {
-            setShippingId(last.id);
-            setBillingId(last.id);
-            setNewAddrId(last.id);
+          if (list.length) {
+            const first = list[0];
+            setShippingId(first.id);
+            setBillingId(first.id);
+            setNewAddrId(first.id);
+            Swal.fire({
+              icon: 'success',
+              title: 'Address Saved',
+              timer: 1500,
+              showConfirmButton: false
+            });
           }
         }
-        setForm({
-          // doorno: '',
-          // house: '',
+        
+        setForm(prev => ({
+          ...prev,
           street: '',
           city: '',
           pincode: '',
           district: '',
           state: '',
           country: '',
-          // company: '',
-          // gst: '',
-          // type: ''
-        });
+        }));
         setStep('select');
       } else {
-        setError(data.message || 'Failed to add address');
+        const msg = data.message || 'Failed to add address';
+        setError(msg);
+        Swal.fire('Error', msg, 'error');
       }
-    } catch {
-      setError('Network error, please try again');
+    } catch (err) {
+      console.error("ADD ADDRESS AXIOS ERROR:", err?.response?.data || err);
+      const errMsg = err?.response?.data?.message || 'Network error, please try again';
+      setError(errMsg);
+      Swal.fire('Error', errMsg, 'error');
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleSelectContinue = () => {
     const billId = sameAsShip ? shippingId : billingId;
@@ -310,10 +397,16 @@ export default function CheckoutPage() {
 
       const payload = qs.stringify({
         order_id,
-        userid: user?.id,
+        userid: user?.id || guestId,
         client_hint_amount: Math.round(Number(total) * 100), // convert to paise
         receipt: `ikonix_${order_id}`,
-        notes: JSON.stringify({ source: 'web', cart: cartItems.length }),
+        notes: JSON.stringify({ 
+          source: 'web', 
+          cart: cartItems.length,
+          guest: !user,
+          name: form.name,
+          email: form.email
+        }),
       });
 
       const { data: raw } = await axios.post(
@@ -321,7 +414,7 @@ export default function CheckoutPage() {
         payload,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
             'Content-Type': 'application/x-www-form-urlencoded',
           },
         }
@@ -365,17 +458,17 @@ export default function CheckoutPage() {
         theme: { color: '#b49d91' },
         handler: async (resp) => {
           try {
-            const form = new FormData();
-            form.append('userid', String(user.id));
-            form.append('order_id', String(order_id));              // your internal id
-            form.append('porder_id', resp.razorpay_order_id);       // Razorpay order_****
-            form.append('payment_id', resp.razorpay_payment_id);
-            form.append('signature', resp.razorpay_signature);
+            const formVerify = new FormData();
+            formVerify.append('userid', String(user?.id || guestId));
+            formVerify.append('order_id', String(order_id));              // your internal id
+            formVerify.append('porder_id', resp.razorpay_order_id);       // Razorpay order_****
+            formVerify.append('payment_id', resp.razorpay_payment_id);
+            formVerify.append('signature', resp.razorpay_signature);
 
             const verifyRes = await fetch(`${API_BASE}/payment/callback`, {
               method: 'POST',
               headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-              body: form,
+              body: formVerify,
             });
             const result = await verifyRes.json().catch(() => ({}));
 
@@ -402,13 +495,13 @@ export default function CheckoutPage() {
               if (cartItems && cartItems.length > 0) {
                 for (const item of cartItems) {
                   await axios.post(`${API_BASE}/cart`, qs.stringify({
-                    userid: user.id,
+                    userid: user?.id || guestId,
                     productid: item.id,
                     variantid: item.variantid,
                     qty: item.qty
                   }), {
                     headers: {
-                      Authorization: `Bearer ${token}`,
+                      ...(user && token ? { Authorization: `Bearer ${token}` } : {}),
                       'Content-Type': 'application/x-www-form-urlencoded'
                     }
                   });
@@ -431,13 +524,13 @@ export default function CheckoutPage() {
           if (cartItems && cartItems.length > 0) {
             for (const item of cartItems) {
               await axios.post(`${API_BASE}/cart`, qs.stringify({
-                userid: user.id,
+                userid: user?.id || guestId,
                 productid: item.id,
                 variantid: item.variantid,
                 qty: item.qty
               }), {
                 headers: {
-                  Authorization: `Bearer ${token}`,
+                  ...(user && token ? { Authorization: `Bearer ${token}` } : {}),
                   'Content-Type': 'application/x-www-form-urlencoded'
                 }
               });
@@ -503,71 +596,93 @@ export default function CheckoutPage() {
   // };
 
   const handleCheckout = async () => {
+    const uid = user?.id || guestId;
     const billId = sameAsShip ? shippingId : billingId;
 
     try {
       setLoading(true);
       setError('');
 
-      // ✅ Guard: avoid calling missing funcs
-      if (typeof ensureServerCartNotEmpty === "function") {
-        await ensureServerCartNotEmpty();
+      // ✅ SYNC BEFORE CHECKOUT IF GUEST
+      if (!user) {
+        console.log("Guest checkout: syncing cart to server first...");
+        try {
+          if (typeof syncGuestToServer === "function") {
+            await syncGuestToServer();
+          }
+          if (typeof refresh === "function") {
+            await refresh();
+          }
+        } catch (syncErr) {
+          console.error("Sync during checkout failed:", syncErr);
+        }
       } else {
-        // fallback: basic check
-        if (!cartItems?.length) {
-          setError("Your cart is empty");
-          return;
+        // Logged in: basic guard
+        if (typeof ensureServerCartNotEmpty === "function") {
+          await ensureServerCartNotEmpty();
         }
       }
 
-      const payload = qs.stringify({
-        userid: user.id,
+      const payload = {
+        userid: uid,
         shipping_address: shippingId,
         billing_address: billId,
         delivery_method: deliveryMethod,
-      });
+        customer_name: form.name,
+        customer_email: form.email,
+        customer_phone: form.phone,
+      };
+
+      console.log("FINAL CHECKOUT ATTEMPT", payload);
 
       const doCheckout = () =>
-        axios.post(`${API_BASE}/checkout`, payload, {
+        axios.post(`${API_BASE}/checkout`, qs.stringify(payload), {
+          timeout: 40000,
           headers: {
-            Authorization: `Bearer ${token}`,
+            ...(user && token ? { Authorization: `Bearer ${token}` } : {}),
             "Content-Type": "application/x-www-form-urlencoded",
           },
         });
 
-      let { data } = await doCheckout();
-
-      const needRetry =
-        data?.status === false &&
-        typeof data?.message === "string" &&
-        data.message.toLowerCase().includes("no products added");
-
-      if (needRetry) {
-        // ✅ Guard for guest->server sync
-        if (typeof syncGuestToServer === "function") {
-          await syncGuestToServer(); // do NOT pass args
+      let resp;
+      try {
+        resp = await doCheckout();
+      } catch (err) {
+        console.error("CHECKOUT 500 RAW ERROR:", err?.response?.data || err);
+        if (err.response?.status === 500) {
+          const raw = err.response.data;
+          const htmlMsg = typeof raw === 'string' 
+            ? raw.replace(/<[^>]+>/g, '').slice(0, 500) 
+            : JSON.stringify(raw);
+          
+          Swal.fire({
+            title: 'Checkout Error (500)',
+            text: 'Server failed to process order. ' + (htmlMsg || 'Empty response.'),
+            icon: 'error',
+          });
         }
-        if (typeof refresh === "function") {
-          await refresh();
-        }
-        const second = await doCheckout();
-        data = second.data;
+        throw err;
       }
 
-      if (data?.status === true) {
+      let { data } = resp;
+      console.log("CHECKOUT RESPONSE:", data);
+
+      if (data?.status === true || data?.success === true) {
         setShowAddressModal(false);
-        handlePayClick(data.order_id);
+        if (data.order_id) {
+          handlePayClick(data.order_id);
+        } else {
+          setError("Order created but no order_id was returned.");
+        }
       } else {
-        setError(data?.message || "Checkout failed, please try again");
+        const msg = data?.message || "Checkout failed, please try again";
+        setError(msg);
+        Swal.fire('Checkout Issue', msg, 'warning');
       }
     } catch (err) {
-      // ✅ show real reason
-      console.error("CHECKOUT ERROR:", err?.response?.data || err);
-      setError(
-        err?.response?.data?.message ||
-        err?.message ||
-        "Checkout failed, please try again"
-      );
+      console.error("HANDLE CHECKOUT FINAL CATCH:", err?.response?.data || err);
+      const errMsg = err?.response?.data?.message || err?.message || "Checkout failed";
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
@@ -723,6 +838,42 @@ export default function CheckoutPage() {
                 <hr className="mb-6 border-[#eadcd5]" />
 
                 <div className="grid grid-cols-2 gap-4 text-[#6d5a52]">
+                  {!user && (
+                    <>
+                      <div className="flex flex-col gap-1 col-span-2 md:col-span-1">
+                        <label className="text-sm font-semibold">Full Name</label>
+                        <input
+                          name="name"
+                          value={form.name}
+                          onChange={handleChange}
+                          className="border border-[#b49d91] rounded-xl px-4 py-2 bg-transparent placeholder:text-[#d2bfb7]"
+                          placeholder="John Doe"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1 col-span-2 md:col-span-1">
+                        <label className="text-sm font-semibold">Email Address</label>
+                        <input
+                          name="email"
+                          type="email"
+                          value={form.email}
+                          onChange={handleChange}
+                          className="border border-[#b49d91] rounded-xl px-4 py-2 bg-transparent placeholder:text-[#d2bfb7]"
+                          placeholder="john@example.com"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1 col-span-2">
+                        <label className="text-sm font-semibold">Phone Number</label>
+                        <input
+                          name="phone"
+                          type="tel"
+                          value={form.phone}
+                          onChange={handleChange}
+                          className="border border-[#b49d91] rounded-xl px-4 py-2 bg-transparent placeholder:text-[#d2bfb7]"
+                          placeholder="Phone number"
+                        />
+                      </div>
+                    </>
+                  )}
                   {[
                     ['street', 'Street'],
                     ['city', 'City'], ['pincode', 'Pincode'], ['district', 'District'],
