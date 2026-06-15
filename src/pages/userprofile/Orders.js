@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import axios from "axios";
@@ -15,13 +15,7 @@ function Orders() {
   const [visibleCount, setVisibleCount] = useState(5);
   const [selectedOrder, setSelectedOrder] = useState(null); // For modal
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchOrders();
-    }
-  }, [user]);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -44,7 +38,13 @@ function Orders() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id, token]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchOrders();
+    }
+  }, [user?.id, fetchOrders]);
 
   // Handle scroll to show more orders (frontend lazy load)
   const handleScroll = useCallback(() => {

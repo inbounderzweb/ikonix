@@ -18,13 +18,7 @@ function AddresList() {
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [formData, setFormData] = useState({});
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchAddress();
-    }
-  }, [user]);
-
-  const fetchAddress = async () => {
+  const fetchAddress = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -45,7 +39,13 @@ function AddresList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id, token]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchAddress();
+    }
+  }, [user?.id, fetchAddress]);
 
   // Lazy load more on scroll
   const handleScroll = useCallback(() => {

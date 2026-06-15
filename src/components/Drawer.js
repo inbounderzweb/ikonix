@@ -35,7 +35,7 @@ const Drawer = ({ setSideBarOpen, onClose, width = "w-[85%]", children }) => {
 
   useEffect(() => {
     onClose();
-  }, [location.pathname, location.search]);
+  }, [location.pathname, location.search, onClose]);
 
   if (!visible) return null;
 

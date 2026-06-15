@@ -10,7 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 
 export default function UserProfile() {
-  const { user, setUser, setToken } = useAuth();
+  const { user, setUser } = useAuth();
   const navigate = useNavigate();
 
   const [showToken, setShowToken] = useState(false);
@@ -40,9 +40,6 @@ export default function UserProfile() {
       </div>
     );
   }
-
-  const masked = (str = '') =>
-    str.length <= 8 ? '********' : `${str.slice(0, 4)}…${str.slice(-4)}`;
 
   return (
     <div className="min-h-screen bg-[#fdf8f5] py-12 px-4">

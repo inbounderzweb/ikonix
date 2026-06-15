@@ -1,13 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import axios from 'axios';
 import qs from 'qs';
 import { useAuth } from '../context/AuthContext';
-import { Outlet } from 'react-router-dom';
 import Home from '../pages/Home/Home';
 
 export default function AppLayout() {
   const { setToken } = useAuth();
-  const fetchToken = async () => {
+  const fetchToken = useCallback(async () => {
     try {
       const response = await axios.post(
         'https://ikonixperfumer.com/beta/api/validate',
@@ -32,7 +31,7 @@ export default function AppLayout() {
     } catch (err) {
       console.error('❌ Global token fetch failed:', err?.response?.data || err.message);
     }
-  };
+  }, [setToken]);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('authToken');
@@ -47,7 +46,7 @@ export default function AppLayout() {
     } else {
       setToken(savedToken);
     }
-  }, [setToken]);
+  }, [setToken, fetchToken]);
 
   return (
     <>

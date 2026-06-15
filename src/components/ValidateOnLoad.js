@@ -71,7 +71,7 @@
 
 
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import qs from 'qs';
 import { useAuth } from '../context/AuthContext';
@@ -90,7 +90,7 @@ export default function ValidateOnLoad() {
   const retryRef = useRef(0);
   const startedRef = useRef(false);
 
-  const fetchToken = async () => {
+  const fetchToken = useCallback(async () => {
     try {
       const { data } = await axios.post(
         VALIDATE_URL,
@@ -114,7 +114,7 @@ export default function ValidateOnLoad() {
       console.error('❌ Token fetch failed:', err);
       return false;
     }
-  };
+  }, [setToken, setIsTokenReady]);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -158,7 +158,7 @@ export default function ValidateOnLoad() {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [setToken, setIsTokenReady]);
+  }, [setToken, setIsTokenReady, fetchToken]);
 
   return null;
 }

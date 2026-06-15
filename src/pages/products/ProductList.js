@@ -100,7 +100,7 @@ export default function ProductList() {
     if (isTokenReady) refetch();
   }, [isTokenReady, refetch]);
 
-  const products = data?.data || [];
+  const products = useMemo(() => data?.data || [], [data?.data]);
 
   // Build category filters
   const categoryList = useMemo(
@@ -219,7 +219,7 @@ export default function ProductList() {
         // alert('Error adding to cart.');
       }
     },
-    [api, token, user, addOrIncLocal, refresh, saveGuestCart]
+    [api, token, user, addOrIncLocal, refresh, saveGuestCart, checkInCart]
   );
 
   if (isLoading) {

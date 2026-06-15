@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import qs from 'qs';
 import loadRazorpay from '../../../utils/loadRazorpay';
-import { ensureTokenReady } from '../../../api/client';
 import {
   XMarkIcon,
   PlusIcon,
@@ -153,39 +152,6 @@ export default function CheckoutPage() {
     const first = list.find(a => a.id === selectedId);
     const rest = list.filter(a => a.id !== selectedId);
     return first ? [first, ...rest] : rest;
-  };
-
-  const fetchAddresses = async () => {
-    try {
-      const payload = qs.stringify({ userid: user?.id || guestId, address_id: 1 });
-      const { data } = await api.post(
-        `${API_BASE}/address`,
-        payload,
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        }
-      );
-      if (data.status === false) {
-        setStep('form');
-        setShowAddressModal(true);
-        return [];
-      }
-      const raw = data.data;
-      const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
-      const norm = list.map(normalizeAddr);
-      setAddresses(norm);
-      if (norm.length) {
-        setShippingId(norm[0].id);
-        setBillingId(norm[0].id);
-      }
-      return norm;
-    } catch {
-      setStep('form');
-      setShowAddressModal(true);
-      return [];
-    }
   };
 
   const fetchDefaultAddresses = async () => {

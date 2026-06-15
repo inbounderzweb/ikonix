@@ -25,7 +25,7 @@ if(addressId){
   clear()
 }
 
-},[])
+},[addressId, clear])
 
 
 
@@ -130,8 +130,11 @@ if(addressId){
         <p className="text-gray-600 mb-6">
           Your order has been placed successfully.
         </p>
-
-    
+        {orderId && orderId !== '—' && (
+          <p className="text-sm text-gray-500 mb-6">
+            Order ID: <span className="font-semibold text-gray-700">{orderId}</span>
+          </p>
+        )}
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button

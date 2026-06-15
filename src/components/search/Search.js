@@ -38,7 +38,7 @@ export default function SearchModal({ open, onClose, onSubmit = () => {}, onPick
     }
   }, [isTokenReady, refetch]);
 
-  const allProducts = data?.data || [];
+  const allProducts = useMemo(() => data?.data || [], [data?.data]);
 
   // mount/animate
   useEffect(() => {

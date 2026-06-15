@@ -1,5 +1,5 @@
 import React from "react";
-import { FaFacebookF, FaInstagram, FaXTwitter } from "react-icons/fa6";
+import { FaFacebookF, FaInstagram } from "react-icons/fa6";
 import footerlogo from '../../assets/footerlogo.svg';
 import { useNavigate } from "react-router-dom";
 

@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import { FiPhone } from "react-icons/fi";
 import illustration from '../../assets/contact.svg'
-import SpecialDealsSlider from "../../components/SpecialDealsSlider/SpecialDealsSlider";
-import OwnPerfume from "../../components/ownperfume/OwnPerfume";
 
 
 /**
