@@ -1,5 +1,5 @@
 // src/pages/product-details/ProductDetails.js
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import qs from "qs";
 import Swal from "sweetalert2";
@@ -77,7 +77,7 @@ export default function ProductDetails() {
   const [product, setProduct] = useState(null);
   const [selectedVar, setSelectedVar] = useState(null);
   const [qty, setQty] = useState(1);
-  const [activeImg, setActiveImg] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -139,27 +139,151 @@ export default function ProductDetails() {
   const images = useMemo(() => {
     if (!product) return [];
     const pics = [];
-    if (product.image) pics.push(product.image);
+    
+    // Add main image if it exists
+    if (product.image) {
+      pics.push(product.image);
+    }
 
     if (product.more_images) {
-      const extras = Array.isArray(product.more_images)
-        ? product.more_images
-        : String(product.more_images)
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean);
+      let extras = [];
+      if (Array.isArray(product.more_images)) {
+        extras = product.more_images;
+      } else if (typeof product.more_images === "string") {
+        const trimmed = product.more_images.trim();
+        if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) {
+              extras = parsed;
+            }
+          } catch (e) {
+            console.error("Failed to parse more_images JSON string:", e);
+            // Fallback: split by comma if JSON parsing fails but it has commas
+            extras = trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+          }
+        } else {
+          extras = trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+        }
+      }
 
-      extras.forEach((img) => {
-        if (!pics.includes(img)) pics.push(img);
-      });
+      if (Array.isArray(extras)) {
+        extras.forEach((img) => {
+          if (img && typeof img === "string") {
+            const cleanImg = img.trim();
+            if (cleanImg && !pics.includes(cleanImg)) {
+              pics.push(cleanImg);
+            }
+          }
+        });
+      }
     }
 
     return pics;
   }, [product]);
 
+  const activeImg = images[activeIndex] || "";
+
   useEffect(() => {
-    if (images.length) setActiveImg(images[0]);
+    setActiveIndex(0);
   }, [images]);
+
+  // Gallery slider / interaction refs and timers
+  const [isAutoSlideActive, setIsAutoSlideActive] = useState(true);
+  const [fadeState, setFadeState] = useState("opacity-100 scale-100");
+  const thumbContainerRef = useRef(null);
+  const resumeTimerRef = useRef(null);
+
+  const resetAutoSlideTimer = useCallback(() => {
+    setIsAutoSlideActive(false);
+    if (resumeTimerRef.current) {
+      clearTimeout(resumeTimerRef.current);
+    }
+    // Resume auto-sliding after 5 seconds of inactivity
+    resumeTimerRef.current = setTimeout(() => {
+      setIsAutoSlideActive(true);
+    }, 5000);
+  }, []);
+
+  // Handle active index transitions smoothly
+  useEffect(() => {
+    setFadeState("opacity-0 scale-95");
+    const t = setTimeout(() => {
+      setFadeState("opacity-100 scale-100");
+    }, 150);
+    return () => clearTimeout(t);
+  }, [activeIndex]);
+
+  // Auto-slide effect
+  useEffect(() => {
+    if (!isAutoSlideActive || images.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setActiveIndex((prevIndex) => (prevIndex + 1) % images.length);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [isAutoSlideActive, images.length]);
+
+  // Center the active thumbnail when it changes
+  useEffect(() => {
+    if (thumbContainerRef.current) {
+      const container = thumbContainerRef.current;
+      const activeElement = container.children[activeIndex];
+      if (activeElement) {
+        const containerWidth = container.clientWidth;
+        const elementOffset = activeElement.offsetLeft;
+        const elementWidth = activeElement.clientWidth;
+        
+        container.scrollTo({
+          left: elementOffset - (containerWidth / 2) + (elementWidth / 2),
+          behavior: "smooth",
+        });
+      }
+    }
+  }, [activeIndex]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (resumeTimerRef.current) {
+        clearTimeout(resumeTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleThumbnailClick = useCallback((index) => {
+    setActiveIndex(index);
+    resetAutoSlideTimer();
+  }, [resetAutoSlideTimer]);
+
+  const handlePrevImage = useCallback(() => {
+    if (images.length <= 1) return;
+    setActiveIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+    resetAutoSlideTimer();
+  }, [images.length, resetAutoSlideTimer]);
+
+  const handleNextImage = useCallback(() => {
+    if (images.length <= 1) return;
+    setActiveIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+    resetAutoSlideTimer();
+  }, [images.length, resetAutoSlideTimer]);
+
+  const scrollThumbnails = useCallback((direction) => {
+    if (thumbContainerRef.current) {
+      const scrollAmount = 200;
+      thumbContainerRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+      resetAutoSlideTimer();
+    }
+  }, [resetAutoSlideTimer]);
+
+  const handleImgError = useCallback((e) => {
+    e.target.onerror = null;
+    e.target.src = "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&q=80&w=600";
+  }, []);
 
   const variantOptions = useMemo(
     () =>
@@ -443,36 +567,136 @@ export default function ProductDetails() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           {/* Gallery */}
-          <div>
-            <div className="w-full rounded-2xl overflow-hidden flex items-center justify-start">
-              {activeImg && (
-                <img
-                  src={`https://ikonixperfumer.com/beta/assets/uploads/${activeImg}`}
-                  alt={product.name}
-                  className="w-[90%] float-start h-auto object-cover"
-                />
+          <div className="flex flex-col gap-4 w-full md:max-w-[500px]">
+            <style>{`
+              .no-scrollbar::-webkit-scrollbar {
+                display: none;
+              }
+              .no-scrollbar {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+              }
+            `}</style>
+            
+            {/* Main Image Container */}
+            <div className="relative group w-full aspect-square md:h-[500px] rounded-2xl overflow-hidden bg-gray-50 flex items-center justify-center border border-gray-100 shadow-md transition-shadow duration-300 hover:shadow-lg">
+              {activeImg ? (
+                <div className="w-full h-full overflow-hidden flex items-center justify-center">
+                  <img
+                    src={`https://ikonixperfumer.com/beta/assets/uploads/${activeImg}`}
+                    alt={product.name}
+                    onError={handleImgError}
+                    className={`w-full h-full object-cover transition-all duration-300 ease-in-out transform ${fadeState} hover:scale-105 cursor-zoom-in`}
+                  />
+                </div>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-6 text-gray-400">
+                  <svg
+                    className="w-16 h-16 mb-3 stroke-current text-gray-300 animate-pulse"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.5"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <span className="text-sm font-medium tracking-wide text-gray-500 font-[Lato]">No Image Available</span>
+                </div>
+              )}
+
+              {/* Main Image Nav Arrows (Only visible on hover if > 1 image) */}
+              {images.length > 1 && (
+                <>
+                  <button
+                    onClick={handlePrevImage}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 shadow-md rounded-full p-3 transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110 active:scale-95 flex items-center justify-center focus:outline-none"
+                    aria-label="Previous image"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={handleNextImage}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 shadow-md rounded-full p-3 transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110 active:scale-95 flex items-center justify-center focus:outline-none"
+                    aria-label="Next image"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </button>
+                  
+                  {/* Indicator Dots */}
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 bg-black/20 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                    {images.map((_, idx) => (
+                      <span
+                        key={idx}
+                        className={`h-1.5 rounded-full transition-all duration-300 ${
+                          idx === activeIndex ? "w-4 bg-white" : "w-1.5 bg-white/50"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
             </div>
 
+            {/* Thumbnails Section */}
             {images.length > 1 && (
-              <div className="mt-4 gap-3 flex">
-                {images.map((img) => (
-                  <button
-                    key={img}
-                    onClick={() => setActiveImg(img)}
-                    className={`h-20 rounded-xl overflow-hidden border transition ${
-                      img === activeImg
-                        ? "border-[#b49d91]"
-                        : "border-gray-200 hover:border-[#b49d91]/60"
-                    }`}
-                  >
-                    <img
-                      src={`https://ikonixperfumer.com/beta/assets/uploads/${img}`}
-                      alt=""
-                      className="w-full h-full object-contain"
-                    />
-                  </button>
-                ))}
+              <div className="relative group/thumbs w-full mt-2">
+                {/* Left Arrow for Thumbnails */}
+                <button
+                  onClick={() => scrollThumbnails("left")}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/95 hover:bg-white text-gray-800 hover:text-black shadow-md border border-gray-100 rounded-full p-2 transition-all duration-200 md:opacity-0 group-hover/thumbs:opacity-100 hover:scale-110 active:scale-95 flex items-center justify-center focus:outline-none"
+                  aria-label="Scroll thumbnails left"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                  </svg>
+                </button>
+
+                {/* Thumbnails list */}
+                <div
+                  ref={thumbContainerRef}
+                  onScroll={resetAutoSlideTimer}
+                  onTouchStart={resetAutoSlideTimer}
+                  onMouseDown={resetAutoSlideTimer}
+                  className="flex gap-3 overflow-x-auto pb-2 no-scrollbar snap-x snap-mandatory scroll-smooth"
+                >
+                  {images.map((img, idx) => (
+                    <button
+                      key={img}
+                      onClick={() => handleThumbnailClick(idx)}
+                      className={`w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all duration-200 snap-start focus:outline-none ${
+                        idx === activeIndex
+                          ? "border-[#b49d91] ring-2 ring-[#b49d91]/20 scale-95 shadow-sm"
+                          : "border-gray-200 hover:border-[#b49d91]/50 hover:scale-102"
+                      }`}
+                    >
+                      <img
+                        src={`https://ikonixperfumer.com/beta/assets/uploads/${img}`}
+                        alt=""
+                        onError={handleImgError}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+
+                {/* Right Arrow for Thumbnails */}
+                <button
+                  onClick={() => scrollThumbnails("right")}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/95 hover:bg-white text-gray-800 hover:text-black shadow-md border border-gray-100 rounded-full p-2 transition-all duration-200 md:opacity-0 group-hover/thumbs:opacity-100 hover:scale-110 active:scale-95 flex items-center justify-center focus:outline-none"
+                  aria-label="Scroll thumbnails right"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
               </div>
             )}
           </div>
