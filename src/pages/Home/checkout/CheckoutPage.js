@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import qs from 'qs';
 import loadRazorpay from '../../../utils/loadRazorpay';
+import { ensureTokenReady } from '../../../api/client';
 import {
   XMarkIcon,
   PlusIcon,
@@ -15,7 +16,7 @@ import { useCart } from '../../../context/CartContext';
 import AuthModal from '../../../Authmodal/AuthModal';
 import Swal from 'sweetalert2';
 
-const API_BASE = 'https://ikonixperfumer.com/beta/api';
+const API_BASE = '/beta/api';
 
 /**
  * Checkout Page
@@ -35,6 +36,7 @@ export default function CheckoutPage() {
     ensureServerCartNotEmpty,
     syncGuestToServer,
     guestId,
+    api,
   } = useCart();
 
   /* Always refresh on mount + on auth change */
@@ -45,6 +47,13 @@ export default function CheckoutPage() {
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [refresh]);
+
+  /* ✅ MANDATORY LOGIN: Show modal if not logged in */
+  useEffect(() => {
+    if (!user) {
+      setShowAuthModal(true);
+    }
+  }, [user]);
 
   /* Totals (rupees) */
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
@@ -97,23 +106,42 @@ export default function CheckoutPage() {
         if (saved && saved.street) {
           setForm(f => ({ ...f, ...saved }));
         }
-      } catch {}
+      } catch { }
     }
   }, [user]);
 
+  /* Ensure selection if addresses exist */
+  useEffect(() => {
+    if (addresses.length > 0) {
+      const shipExists = addresses.some(a => String(a.id) === String(shippingId));
+      if (!shippingId || !shipExists) {
+        setShippingId(addresses[0].id);
+      }
+
+      const currentBillId = sameAsShip ? shippingId : billingId;
+      const billExists = addresses.some(a => String(a.id) === String(currentBillId));
+      if (!currentBillId || !billExists) {
+        setBillingId(addresses[0].id);
+      }
+    }
+  }, [addresses, shippingId, billingId, sameAsShip]);
+
   /* Helpers */
-  const normalizeAddr = (a) => ({
-    id: a.aid || a.id || a.address_id || a.addressId,
-    street: a.street,
-    city: a.city,
-    pincode: a.pincode,
-    district: a.district,
-    state: a.state,
-    country: a.country,
-    company: a.company,
-    gst: a.gst,
-    deflt: a.deflt,
-  });
+  const normalizeAddr = (a) => {
+    const rawId = a.aid || a.id || a.address_id || a.addressId;
+    return {
+      id: rawId ? String(rawId) : rawId,
+      street: a.street || '',
+      city: a.city || '',
+      pincode: a.pincode || '',
+      district: a.district || '',
+      state: a.state || '',
+      country: a.country || '',
+      company: a.company || '',
+      gst: a.gst || '',
+      deflt: a.deflt || false,
+    };
+  };
 
   const addrLabel = (a = {}) =>
     [a.street, a.city, a.district, a.state, a.country, a.pincode]
@@ -130,12 +158,11 @@ export default function CheckoutPage() {
   const fetchAddresses = async () => {
     try {
       const payload = qs.stringify({ userid: user?.id || guestId, address_id: 1 });
-      const { data } = await axios.post(
+      const { data } = await api.post(
         `${API_BASE}/address`,
         payload,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/x-www-form-urlencoded',
           },
         }
@@ -164,12 +191,11 @@ export default function CheckoutPage() {
   const fetchDefaultAddresses = async () => {
     try {
       const payload = qs.stringify({ userid: user?.id || guestId });
-      const { data } = await axios.post(
+      const { data } = await api.post(
         `${API_BASE}/address`,
         payload,
         {
           headers: {
-            ...(user && token ? { Authorization: `Bearer ${token}` } : {}),
             'Content-Type': 'application/x-www-form-urlencoded',
           },
         }
@@ -190,28 +216,15 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async () => {
     setError('');
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
     setLoading(true);
     try {
-      if (!user) {
-        try {
-          const saved = JSON.parse(localStorage.getItem('guest_address') || '{}');
-          if (saved && saved.street) {
-            const norm = normalizeAddr({
-              ...saved,
-              aid: saved.id || 'guest_local' // Ensure ID exists for selection
-            });
-            setAddresses([norm]);
-            setShippingId(norm.id);
-            setBillingId(norm.id);
-            setStep('select');
-            setShowAddressModal(true);
-            return;
-          }
-        } catch {}
-      }
-
       const list = await fetchDefaultAddresses();
-      if (user && token && list.length) {
+      if (list.length) {
         setStep('select');
       } else {
         setStep('form');
@@ -281,9 +294,9 @@ export default function CheckoutPage() {
     setLoading(true);
     try {
       const uid = user?.id || guestId;
-      const payload = qs.stringify({ 
-        userid: uid, 
-        ...form, 
+      const payload = qs.stringify({
+        userid: uid,
+        ...form,
         customer_name: form.name,
         customer_email: form.email,
         customer_phone: form.phone
@@ -291,13 +304,13 @@ export default function CheckoutPage() {
 
       console.log("Adding Address with UID:", uid, "Payload:", payload);
 
-      const { data } = await axios.post(`${API_BASE}/address/add`, payload, {
+      const { data } = await api.post(`${API_BASE}/address/add`, payload, {
         headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
           'Content-Type': 'application/x-www-form-urlencoded',
         },
+        timeout: 40000,
       });
-      
+
       console.log("Address Add Response:", data);
 
       const ok =
@@ -349,7 +362,7 @@ export default function CheckoutPage() {
             });
           }
         }
-        
+
         setForm(prev => ({
           ...prev,
           street: '',
@@ -377,9 +390,13 @@ export default function CheckoutPage() {
 
 
   const handleSelectContinue = () => {
-    const billId = sameAsShip ? shippingId : billingId;
-    if (!shippingId || !billId) {
-      setError('Please select both shipping and billing address');
+    const activeBillingId = sameAsShip ? shippingId : billingId;
+
+    const shippingExists = addresses.some(a => String(a.id) === String(shippingId));
+    const billingExists = addresses.some(a => String(a.id) === String(activeBillingId));
+
+    if (!shippingId || !activeBillingId || !shippingExists || !billingExists) {
+      setError('Please select both shipping and billing address from the list.');
       return;
     }
     setError('');
@@ -400,8 +417,8 @@ export default function CheckoutPage() {
         userid: user?.id || guestId,
         client_hint_amount: Math.round(Number(total) * 100), // convert to paise
         receipt: `ikonix_${order_id}`,
-        notes: JSON.stringify({ 
-          source: 'web', 
+        notes: JSON.stringify({
+          source: 'web',
           cart: cartItems.length,
           guest: !user,
           name: form.name,
@@ -409,14 +426,14 @@ export default function CheckoutPage() {
         }),
       });
 
-      const { data: raw } = await axios.post(
+      const { data: raw } = await api.post(
         `${API_BASE}/payment/create-order`,
         payload,
         {
           headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
             'Content-Type': 'application/x-www-form-urlencoded',
           },
+          timeout: 40000,
         }
       );
 
@@ -494,14 +511,13 @@ export default function CheckoutPage() {
             try {
               if (cartItems && cartItems.length > 0) {
                 for (const item of cartItems) {
-                  await axios.post(`${API_BASE}/cart`, qs.stringify({
+                  await api.post(`${API_BASE}/cart`, qs.stringify({
                     userid: user?.id || guestId,
                     productid: item.id,
                     variantid: item.variantid,
                     qty: item.qty
                   }), {
                     headers: {
-                      ...(user && token ? { Authorization: `Bearer ${token}` } : {}),
                       'Content-Type': 'application/x-www-form-urlencoded'
                     }
                   });
@@ -523,14 +539,13 @@ export default function CheckoutPage() {
         try {
           if (cartItems && cartItems.length > 0) {
             for (const item of cartItems) {
-              await axios.post(`${API_BASE}/cart`, qs.stringify({
+              await api.post(`${API_BASE}/cart`, qs.stringify({
                 userid: user?.id || guestId,
                 productid: item.id,
                 variantid: item.variantid,
                 qty: item.qty
               }), {
                 headers: {
-                  ...(user && token ? { Authorization: `Bearer ${token}` } : {}),
                   'Content-Type': 'application/x-www-form-urlencoded'
                 }
               });
@@ -599,6 +614,14 @@ export default function CheckoutPage() {
     const uid = user?.id || guestId;
     const billId = sameAsShip ? shippingId : billingId;
 
+    // Only block if we have NO address at all. 
+    // If it's guest_local but we have form fields (handled in payload), we can proceed.
+    if (!shippingId || !billId) {
+      setStep('form');
+      setError('Please provide your complete address details.');
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
@@ -624,22 +647,30 @@ export default function CheckoutPage() {
       }
 
       const payload = {
-        userid: uid,
+        userid: uid || '0',
         shipping_address: shippingId,
         billing_address: billId,
         delivery_method: deliveryMethod,
         customer_name: form.name,
         customer_email: form.email,
         customer_phone: form.phone,
+        // ✅ Add detailed address info if guest
+        ...(!user ? {
+          street: form.street,
+          city: form.city,
+          pincode: form.pincode,
+          district: form.district,
+          state: form.state,
+          country: form.country,
+        } : {})
       };
 
       console.log("FINAL CHECKOUT ATTEMPT", payload);
 
       const doCheckout = () =>
-        axios.post(`${API_BASE}/checkout`, qs.stringify(payload), {
+        api.post(`${API_BASE}/checkout`, qs.stringify(payload), {
           timeout: 40000,
           headers: {
-            ...(user && token ? { Authorization: `Bearer ${token}` } : {}),
             "Content-Type": "application/x-www-form-urlencoded",
           },
         });
@@ -651,10 +682,10 @@ export default function CheckoutPage() {
         console.error("CHECKOUT 500 RAW ERROR:", err?.response?.data || err);
         if (err.response?.status === 500) {
           const raw = err.response.data;
-          const htmlMsg = typeof raw === 'string' 
-            ? raw.replace(/<[^>]+>/g, '').slice(0, 500) 
+          const htmlMsg = typeof raw === 'string'
+            ? raw.replace(/<[^>]+>/g, '').slice(0, 500)
             : JSON.stringify(raw);
-          
+
           Swal.fire({
             title: 'Checkout Error (500)',
             text: 'Server failed to process order. ' + (htmlMsg || 'Empty response.'),
@@ -667,7 +698,7 @@ export default function CheckoutPage() {
       let { data } = resp;
       console.log("CHECKOUT RESPONSE:", data);
 
-      if (data?.status === true || data?.success === true) {
+      if (data?.status === true || data?.success === true || data?.order_id) {
         setShowAddressModal(false);
         if (data.order_id) {
           handlePayClick(data.order_id);
@@ -681,8 +712,21 @@ export default function CheckoutPage() {
       }
     } catch (err) {
       console.error("HANDLE CHECKOUT FINAL CATCH:", err?.response?.data || err);
-      const errMsg = err?.response?.data?.message || err?.message || "Checkout failed";
+      let errMsg = err?.response?.data?.message || err?.message || "Checkout failed";
+
+      const isNetworkError = err.message === "Network Error" || !err.response;
+
+      if (isNetworkError) {
+        errMsg = `Network Error (URL: ${API_BASE}/checkout). This often happens due to CORS policy on localhost or server downtime. Please check your internet and try again.`;
+      }
+
       setError(errMsg);
+      Swal.fire({
+        title: 'Checkout Error',
+        text: errMsg,
+        icon: 'error',
+        footer: '<a href="https://ikonixperfumer.com" target="_blank">Is the site reachable?</a>'
+      });
     } finally {
       setLoading(false);
     }
@@ -718,7 +762,18 @@ export default function CheckoutPage() {
     <div className="max-w-5xl mx-auto py-10 px-4">
       <h1 className="text-4xl font-semibold mb-8 text-[#6d5a52]">Your Order</h1>
 
-      {cartItems.length === 0 ? (
+      {!user ? (
+        <div className="text-center py-20 bg-[#fdf8f5] rounded-3xl border border-[#eadcd5]">
+          <h2 className="text-2xl font-bold text-[#6d5a52] mb-4">Login Required</h2>
+          <p className="text-[#b49d91] mb-8">Please log in or create an account to proceed with your order.</p>
+          <button
+            onClick={() => setShowAuthModal(true)}
+            className="bg-[#1e2633] text-white px-10 py-3 rounded-xl hover:opacity-90 transition"
+          >
+            Login / Signup
+          </button>
+        </div>
+      ) : cartItems.length === 0 ? (
         <p className="text-center">
           Your cart is empty.&nbsp;
           <button onClick={() => navigate('/shop')} className="underline text-blue-600">
@@ -931,15 +986,15 @@ export default function CheckoutPage() {
                         <label
                           key={a.id}
                           className={`block border rounded-2xl p-4 cursor-pointer text-sm leading-snug
-                            ${shippingId === a.id ? 'border-[#b49d91] bg-white' : 'border-[#d7c6bfd7] bg-[#f6ebe6]'}
-                            ${newAddrId === a.id ? 'ring-2 ring-[#b49d91]' : ''}`}
+                            ${String(shippingId) === String(a.id) ? 'border-[#b49d91] bg-white' : 'border-[#d7c6bfd7] bg-[#f6ebe6]'}
+                            ${String(newAddrId) === String(a.id) ? 'ring-2 ring-[#b49d91]' : ''}`}
                         >
                           <div className="flex items-start gap-3">
                             <input
                               type="radio"
                               className="mt-1 accent-[#1e2633]"
                               name="shipping"
-                              checked={shippingId === a.id}
+                              checked={String(shippingId) === String(a.id)}
                               onChange={() => {
                                 setShippingId(a.id);
                                 if (sameAsShip) setBillingId(a.id);
@@ -990,15 +1045,15 @@ export default function CheckoutPage() {
                             <label
                               key={a.id}
                               className={`block border rounded-2xl p-4 cursor-pointer text-sm leading-snug
-              ${billingId === a.id ? "border-[#b49d91] bg-white" : "border-[#d7c6bfd7] bg-[#f6ebe6]"}
-              ${newAddrId === a.id ? "ring-2 ring-[#b49d91]" : ""}`}
+              ${String(billingId) === String(a.id) ? "border-[#b49d91] bg-white" : "border-[#d7c6bfd7] bg-[#f6ebe6]"}
+              ${String(newAddrId) === String(a.id) ? "ring-2 ring-[#b49d91]" : ""}`}
                             >
                               <div className="flex items-start gap-3">
                                 <input
                                   type="radio"
                                   className="mt-1 accent-[#1e2633]"
                                   name="billing"
-                                  checked={billingId === a.id}
+                                  checked={String(billingId) === String(a.id)}
                                   onChange={() => setBillingId(a.id)}
                                 />
                                 <div>
@@ -1036,23 +1091,37 @@ export default function CheckoutPage() {
                 <div className="grid justify-between lg:flex items-center">
                   {/* Delivery method */}
                   <div className="flex items-center gap-3 m-2">
-                    <h4 className="text-20px lg:text-xl font-semibold text-[#6d5a52]">
+                    <h4 className="text-[20px] lg:text-xl font-semibold text-[#6d5a52]">
                       Delivery Method
                     </h4>
-                    <select
-                      value={deliveryMethod}
-                      onChange={(e) => setDeliveryMethod(Number(e.target.value))}
-                      className="border border-[#6d5a52] rounded-xl px-6 py-3 text-[#6d5a52] bg-transparent"
-                    >
-                      <option value={1}>Standard</option>
-                      <option value={2}>Express</option>
-                    </select>
+                    <div className="flex bg-[#f6ebe6] border border-[#d7c6bfd7] rounded-xl p-1">
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryMethod(1)}
+                        className={`px-5 py-2 rounded-lg text-sm lg:text-base transition font-medium ${deliveryMethod === 1
+                          ? 'bg-[#1e2633] text-white shadow'
+                          : 'text-[#6d5a52] hover:bg-[#eadcd5]'
+                          }`}
+                      >
+                        Standard
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryMethod(2)}
+                        className={`px-5 py-2 rounded-lg text-sm lg:text-base transition font-medium ${deliveryMethod === 2
+                          ? 'bg-[#1e2633] text-white shadow'
+                          : 'text-[#6d5a52] hover:bg-[#eadcd5]'
+                          }`}
+                      >
+                        Express
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="flex gap-3 m-2 ml-[-10px] lg:ml-0 float-start lg:float-end justify-between">
+                  <div className="grid md:flex gap-3 m-2 ml-[-10px] lg:ml-0 float-start lg:float-end justify-normal md:justify-between">
                     <button
                       onClick={handleCancel}
-                      className="px-12 py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]"
+                      className="px-6 py-2 md:px-12 md:py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]"
                     >
                       Back
                     </button>
@@ -1068,100 +1137,106 @@ export default function CheckoutPage() {
             )}
 
             {/* STEP: CONFIRM */}
-            {step === 'confirm' && (
-              <>
-                <h2 className="text-3xl font-semibold text-[#6d5a52] mb-8">Confirm your Order</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* Products list */}
-                  <div>
-                    <div className="bg-[#eadcd5] text-[#6d5a52] rounded-md py-3 px-4 font-semibold mb-4 text-lg">
-                      product
+            {step === 'confirm' && (() => {
+              const activeBillId = sameAsShip ? shippingId : billingId;
+              const shippingAddr = addresses.find(a => String(a.id) === String(shippingId));
+              const billingAddr = addresses.find(a => String(a.id) === String(activeBillId));
+
+              return (
+                <>
+                  <h2 className="text-3xl font-semibold text-[#6d5a52] mb-8">Confirm your Order</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Products list */}
+                    <div>
+                      <div className="bg-[#eadcd5] text-[#6d5a52] rounded-md py-3 px-4 font-semibold mb-4 text-lg">
+                        product
+                      </div>
+                      <div className="max-h-72 overflow-y-auto pr-2 space-y-6">
+                        {cartItems.map((item) => (
+                          <div key={item.cartid} className="flex gap-4">
+                            <img
+                              src={`https://ikonixperfumer.com/beta/assets/uploads/${item.image}`}
+                              alt={item.name}
+                              className="w-16 h-16 rounded-xl object-cover bg-[#f6ebe6]"
+                            />
+                            <div className="flex-1">
+                              <p className="text-[#6d5a52] font-medium">{item.name}</p>
+                              <p className="text-[#2A3443] font-semibold text-sm">
+                                Rs.{item.price.toFixed(2)}/-
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="max-h-72 overflow-y-auto pr-2 space-y-6">
-                      {cartItems.map((item) => (
-                        <div key={item.cartid} className="flex gap-4">
-                          <img
-                            src={`https://ikonixperfumer.com/beta/assets/uploads/${item.image}`}
-                            alt={item.name}
-                            className="w-16 h-16 rounded-xl object-cover bg-[#f6ebe6]"
-                          />
-                          <div className="flex-1">
-                            <p className="text-[#6d5a52] font-medium">{item.name}</p>
-                            <p className="text-[#2A3443] font-semibold text-sm">
-                              Rs.{item.price.toFixed(2)}/-
-                            </p>
+
+                    {/* Address + totals */}
+                    <div>
+                      <div className="bg-[#eadcd5] text-[#6d5a52] rounded-md py-3 px-4 font-semibold mb-4 text-lg">
+                        Address
+                      </div>
+                      <label className="block border border-[#b49d91] rounded-2xl p-4 text-sm leading-snug text-[#6d5a52] mb-8">
+                        <div className="flex items-start gap-3">
+                          <input type="radio" className="mt-1 accent-[#1e2633]" checked readOnly />
+                          <div>
+                            {shippingAddr ? addrLabel(shippingAddr) : 'No address selected'}
+                            {shippingAddr && (
+                              <>
+                                {shippingAddr.company && (
+                                  <div>Company: {shippingAddr.company}</div>
+                                )}
+                                {shippingAddr.gst && (
+                                  <div>GST: {shippingAddr.gst}</div>
+                                )}
+                                {shippingAddr.type && (
+                                  <div>Type: {shippingAddr.type}</div>
+                                )}
+                              </>
+                            )}
+                            {!sameAsShip && billingAddr && (
+                              <div className="mt-4 border-t pt-2 border-[#eadcd5]">
+                                <strong>Billing Address:</strong>
+                                <div>{addrLabel(billingAddr)}</div>
+                              </div>
+                            )}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Address + totals */}
-                  <div>
-                    <div className="bg-[#eadcd5] text-[#6d5a52] rounded-md py-3 px-4 font-semibold mb-4 text-lg">
-                      Address
-                    </div>
-                    <label className="block border border-[#b49d91] rounded-2xl p-4 text-sm leading-snug text-[#6d5a52] mb-8">
-                      <div className="flex items-start gap-3">
-                        <input type="radio" className="mt-1 accent-[#1e2633]" checked readOnly />
-                        <div>
-                          {addrLabel(addresses.find(a => a.id === shippingId))}
-                          {shippingId && billingId && (
-                            <>
-                              {addresses.find(a => a.id === shippingId)?.company && (
-                                <div>
-                                  Company: {addresses.find(a => a.id === shippingId)?.company}
-                                </div>
-                              )}
-                              {addresses.find(a => a.id === shippingId)?.gst && (
-                                <div>
-                                  GST: {addresses.find(a => a.id === shippingId)?.gst}
-                                </div>
-                              )}
-                              {addresses.find(a => a.id === shippingId)?.type && (
-                                <div>
-                                  Type: {addresses.find(a => a.id === shippingId)?.type}
-                                </div>
-                              )}
-                            </>
-                          )}
+                      </label>
+                      <div className="space-y-2 text-[#6d5a52] mb-8">
+                        <div className="flex justify-between text-base">
+                          <span>Subtotal</span>
+                          <span className="text-[#b49d91] font-semibold">
+                            Rs.{subtotal.toFixed(2)}/-
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-2xl font-bold text-[#2A3443]">
+                          <span>Total</span>
+                          <span>Rs.{total.toFixed(2)}/-</span>
                         </div>
                       </div>
-                    </label>
-                    <div className="space-y-2 text-[#6d5a52] mb-8">
-                      <div className="flex justify-between text-base">
-                        <span>Subtotal</span>
-                        <span className="text-[#b49d91] font-semibold">
-                          Rs.{subtotal.toFixed(2)}/-
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-2xl font-bold text-[#2A3443]">
-                        <span>Total</span>
-                        <span>Rs.{total.toFixed(2)}/-</span>
-                      </div>
                     </div>
                   </div>
-                </div>
 
-                {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+                  {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
-                <div className="flex justify-end gap-4 mt-6">
-                  <button
-                    onClick={() => setStep('select')}
-                    className="px-12 py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={handleCheckout}
-                    className="px-12 py-3 rounded-xl bg-[#1e2633] text-white hover:opacity-90"
-                    disabled={loading}
-                  >
-                    {loading ? 'Processing…' : 'Proceed to Checkout'}
-                  </button>
-                </div>
-              </>
-            )}
+                  <div className="grid md:flex justify-end gap-4 mt-6">
+                    <button
+                      onClick={() => setStep('select')}
+                      className="px-6 py-2 md:px-12 md:py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={handleCheckout}
+                      className="px-12 py-3 rounded-xl bg-[#1e2633] text-white hover:opacity-90"
+                      disabled={loading}
+                    >
+                      {loading ? 'Processing…' : 'Proceed to Checkout'}
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

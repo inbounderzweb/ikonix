@@ -1,7 +1,7 @@
 {
   "name": "ikonix",
   "version": "0.1.0",
-  "proxy": "https://ikonixperfumer.com/production",
+  "proxy": "https://ikonixperfumer.com",
   "homepage": "https://ikonixperfumer.com",
   "private": true,
   "dependencies": {

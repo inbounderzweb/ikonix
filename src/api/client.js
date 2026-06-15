@@ -2,7 +2,7 @@
 import axios from "axios";
 import qs from "qs";
 
-const VALIDATE_URL = "https://ikonixperfumer.com/beta/api/validate";
+const VALIDATE_URL = "/beta/api/validate";
 
 let refreshingPromise = null;
 
@@ -64,8 +64,10 @@ export async function ensureTokenReady() {
   return token;
 }
 
-export function createApiClient({ getToken, setToken, setIsTokenReady }) {
-  const api = axios.create();
+export function createApiClient({ getToken, setToken, setIsTokenReady, baseUrl }) {
+  const api = axios.create({
+    baseURL: baseUrl !== undefined ? baseUrl : '', 
+  });
 
   // Attach token to every request, ensuring token is fresh
   api.interceptors.request.use(async (config) => {

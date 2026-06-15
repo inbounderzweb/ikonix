@@ -12,7 +12,7 @@ import qs from "qs";
 import { useAuth } from "./AuthContext";
 import { createApiClient } from "../api/client";
 
-const API_BASE = "https://ikonixperfumer.com/beta/api";
+const API_BASE = "/beta/api";
 const CartContext = createContext();
 
 /* ---------------- Guest storage helpers (ONE SHAPE) ----------------
@@ -153,6 +153,7 @@ export function CartProvider({ children }) {
         getToken: () => token,
         setToken,
         setIsTokenReady,
+        baseUrl: '', // relative
       }),
     [token, setToken, setIsTokenReady]
   );
@@ -412,6 +413,7 @@ export function CartProvider({ children }) {
         guestId,
         loading,
         syncing,
+        api,
       }}
     >
       {children}
