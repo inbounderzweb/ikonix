@@ -30,6 +30,8 @@ function Header() {
   const [cartOpen, setCartOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
+  const closeSidebar = useCallback(() => setSidebar(false), []);
+
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -135,7 +137,7 @@ function Header() {
         </div>
       </div>
 
-      <Drawer setSideBarOpen={sidebar} onClose={() => setSidebar(false)}>
+      <Drawer setSideBarOpen={sidebar} onClose={closeSidebar}>
         {/* mobile menu */}
       </Drawer>
 

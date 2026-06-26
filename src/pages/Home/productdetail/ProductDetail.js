@@ -76,10 +76,13 @@ export default function ProductDetails() {
 
   const [product, setProduct] = useState(null);
   const [selectedVar, setSelectedVar] = useState(null);
+  const [selectedVariantId, setSelectedVariantId] = useState("");
+  const [selectedImage, setSelectedImage] = useState("");
   const [qty, setQty] = useState(1);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   // ✅ shared client that auto-refreshes token if needed
   const api = useMemo(
@@ -135,95 +138,112 @@ export default function ProductDetails() {
     };
   }, [api, pid, vid, isTokenReady]);
 
-  // Images
-  const images = useMemo(() => {
-    if (!product) return [];
-    const pics = [];
-    
-    // Add main image if it exists
-    if (product.image) {
-      pics.push(product.image);
+  const parseImageList = useCallback((value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.flatMap((item) => parseImageList(item)).filter(Boolean);
+    if (typeof value !== "string") return [];
+
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return parseImageList(parsed);
+      } catch (e) {
+        console.error("Failed to parse image list JSON:", e);
+      }
     }
 
-    if (product.more_images) {
-      let extras = [];
-      if (Array.isArray(product.more_images)) {
-        extras = product.more_images;
-      } else if (typeof product.more_images === "string") {
-        const trimmed = product.more_images.trim();
-        if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-          try {
-            const parsed = JSON.parse(trimmed);
-            if (Array.isArray(parsed)) {
-              extras = parsed;
-            }
-          } catch (e) {
-            console.error("Failed to parse more_images JSON string:", e);
-            // Fallback: split by comma if JSON parsing fails but it has commas
-            extras = trimmed.split(",").map((s) => s.trim()).filter(Boolean);
-          }
-        } else {
-          extras = trimmed.split(",").map((s) => s.trim()).filter(Boolean);
-        }
-      }
+    return trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+  }, []);
 
-      if (Array.isArray(extras)) {
-        extras.forEach((img) => {
-          if (img && typeof img === "string") {
-            const cleanImg = img.trim();
-            if (cleanImg && !pics.includes(cleanImg)) {
-              pics.push(cleanImg);
-            }
-          }
-        });
+  const productImages = useMemo(() => {
+    if (!product) return [];
+    const pics = [];
+    const addUnique = (img) => {
+      if (!img || typeof img !== "string") return;
+      const clean = img.trim();
+      if (clean && !pics.includes(clean)) pics.push(clean);
+    };
+
+    parseImageList(product.image).forEach(addUnique);
+    parseImageList(product.more_images).forEach(addUnique);
+    return pics;
+  }, [product, parseImageList]);
+
+  const variantImages = useMemo(() => {
+    if (!product?.variants?.length) return [];
+    const pics = [];
+    const seen = new Set();
+
+    for (const variant of product.variants) {
+      const images = [
+        ...parseImageList(variant.image),
+        ...parseImageList(variant.more_images),
+      ];
+      for (const img of images) {
+        const clean = typeof img === "string" ? img.trim() : "";
+        if (!clean || seen.has(clean)) continue;
+        seen.add(clean);
+        pics.push(clean);
       }
     }
 
     return pics;
-  }, [product]);
+  }, [product, parseImageList]);
 
-  const activeImg = images[activeIndex] || "";
+  const variantPrimaryImage = useMemo(() => {
+    return parseImageList(selectedVar?.image)[0] || "";
+  }, [selectedVar, parseImageList]);
+
+  const galleryImages = useMemo(() => {
+    const seen = new Set();
+    const list = [];
+    const push = (img) => {
+      if (!img || typeof img !== "string") return;
+      const clean = img.trim();
+      if (!clean || seen.has(clean)) return;
+      seen.add(clean);
+      list.push(clean);
+    };
+
+    variantImages.forEach(push);
+    productImages.forEach(push);
+    return list;
+  }, [variantImages, productImages]);
 
   useEffect(() => {
-    setActiveIndex(0);
-  }, [images]);
+    if (!galleryImages.length) return;
+    const nextImage = selectedImage && galleryImages.includes(selectedImage)
+      ? selectedImage
+      : variantPrimaryImage || galleryImages[0];
 
-  // Gallery slider / interaction refs and timers
-  const [isAutoSlideActive, setIsAutoSlideActive] = useState(true);
+    if (nextImage && nextImage !== selectedImage) {
+      setSelectedImage(nextImage);
+    }
+  }, [galleryImages, selectedImage, variantPrimaryImage]);
+
+  useEffect(() => {
+    const idx = galleryImages.indexOf(selectedImage);
+    if (idx >= 0 && idx !== activeIndex) {
+      setActiveIndex(idx);
+    }
+  }, [selectedImage, galleryImages, activeIndex]);
+
+  const activeImg = selectedImage || galleryImages[activeIndex] || "";
+
   const [fadeState, setFadeState] = useState("opacity-100 scale-100");
   const thumbContainerRef = useRef(null);
-  const resumeTimerRef = useRef(null);
-
-  const resetAutoSlideTimer = useCallback(() => {
-    setIsAutoSlideActive(false);
-    if (resumeTimerRef.current) {
-      clearTimeout(resumeTimerRef.current);
-    }
-    // Resume auto-sliding after 5 seconds of inactivity
-    resumeTimerRef.current = setTimeout(() => {
-      setIsAutoSlideActive(true);
-    }, 5000);
-  }, []);
 
   // Handle active index transitions smoothly
   useEffect(() => {
     setFadeState("opacity-0 scale-95");
     const t = setTimeout(() => {
       setFadeState("opacity-100 scale-100");
-    }, 150);
+    }, 250);
     return () => clearTimeout(t);
   }, [activeIndex]);
-
-  // Auto-slide effect
-  useEffect(() => {
-    if (!isAutoSlideActive || images.length <= 1) return;
-
-    const interval = setInterval(() => {
-      setActiveIndex((prevIndex) => (prevIndex + 1) % images.length);
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, [isAutoSlideActive, images.length]);
 
   // Center the active thumbnail when it changes
   useEffect(() => {
@@ -243,31 +263,24 @@ export default function ProductDetails() {
     }
   }, [activeIndex]);
 
-  // Clean up timers on unmount
-  useEffect(() => {
-    return () => {
-      if (resumeTimerRef.current) {
-        clearTimeout(resumeTimerRef.current);
-      }
-    };
-  }, []);
-
   const handleThumbnailClick = useCallback((index) => {
     setActiveIndex(index);
-    resetAutoSlideTimer();
-  }, [resetAutoSlideTimer]);
+    setSelectedImage(galleryImages[index] || "");
+  }, [galleryImages]);
 
   const handlePrevImage = useCallback(() => {
-    if (images.length <= 1) return;
-    setActiveIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
-    resetAutoSlideTimer();
-  }, [images.length, resetAutoSlideTimer]);
+    if (galleryImages.length <= 1) return;
+    const nextIndex = activeIndex === 0 ? galleryImages.length - 1 : activeIndex - 1;
+    setActiveIndex(nextIndex);
+    setSelectedImage(galleryImages[nextIndex] || "");
+  }, [galleryImages, activeIndex]);
 
   const handleNextImage = useCallback(() => {
-    if (images.length <= 1) return;
-    setActiveIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-    resetAutoSlideTimer();
-  }, [images.length, resetAutoSlideTimer]);
+    if (galleryImages.length <= 1) return;
+    const nextIndex = activeIndex === galleryImages.length - 1 ? 0 : activeIndex + 1;
+    setActiveIndex(nextIndex);
+    setSelectedImage(galleryImages[nextIndex] || "");
+  }, [galleryImages, activeIndex]);
 
   const scrollThumbnails = useCallback((direction) => {
     if (thumbContainerRef.current) {
@@ -276,14 +289,17 @@ export default function ProductDetails() {
         left: direction === "left" ? -scrollAmount : scrollAmount,
         behavior: "smooth",
       });
-      resetAutoSlideTimer();
     }
-  }, [resetAutoSlideTimer]);
+  }, []);
 
   const handleImgError = useCallback((e) => {
     e.target.onerror = null;
     e.target.src = "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&q=80&w=600";
   }, []);
+
+  const handleMainImageClick = useCallback(() => {
+    if (activeImg) setIsLightboxOpen(true);
+  }, [activeImg]);
 
   const variantOptions = useMemo(
     () =>
@@ -292,6 +308,8 @@ export default function ProductDetails() {
         weight: v.weight,
         price: Number(v.price),
         sale_price: Number(v.sale_price),
+        image: v.image || null,
+        more_images: v.more_images || null,
       })),
     [product]
   );
@@ -302,6 +320,8 @@ export default function ProductDetails() {
     const fromUrl = vid && variantOptions.find((v) => String(v.vid) === String(vid));
     const next = fromUrl || variantOptions[0];
     setSelectedVar(next);
+    setSelectedVariantId(String(next.vid));
+    setSelectedImage(parseImageList(next.image)[0] || parseImageList(next.more_images)[0] || productImages[0] || "");
 
     if (!fromUrl) {
       setSp(
@@ -313,7 +333,7 @@ export default function ProductDetails() {
         { replace: true }
       );
     }
-  }, [variantOptions, vid, setSp]);
+  }, [variantOptions, vid, setSp, parseImageList, productImages]);
 
   const unitPrice = useMemo(() => {
     if (!selectedVar) return 0;
@@ -323,6 +343,13 @@ export default function ProductDetails() {
   }, [selectedVar]);
 
   const totalPrice = (unitPrice || 0) * qty;
+
+  const mrpPrice = useMemo(() => Number(selectedVar?.price) || 0, [selectedVar]);
+  const discountPct = useMemo(() => {
+    if (mrpPrice > unitPrice && unitPrice > 0) return Math.round(((mrpPrice - unitPrice) / mrpPrice) * 100);
+    return 0;
+  }, [mrpPrice, unitPrice]);
+  const savingsPerUnit = mrpPrice > unitPrice ? mrpPrice - unitPrice : 0;
 
   const addGuest = useCallback(() => {
     if (!product || !selectedVar?.vid) return;
@@ -581,14 +608,21 @@ export default function ProductDetails() {
             {/* Main Image Container */}
             <div className="relative group w-full aspect-square md:h-[500px] rounded-2xl overflow-hidden bg-gray-50 flex items-center justify-center border border-gray-100 shadow-md transition-shadow duration-300 hover:shadow-lg">
               {activeImg ? (
-                <div className="w-full h-full overflow-hidden flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={handleMainImageClick}
+                  className="w-full h-full overflow-hidden flex items-center justify-center cursor-zoom-in focus:outline-none"
+                  aria-label="Open image in full screen"
+                >
                   <img
+                    loading="eager"
+                    decoding="async"
                     src={`https://ikonixperfumer.com/beta/assets/uploads/${activeImg}`}
                     alt={product.name}
                     onError={handleImgError}
-                    className={`w-full h-full object-cover transition-all duration-300 ease-in-out transform ${fadeState} hover:scale-105 cursor-zoom-in`}
+                    className={`w-full h-full object-cover transition-all duration-300 ease-in-out transform ${fadeState} md:group-hover:scale-105`}
                   />
-                </div>
+                </button>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-6 text-gray-400">
                   <svg
@@ -609,7 +643,7 @@ export default function ProductDetails() {
               )}
 
               {/* Main Image Nav Arrows (Only visible on hover if > 1 image) */}
-              {images.length > 1 && (
+              {galleryImages.length > 1 && (
                 <>
                   <button
                     onClick={handlePrevImage}
@@ -632,7 +666,7 @@ export default function ProductDetails() {
                   
                   {/* Indicator Dots */}
                   <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 bg-black/20 px-3 py-1.5 rounded-full backdrop-blur-sm">
-                    {images.map((_, idx) => (
+                    {galleryImages.map((_, idx) => (
                       <span
                         key={idx}
                         className={`h-1.5 rounded-full transition-all duration-300 ${
@@ -646,7 +680,7 @@ export default function ProductDetails() {
             </div>
 
             {/* Thumbnails Section */}
-            {images.length > 1 && (
+            {galleryImages.length > 1 && (
               <div className="relative group/thumbs w-full mt-2">
                 {/* Left Arrow for Thumbnails */}
                 <button
@@ -662,12 +696,9 @@ export default function ProductDetails() {
                 {/* Thumbnails list */}
                 <div
                   ref={thumbContainerRef}
-                  onScroll={resetAutoSlideTimer}
-                  onTouchStart={resetAutoSlideTimer}
-                  onMouseDown={resetAutoSlideTimer}
                   className="flex gap-3 overflow-x-auto pb-2 no-scrollbar snap-x snap-mandatory scroll-smooth"
                 >
-                  {images.map((img, idx) => (
+                  {galleryImages.map((img, idx) => (
                     <button
                       key={img}
                       onClick={() => handleThumbnailClick(idx)}
@@ -676,13 +707,14 @@ export default function ProductDetails() {
                           ? "border-[#b49d91] ring-2 ring-[#b49d91]/20 scale-95 shadow-sm"
                           : "border-gray-200 hover:border-[#b49d91]/50 hover:scale-102"
                       }`}
-                    >
-                      <img
-                        src={`https://ikonixperfumer.com/beta/assets/uploads/${img}`}
-                        alt=""
-                        onError={handleImgError}
-                        className="w-full h-full object-cover"
-                      />
+                      >
+                        <img
+                          loading="lazy"
+                          src={`https://ikonixperfumer.com/beta/assets/uploads/${img}`}
+                          alt=""
+                          onError={handleImgError}
+                          className="w-full h-full object-cover"
+                        />
                     </button>
                   ))}
                 </div>
@@ -722,8 +754,8 @@ export default function ProductDetails() {
               {Array.from({ length: 5 }).map((_, i) => (
                 <StarSolid key={i} className="h-5 w-5 text-[#8C7367]" />
               ))}
-              <span className="ml-2 text-[14px]">(90)</span>
-              <span className="text-[14px] ml-1">Reviews and Ratings</span>
+              {/* <span className="ml-2 text-[14px]">(90)</span>
+              <span className="text-[14px] ml-1">Reviews and Ratings</span> */}
             </div>
 
             <hr className="border-[#B39384]/60 mt-6" />
@@ -733,18 +765,48 @@ export default function ProductDetails() {
                 Flat 20%off — No discount code required.
               </span>
               <span className="inline-block bg-[#EDE2DD] border border-[#B39384] py-[8px] px-[20px] rounded-[24px] font-[Lato] text-[16px] text-[#8C7367] tracking-[0.5px]">
-                Free Perfume 100ml on shopping above Rs 1800/-
+                Free Perfume 100ml on shopping above Rs 1099/-
               </span>
             </div>
 
             <hr className="border-[#B39384]/60 my-6" />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 items-center justify-between gap-5">
-              <div className="text-[28px] md:text-[30px] font-semibold text-[#2A3443]">
-                ₹{totalPrice.toFixed(0)}/-
+            {/* Pricing block */}
+            <div className="bg-[#FDF8F5] border border-[#E8D9D0] rounded-xl p-4 mb-5">
+              <p className="text-xs text-[#8C7367] font-[Lato] uppercase tracking-widest mb-1">
+                {discountPct >= 40 ? "🔥 Best Deal" : discountPct > 0 ? "Special Offer" : "Price"}
+              </p>
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <span className="text-[32px] md:text-[36px] font-bold text-[#2A3443] leading-none">
+                  ₹{totalPrice.toFixed(0)}
+                </span>
+                {discountPct > 0 && (
+                  <span className="text-[18px] line-through text-gray-400 font-[Lato]">
+                    ₹{(mrpPrice * qty).toFixed(0)}
+                  </span>
+                )}
+                {discountPct > 0 && (
+                  <span className="bg-green-100 text-green-700 text-sm font-bold px-2 py-0.5 rounded-md">
+                    {discountPct}% OFF
+                  </span>
+                )}
               </div>
+              {savingsPerUnit > 0 && (
+                <p className="text-sm text-green-600 font-semibold mt-1">
+                  You Save ₹{(savingsPerUnit * qty).toFixed(0)}
+                  {discountPct > 0 && (
+                    <span className="text-xs text-gray-500 font-normal ml-2">
+                      (MRP ₹{mrpPrice} per unit)
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
 
+            {/* Qty + Variant selectors */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 items-center gap-5">
               <div className="w-full">
+                <p className="text-xs text-[#8C7367] font-[Lato] mb-2 uppercase tracking-wide">Quantity</p>
                 <div className="flex items-center justify-between w-full border border-[#B39384]/60 rounded-full h-12">
                   <button
                     onClick={() => setQty((q) => Math.max(1, q - 1))}
@@ -760,35 +822,47 @@ export default function ProductDetails() {
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                {variantOptions.map((v) => {
-                  const selected = v.vid === selectedVar?.vid;
-                  return (
-                    <button
-                      key={v.vid}
-                      onClick={() => {
-                        setSelectedVar(v);
-                        setQty(1);
-                        setSp(
-                          (prev) => {
-                            const p = new URLSearchParams(prev);
-                            p.set("vid", v.vid);
-                            return p;
-                          },
-                          { replace: true }
-                        );
-                      }}
-                      className={[
-                        "h-12 px-2 w-full rounded-[12px] text-[15px] transition border",
-                        selected
-                          ? "bg-[#b49d91] text-white border-[#b49d91]"
-                          : "bg-white text-[#6C5950] border-[#B39384]/60",
-                      ].join(" ")}
-                    >
-                      {v.weight} ml
-                    </button>
-                  );
-                })}
+              <div>
+                <p className="text-xs text-[#8C7367] font-[Lato] mb-2 uppercase tracking-wide">Size</p>
+                <div className="flex gap-3">
+                  {variantOptions.map((v) => {
+                    const vSale = Number(v.sale_price);
+                    const vMrp = Number(v.price);
+                    const vPct = vMrp > vSale && vSale > 0 ? Math.round(((vMrp - vSale) / vMrp) * 100) : 0;
+                    return (
+                      <button
+                        key={v.vid}
+                        onClick={() => {
+                          setSelectedVar(v);
+                          setSelectedVariantId(String(v.vid));
+                          setSelectedImage(parseImageList(v.image)[0] || parseImageList(v.more_images)[0] || productImages[0] || "");
+                          setQty(1);
+                          setSp(
+                            (prev) => {
+                              const p = new URLSearchParams(prev);
+                              p.set("vid", v.vid);
+                              return p;
+                            },
+                            { replace: true }
+                          );
+                        }}
+                        className={[
+                          "relative h-14 px-3 w-full rounded-[12px] text-[14px] transition border flex flex-col items-center justify-center",
+                          selectedVariantId === String(v.vid)
+                            ? "bg-[#b49d91] text-white border-[#b49d91]"
+                            : "bg-white text-[#6C5950] border-[#B39384]/60",
+                        ].join(" ")}
+                      >
+                        <span>{v.weight} ml</span>
+                        {vPct > 0 && (
+                          <span className={`text-[10px] font-bold ${selectedVariantId === String(v.vid) ? "text-white/80" : "text-green-600"}`}>
+                            {vPct}% off
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -819,9 +893,104 @@ export default function ProductDetails() {
             </div>
 
             <hr className="border-[#B39384]/60 mt-7" />
+
+            {/* About This Product */}
+            <div className="mt-7">
+              <h2 className="font-[Lato] text-[18px] font-bold text-[#2A3443] mb-3">About This Product</h2>
+              <ul className="space-y-2">
+                {[
+                  "Premium long-lasting fragrance — crafted with high-quality ingredients",
+                  "Suitable for everyday wear and special occasions",
+                  "Perfect for gifting — elegantly packaged",
+                  "Cruelty-free and ethically sourced ingredients",
+                  "Available in multiple sizes to suit your lifestyle",
+                ].map((feat) => (
+                  <li key={feat} className="flex items-start gap-2 text-[#6C5950] font-[Lato] text-[15px]">
+                    <span className="text-[#b49d91] font-bold mt-0.5">•</span>
+                    {feat}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Description (if API provides one) */}
+            {product.description && (
+              <div className="mt-7">
+                <h2 className="font-[Lato] text-[18px] font-bold text-[#2A3443] mb-3">Description</h2>
+                <p className="text-[#6C5950] font-[Lato] text-[15px] leading-relaxed whitespace-pre-line">
+                  {product.description}
+                </p>
+              </div>
+            )}
+
+            {/* Specifications */}
+            <div className="mt-7">
+              <h2 className="font-[Lato] text-[18px] font-bold text-[#2A3443] mb-3">Specifications</h2>
+              <div className="rounded-xl border border-[#E8D9D0] overflow-hidden">
+                {[
+                  ["Brand", "Ikonix Perfumer"],
+                  ["Category", product.category_name],
+                  ...(selectedVar ? [["Size / Volume", `${selectedVar.weight} ml`]] : []),
+                  ["Fragrance Type", "Eau de Parfum (EDP)"],
+                  ["Country of Origin", "India"],
+                  ["Shelf Life", "36 months from manufacturing date"],
+                ].map(([label, value], i) => (
+                  <div
+                    key={label}
+                    className={`flex items-start gap-4 px-4 py-3 text-[14px] font-[Lato] ${
+                      i % 2 === 0 ? "bg-[#FDF8F5]" : "bg-white"
+                    }`}
+                  >
+                    <span className="text-[#8C7367] font-semibold w-36 flex-shrink-0">{label}</span>
+                    <span className="text-[#2A3443]">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Savings highlight */}
+            {savingsPerUnit > 0 && (
+              <div className="mt-7 bg-green-50 border border-green-200 rounded-xl p-4">
+                <p className="font-bold text-green-700 mb-2 text-[15px]">🎉 Special Offer</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-gray-500">MRP:</span>
+                  <span className="text-gray-400 line-through">₹{mrpPrice}</span>
+                  <span className="text-gray-500">Sale Price:</span>
+                  <span className="font-bold text-[#2A3443]">₹{unitPrice}</span>
+                  <span className="text-gray-500">You Save:</span>
+                  <span className="font-bold text-green-600">₹{savingsPerUnit} ({discountPct}% OFF)</span>
+                </div>
+              </div>
+            )}
+
+            <hr className="border-[#B39384]/60 mt-7" />
           </div>
         </div>
       </div>
+
+      {isLightboxOpen && activeImg && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setIsLightboxOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 text-white/90 text-4xl leading-none"
+            onClick={() => setIsLightboxOpen(false)}
+            aria-label="Close image"
+          >
+            &times;
+          </button>
+          <img
+            src={`https://ikonixperfumer.com/beta/assets/uploads/${activeImg}`}
+            alt={product.name}
+            className="max-h-[90vh] max-w-[92vw] object-contain rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import logo from "../assets/logo.svg";
@@ -21,8 +21,11 @@ const Drawer = ({ setSideBarOpen, onClose, width = "w-[85%]", children }) => {
   useEffect(() => {
     if (setSideBarOpen) {
       setVisible(true);
+      // Double rAF ensures the DOM is painted before we add the transition class
       requestAnimationFrame(() => {
-        setShown(true);
+        requestAnimationFrame(() => {
+          setShown(true);
+        });
       });
       document.body.style.overflow = "hidden";
     } else {
@@ -33,9 +36,20 @@ const Drawer = ({ setSideBarOpen, onClose, width = "w-[85%]", children }) => {
     }
   }, [setSideBarOpen]);
 
+  // Keep a stable ref to onClose so the location effect never re-fires
+  // just because the parent passed a new function reference.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // Close drawer on route change, but NOT on initial mount.
+  const didMountRef = useRef(false);
   useEffect(() => {
-    onClose();
-  }, [location.pathname, location.search, onClose]);
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    onCloseRef.current();
+  }, [location.pathname, location.search]);
 
   if (!visible) return null;
 

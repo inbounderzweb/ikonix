@@ -304,6 +304,7 @@
 // src/pages/shop/Shop.js
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
 import qs from "qs";
 import bag from "../../../assets/bag.svg";
 import Spinner from "../../../components/loader/Spinner";
@@ -637,22 +638,28 @@ export default function Shop() {
             const vid = variant.vid ?? "";
             const msrp = Number(variant.price) || 0;
             const sale = Number(variant.sale_price) || msrp;
+            const discountPct = msrp > 0 && sale < msrp ? Math.round(((msrp - sale) / msrp) * 100) : 0;
+            const savings = msrp > sale ? msrp - sale : 0;
+            const badgeLabel = discountPct >= 40 ? "Best Deal" : discountPct > 0 ? `${discountPct}% OFF` : null;
 
             return (
               <div
                 key={`${product.id}-${vid}`}
-                className="min-w-[80%] lg:min-w-[60%] sm:min-w-0 relative overflow-hidden rounded-[10px]"
+                className="min-w-[80%] lg:min-w-[60%] sm:min-w-0 relative overflow-hidden rounded-[10px] bg-white shadow-sm hover:shadow-md transition-shadow duration-200"
               >
-                <span className="absolute top-2 left-2 inline-block rounded-full border border-[#8C7367] px-3 py-1 text-xs text-[#8C7367]">
-                  {product.category_name}
-                </span>
+                {/* Discount badge */}
+                {badgeLabel && (
+                  <span className={`absolute top-2 left-2 z-10 text-white text-xs font-bold px-2 py-1 rounded-md ${discountPct >= 40 ? "bg-orange-500" : "bg-red-500"}`}>
+                    {discountPct >= 40 ? "🔥 " : ""}{badgeLabel}
+                  </span>
+                )}
 
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleAddToCart(product);
                   }}
-                  className="absolute top-2 right-2 rounded-full p-1"
+                  className="absolute top-2 right-2 z-10 rounded-full p-1 bg-white/80 backdrop-blur-sm shadow"
                 >
                   <img src={bag} alt="cart" className="h-6 w-6" />
                 </button>
@@ -661,22 +668,34 @@ export default function Shop() {
                   onClick={() => navigate(`/product-details/${product.id}?vid=${vid}`)}
                   src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
                   alt={product.name}
-                  className="w-full h-72 object-cover cursor-pointer"
+                  className="w-full h-64 object-cover cursor-pointer"
                 />
 
-                <div className="pt-4 flex justify-between items-start">
-                  <div>
-                    <h3 className="text-[#2A3443] font-[Lato] text-[16px] leading-snug">{product.name}</h3>
-                    <p className="text-[#2A3443] font-[Lato] text-[14px]">{product.category_name}</p>
+                <div className="p-3">
+                  <h3 className="text-[#2A3443] font-[Lato] text-[15px] leading-snug font-medium">{product.name}</h3>
+
+                  {/* Rating */}
+                  <div className="flex items-center gap-1 mt-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <StarSolid key={i} className="h-3 w-3 text-[#b49d91]" />
+                    ))}
+                    <span className="text-xs text-gray-400 ml-1">(4.8)</span>
                   </div>
 
-                  <div className="text-right">
-                    {sale < msrp && (
-                      <span className="text-xs line-through text-[#2A3443] font-[Lato] block">
-                        ₹{msrp}/-
-                      </span>
+                  {/* Pricing */}
+                  <div className="mt-2">
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <span className="font-bold text-[#2A3443] text-[17px]">₹{sale}/-</span>
+                      {discountPct > 0 && (
+                        <>
+                          <span className="text-xs line-through text-gray-400">₹{msrp}/-</span>
+                          <span className="text-xs text-green-600 font-bold">{discountPct}% OFF</span>
+                        </>
+                      )}
+                    </div>
+                    {savings > 0 && (
+                      <p className="text-xs text-green-600 mt-0.5">Save ₹{savings}</p>
                     )}
-                    <span className="font-semibold text-[#2A3443]">₹{sale}/-</span>
                   </div>
                 </div>
               </div>
