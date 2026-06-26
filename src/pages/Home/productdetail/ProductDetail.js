@@ -118,7 +118,7 @@ export default function ProductDetails() {
       setError("");
 
       try {
-        const url = `${API_BASE}/products/${pid}${vid ? `?vid=${vid}` : ""}`;
+        const url = `${API_BASE}/products/${pid}`;
         const { data } = await api.get(url, {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
         });
@@ -136,7 +136,7 @@ export default function ProductDetails() {
     return () => {
       cancelled = true;
     };
-  }, [api, pid, vid, isTokenReady]);
+  }, [api, pid, isTokenReady]);
 
   const parseImageList = useCallback((value) => {
     if (!value) return [];
@@ -233,14 +233,14 @@ export default function ProductDetails() {
 
   const activeImg = selectedImage || galleryImages[activeIndex] || "";
 
-  const [fadeState, setFadeState] = useState("opacity-100 scale-100");
+  const [fadeState, setFadeState] = useState("opacity-100");
   const thumbContainerRef = useRef(null);
 
   // Handle active index transitions smoothly
   useEffect(() => {
-    setFadeState("opacity-0 scale-95");
+    setFadeState("opacity-0");
     const t = setTimeout(() => {
-      setFadeState("opacity-100 scale-100");
+      setFadeState("opacity-100");
     }, 250);
     return () => clearTimeout(t);
   }, [activeIndex]);
@@ -603,6 +603,22 @@ export default function ProductDetails() {
                 -ms-overflow-style: none;
                 scrollbar-width: none;
               }
+              @keyframes imageSlideIn {
+                from {
+                  opacity: 0;
+                  transform: translate3d(0, 10px, 0) scale(0.985);
+                  filter: blur(4px);
+                }
+                to {
+                  opacity: 1;
+                  transform: translate3d(0, 0, 0) scale(1);
+                  filter: blur(0);
+                }
+              }
+              .image-slide-in {
+                animation: imageSlideIn 280ms cubic-bezier(0.22, 1, 0.36, 1);
+                will-change: transform, opacity, filter;
+              }
             `}</style>
             
             {/* Main Image Container */}
@@ -620,7 +636,7 @@ export default function ProductDetails() {
                     src={`https://ikonixperfumer.com/beta/assets/uploads/${activeImg}`}
                     alt={product.name}
                     onError={handleImgError}
-                    className={`w-full h-full object-cover transition-all duration-300 ease-in-out transform ${fadeState} md:group-hover:scale-105`}
+                    className={`w-full h-full object-cover transition-opacity duration-300 ease-out md:group-hover:scale-105 ${fadeState}`}
                   />
                 </button>
               ) : (
@@ -809,6 +825,7 @@ export default function ProductDetails() {
                 <p className="text-xs text-[#8C7367] font-[Lato] mb-2 uppercase tracking-wide">Quantity</p>
                 <div className="flex items-center justify-between w-full border border-[#B39384]/60 rounded-full h-12">
                   <button
+                    type="button"
                     onClick={() => setQty((q) => Math.max(1, q - 1))}
                     disabled={qty === 1}
                     className="px-4 py-2 disabled:opacity-40"
@@ -816,7 +833,7 @@ export default function ProductDetails() {
                     <MinusIcon className="h-5 w-5 text-[#6C5950]" />
                   </button>
                   <span className="min-w-[2rem] text-center text-[#2A3443]">{qty}</span>
-                  <button onClick={() => setQty((q) => q + 1)} className="px-4 py-2">
+                  <button type="button" onClick={() => setQty((q) => q + 1)} className="px-4 py-2">
                     <PlusIcon className="h-5 w-5 text-[#6C5950]" />
                   </button>
                 </div>
@@ -831,6 +848,7 @@ export default function ProductDetails() {
                     const vPct = vMrp > vSale && vSale > 0 ? Math.round(((vMrp - vSale) / vMrp) * 100) : 0;
                     return (
                       <button
+                        type="button"
                         key={v.vid}
                         onClick={() => {
                           setSelectedVar(v);
@@ -868,6 +886,7 @@ export default function ProductDetails() {
 
             <div className="mt-7 grid grid-cols-1 lg:grid-cols-2 gap-5">
               <button
+                type="button"
                 disabled={!selectedVar?.vid}
                 onClick={handleAddToCart}
                 className="w-full h-12 rounded-md bg-[#b49d91] text-white font-medium hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -883,6 +902,7 @@ export default function ProductDetails() {
               </button> */}
 
               <button
+  type="button"
   disabled={!selectedVar?.vid}
   onClick={handleBuyNow}
   className="w-full h-12 rounded-md bg-[#2A3443] text-white font-medium hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed"
