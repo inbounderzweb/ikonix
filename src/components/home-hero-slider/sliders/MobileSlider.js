@@ -2,10 +2,12 @@ import React from "react";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-
-import mobilefirstBanner from "../../../assets/mobilefirst.svg";
-import mobilesecondBanner from "../../../assets/mobilesecond.svg";
-import mobilethirdBanner from "../../../assets/mobilethird.svg";
+// import mobilefirstBanner from "../../../assets/mobilefirst.svg";
+// import mobilesecondBanner from "../../../assets/mobilesecond.svg";
+// import mobilethirdBanner from "../../../assets/mobilethird.svg";
+import mobilefirstBanner from "../../../assets/Mob-banner-1.jpg";
+import mobilesecondBanner from "../../../assets/Mob-banner-2.jpg";
+// import mobilethirdBanner from "../../../assets/mobilethird.svg";
 import { Link } from "react-router-dom";
 
 const sliderData = [
@@ -25,14 +27,14 @@ const sliderData = [
     buttonText: "View Products",
     buttonLink: '/shop',
   },
-  {
-    title: "Define Your Signature",
-    subtitle:
-      "Elevate every moment with an unforgettable scent.",
-    image: mobilethirdBanner,
-    buttonText: "View Products",
-    buttonLink: '/shop',
-  },
+  // {
+  //   title: "Define Your Signature",
+  //   subtitle:
+  //     "Elevate every moment with an unforgettable scent.",
+  //   image: mobilethirdBanner,
+  //   buttonText: "View Products",
+  //   buttonLink: '/shop',
+  // },
 ];
 
 const MobileSlider = () => {
@@ -59,12 +61,14 @@ const MobileSlider = () => {
               className="w-full h-auto object-cover"
             />
 
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/10" />
+
             {/* gradient overlay + contents */}
-            <div className="absolute inset-0 flex flex-col justify-end items-center text-center px-4 pb-10 bg-gradient-to-t from-[#00000080] via-transparent">
-              <h2 className="text-white text-[24px] leading-tight font-semibold mb-3">
+            <div className="absolute inset-0 flex flex-col justify-end items-center text-center px-4 pb-10">
+              <h2 className="text-[24px] leading-tight font-semibold mb-3 bg-gradient-to-r from-[#FFF8F1] via-[#E9C9B2] to-[#FFF0DE] bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(0,0,0,0.25)]">
                 {slide.title}
               </h2>
-              <p className="text-white text-sm leading-relaxed mb-5">
+              <p className="text-white/90 text-sm leading-relaxed mb-5 drop-shadow-[0_1px_8px_rgba(0,0,0,0.22)]">
                 {slide.subtitle}
               </p>
               <Link
