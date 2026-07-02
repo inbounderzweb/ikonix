@@ -74,28 +74,27 @@ const SliderComponent = () => {
     <div className="relative w-[95%] mx-auto mt-[20px]">
       <Slider {...settings}>
         {sliderData.map((slide, index) => (
-          <div key={index} className="relative overflow-hidden rounded-[32px]">
+          <div key={index} className="relative overflow-hidden rounded-[28px]">
             <img
               src={slide.image}
               alt={`Product ${index + 1}`}
-              className="w-full object-cover bg-center rounded-[32px]"
+              className="w-full object-cover object-[center_55%] bg-center rounded-[28px] h-[540px]"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/35 to-black/10" />
-            <div className="absolute top-1/2 -translate-y-1/2 text-left text-white pl-[32px] lg:pl-[52px] xl:pl-[72px] w-[520px] lg:w-[560px]">
-              <h2 className="font-sans mb-[8px] text-[20px] lg:text-[40px] xl:text-[61px] leading-tight bg-gradient-to-r from-[#FFF8F1] via-[#E9C9B2] to-[#FFF0DE] bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(0,0,0,0.25)]">
+            <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent" />
+            <div className="absolute top-1/2 -translate-y-1/2 text-left text-white pl-[52px] lg:pl-[72px] xl:pl-[90px] w-[470px] lg:w-[520px]">
+              <h2 className="font-sans mb-[10px] text-[20px] lg:text-[42px] xl:text-[64px] leading-[0.95] bg-gradient-to-r from-[#FFFDF9] via-[#EFD2BF] to-[#F3D8C7] bg-clip-text text-transparent drop-shadow-[0_2px_10px_rgba(0,0,0,0.2)]">
                 {slide.title}
               </h2>
-              <p className="font-fancy text-[16px] font-normal mb-[16px] text-white/90 drop-shadow-[0_1px_8px_rgba(0,0,0,0.22)]">
+              <p className="font-fancy text-[16px] font-normal mb-[18px] text-white/90 drop-shadow-[0_1px_8px_rgba(0,0,0,0.18)]">
                 {slide.subtitle}
               </p>
               <Link
                 to={slide.buttonLink}
-                className="inline-block cursor-pointer bg-[#2A3443] text-white py-3 px-8 rounded-full font-fancy text-[16px] tracking-wide font-medium hover:bg-[#1c2733]"
+                className="inline-block cursor-pointer bg-[#2f3a4e] text-white py-3 px-9 rounded-full font-fancy text-[16px] tracking-wide font-medium hover:bg-[#243043]"
               >
                 {slide.buttonText}
               </Link>
             </div>
-            <div className="absolute inset-y-0 right-0 w-[7%] bg-gradient-to-l from-black/20 to-transparent pointer-events-none" />
           </div>
         ))}
       </Slider>

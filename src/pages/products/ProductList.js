@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import qs from 'qs';
 import bag from '../../assets/bag.svg';
 import ValidateOnLoad from '../../components/ValidateOnLoad';
-import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 
 import { useGetProductsQuery } from '../../features/product/productApi';
 import { useAuth } from '../../context/AuthContext';
@@ -67,7 +66,7 @@ const writeGuest = (arr) => {
   localStorage.setItem('guestCart', JSON.stringify(safe));
 };
 
-export default function ProductList() {
+export default function ProductList({ hideFilters = false }) {
   const navigate = useNavigate();
   const { user, token, setToken, setIsTokenReady, isTokenReady } = useAuth();
 
@@ -245,31 +244,31 @@ export default function ProductList() {
       {/* kick off token validation */}
       <ValidateOnLoad />
 
-      <section className="mx-auto w-[95%] py-8">
-        {/* Filter Pills */}
-        <div className="flex gap-4 mb-6 overflow-x-auto scrollbar-hide pb-4">
-          {filters.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`
-                px-4 py-2 rounded-full flex-shrink-0 transition
-                ${selectedCategory === cat
-                  ? 'bg-[#b49d91] text-white'
-                  : 'bg-white text-[#b49d91] border border-[#b49d91]'
-                }
-              `}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
+      <section className="mx-auto w-[95vw] max-w-[1640px] py-12">
+        {!hideFilters && (
+          <div className="flex gap-4 mb-8 overflow-x-auto scrollbar-hide pb-2">
+            {filters.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`
+                  px-6 py-3 rounded-full flex-shrink-0 transition text-[16px]
+                  ${selectedCategory === cat
+                    ? 'bg-[#b99b89] text-white shadow-sm'
+                    : 'bg-white text-[#b99b89] border border-[#d8bcae]'
+                  }
+                `}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Products Grid/List */}
         <div
           className="
-            flex flex-row gap-6 overflow-x-auto pb-4
-            sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:pb-0
+            grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6
           "
         >
           {filtered.map((product) => {
@@ -284,11 +283,11 @@ export default function ProductList() {
             return (
               <div
                 key={`${product.id}-${vid}`}
-                className="min-w-[80%] lg:min-w-[60%] sm:min-w-0 relative overflow-hidden rounded-[10px] bg-white shadow-sm hover:shadow-md transition-shadow duration-200"
+                className="relative overflow-hidden rounded-[22px] bg-[#f5e8dc] shadow-[0_4px_16px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_22px_rgba(0,0,0,0.08)] transition-shadow duration-200 min-h-[430px]"
               >
                 {/* Discount badge */}
                 {badgeLabel && (
-                  <span className={`absolute top-2 left-2 z-10 text-white text-xs font-bold px-2 py-1 rounded-md ${discountPct >= 40 ? "bg-orange-500" : "bg-red-500"}`}>
+                  <span className={`absolute top-3 left-3 z-10 text-white text-xs font-bold px-3 py-1.5 rounded-md ${discountPct >= 40 ? "bg-orange-500" : "bg-red-500"}`}>
                     {discountPct >= 40 ? "🔥 " : ""}{badgeLabel}
                   </span>
                 )}
@@ -299,9 +298,9 @@ export default function ProductList() {
                     e.stopPropagation();
                     handleAddToCart(product);
                   }}
-                  className="absolute top-2 right-2 z-10 rounded-full p-1 bg-white/80 backdrop-blur-sm shadow"
+                  className="absolute top-3 right-3 z-10 rounded-full p-2 bg-white/80 backdrop-blur-sm shadow"
                 >
-                  <img src={bag} alt="cart" className="h-6 w-6" />
+                  <img src={bag} alt="cart" className="h-5 w-5" />
                 </button>
 
                 {/* Product Image */}
@@ -309,36 +308,27 @@ export default function ProductList() {
                   onClick={() => navigate(`/product-details/${product.id}?vid=${vid}`)}
                   src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
                   alt={product.name}
-                  className="w-full h-64 object-cover cursor-pointer"
+                  className="w-full h-[280px] object-contain cursor-pointer px-10 pt-10"
                 />
 
                 {/* Info */}
-                <div className="p-3">
-                  <h3 className="text-[#2A3443] font-[Lato] text-[15px] leading-snug font-medium">
+                <div className="px-5 pb-6 pt-2">
+                  <h3 className="text-[#2f3647] font-[Lato] text-[17px] leading-snug font-medium min-h-[48px]">
                     {product.name}
                   </h3>
 
-                  {/* Rating */}
-                  <div className="flex items-center gap-1 mt-1">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <StarSolid key={i} className="h-3 w-3 text-[#b49d91]" />
-                    ))}
-                    <span className="text-xs text-gray-400 ml-1">(4.8)</span>
-                  </div>
-
                   {/* Pricing */}
-                  <div className="mt-2">
+                  <div className="mt-3">
                     <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="font-bold text-[#2A3443] text-[17px]">₹{sale}/-</span>
+                      <span className="font-semibold text-[#2f3647] text-[17px]">₹{sale}/-</span>
                       {discountPct > 0 && (
                         <>
                           <span className="text-xs line-through text-gray-400">₹{msrp}/-</span>
-                          <span className="text-xs text-green-600 font-bold">{discountPct}% OFF</span>
                         </>
                       )}
                     </div>
                     {savings > 0 && (
-                      <p className="text-xs text-green-600 mt-0.5">Save ₹{savings}</p>
+                      <p className="text-xs text-[#8b6b58] mt-0.5">Save ₹{savings}</p>
                     )}
                   </div>
                 </div>

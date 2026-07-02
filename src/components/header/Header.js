@@ -64,10 +64,10 @@ function Header() {
       <div
         className={`fixed top-0 left-1/2 -translate-x-1/2 z-50 w-[95%]
         transition-all duration-300 ease-in-out font-fancy
-        ${scrolled ? "bg-[#2A3443]/90 shadow-md backdrop-blur-md" : "bg-[#2A3443]"}
+        ${scrolled ? "bg-[#2d3545]/95 shadow-md backdrop-blur-md" : "bg-[#2d3545]"}
         rounded-[18px] md:rounded-[22px] mt-3 ring-1 ring-white/5`}
       >
-        <div className="bg-gradient-to-r from-[#152238] via-[#1c2a41] to-[#152238] h-[76px] rounded-[18px] md:rounded-[22px]">
+        <div className="bg-[#2d3545] h-[78px] rounded-[18px] md:rounded-[22px]">
           <div className="flex items-center h-full justify-between">
             <div className="pl-6">
               <Link to="/">
