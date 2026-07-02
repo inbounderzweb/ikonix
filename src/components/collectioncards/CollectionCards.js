@@ -9,7 +9,7 @@ function CollectionCards() {
 const Navigate = useNavigate();
 
   return (
-    <div className='mx-auto w-[95%] lg:w-[75%] mt-[20px]'>
+    <div className='mx-auto w-[95%] mt-[20px]'>
 
 
 <div className='grid grid-cols-1 md:grid-cols-2 lg:flex  gap-5'>

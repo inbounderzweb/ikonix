@@ -245,7 +245,7 @@ export default function ProductList() {
       {/* kick off token validation */}
       <ValidateOnLoad />
 
-      <section className="mx-auto w-[90%] md:w-[75%] py-8">
+      <section className="mx-auto w-[95%] py-8">
         {/* Filter Pills */}
         <div className="flex gap-4 mb-6 overflow-x-auto scrollbar-hide pb-4">
           {filters.map((cat) => (

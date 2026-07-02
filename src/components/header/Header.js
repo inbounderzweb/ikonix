@@ -62,12 +62,12 @@ function Header() {
   return (
     <>
       <div
-        className={`fixed top-0 left-1/2 -translate-x-1/2 z-50 w-[95%] lg:w-[75%]
+        className={`fixed top-0 left-1/2 -translate-x-1/2 z-50 w-[95%]
         transition-all duration-300 ease-in-out font-fancy
         ${scrolled ? "bg-[#2A3443]/90 shadow-md backdrop-blur-md" : "bg-[#2A3443]"}
-        rounded-[8px] md:rounded-[16px] mt-3`}
+        rounded-[18px] md:rounded-[22px] mt-3 ring-1 ring-white/5`}
       >
-        <div className="bg-[#2A3443] h-[70px] rounded-[8px] md:rounded-[16px]">
+        <div className="bg-gradient-to-r from-[#152238] via-[#1c2a41] to-[#152238] h-[76px] rounded-[18px] md:rounded-[22px]">
           <div className="flex items-center h-full justify-between">
             <div className="pl-6">
               <Link to="/">
@@ -80,7 +80,7 @@ function Header() {
             </button>
 
             <div className="hidden md:flex items-center gap-8 pr-6 text-white">
-              <ul className="flex gap-5 items-center text-[16px] font-thin">
+              <ul className="flex gap-8 items-center text-[16px] font-normal">
                 <li onClick={() => navigate("/")} className="cursor-pointer">
                   Home
                 </li>
@@ -114,17 +114,21 @@ function Header() {
               </ul>
 
               <div className="flex gap-3 items-center">
-                <img src={search} onClick={() => setSearchOpen(true)} alt="Search" className="cursor-pointer" />
+                <button onClick={() => setSearchOpen(true)} className="cursor-pointer w-11 h-11 rounded-full bg-white/10 grid place-items-center">
+                  <img src={search} alt="Search" className="w-5 h-5" />
+                </button>
 
-                <img
-                  src={profile}
-                  alt="Profile"
-                  className="cursor-pointer"
+                <button
+                  className="cursor-pointer w-11 h-11 rounded-full bg-white/10 grid place-items-center"
                   onClick={() => (user ? navigate("/user-profile") : setAuthOpen(true))}
-                />
+                >
+                  <img src={profile} alt="Profile" className="w-5 h-5" />
+                </button>
 
                 <div className="relative cursor-pointer" onClick={() => setCartOpen(true)}>
-                  <img src={cartIco} alt="Cart" />
+                  <div className="w-11 h-11 rounded-full bg-white/10 grid place-items-center">
+                    <img src={cartIco} alt="Cart" className="w-5 h-5" />
+                  </div>
                   {cartCount > 0 && (
                     <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-semibold w-5 h-5 flex items-center justify-center rounded-full">
                       {cartCount}

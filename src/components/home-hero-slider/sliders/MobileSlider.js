@@ -54,11 +54,11 @@ const MobileSlider = () => {
     <div className="mobile-slider w-full max-w-[95%] mt-3 mx-auto relative overflow-hidden">
       <Slider {...settings}>
         {sliderData.map((slide, idx) => (
-          <div key={idx} className="relative">
+          <div key={idx} className="relative overflow-hidden rounded-[22px]">
             <img
               src={slide.image}
               alt={`Slide ${idx + 1}`}
-              className="w-full h-auto object-cover"
+              className="w-full h-auto object-cover rounded-[22px]"
             />
 
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/10" />

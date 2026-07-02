@@ -71,17 +71,17 @@ const SliderComponent = () => {
 
 
   return (
-    <div className="relative w-[95%] lg:w-[75%] mx-auto">
+    <div className="relative w-[95%] mx-auto mt-[20px]">
       <Slider {...settings}>
         {sliderData.map((slide, index) => (
-          <div key={index} className="relative overflow-hidden">
+          <div key={index} className="relative overflow-hidden rounded-[32px]">
             <img
               src={slide.image}
               alt={`Product ${index + 1}`}
-              className="w-full object-cover bg-center"
+              className="w-full object-cover bg-center rounded-[32px]"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/35 to-black/10" />
-            <div className="absolute top-1/2 transform -translate-y-1/2 text-left text-white pl-[40px] lg:pl-[60px] xl:pl-[90px] w-[550px]">
+            <div className="absolute top-1/2 -translate-y-1/2 text-left text-white pl-[32px] lg:pl-[52px] xl:pl-[72px] w-[520px] lg:w-[560px]">
               <h2 className="font-sans mb-[8px] text-[20px] lg:text-[40px] xl:text-[61px] leading-tight bg-gradient-to-r from-[#FFF8F1] via-[#E9C9B2] to-[#FFF0DE] bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(0,0,0,0.25)]">
                 {slide.title}
               </h2>
@@ -95,6 +95,7 @@ const SliderComponent = () => {
                 {slide.buttonText}
               </Link>
             </div>
+            <div className="absolute inset-y-0 right-0 w-[7%] bg-gradient-to-l from-black/20 to-transparent pointer-events-none" />
           </div>
         ))}
       </Slider>
