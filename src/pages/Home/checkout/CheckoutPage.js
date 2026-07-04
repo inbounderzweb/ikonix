@@ -156,7 +156,7 @@ export default function CheckoutPage() {
 
   const fetchDefaultAddresses = async () => {
     try {
-      const payload = qs.stringify({ userid: user?.id || guestId });
+      const payload = qs.stringify({ userid: user?.id || guestId ,delivery_method:1});
       const { data } = await api.post(
         `${API_BASE}/address`,
         payload,
@@ -1056,7 +1056,7 @@ export default function CheckoutPage() {
 
                 <div className="grid justify-between lg:flex items-center">
                   {/* Delivery method */}
-                  <div className="flex items-center gap-3 m-2">
+                  {/* <div className="flex items-center gap-3 m-2">
                     <h4 className="text-[20px] lg:text-xl font-semibold text-[#6d5a52]">
                       Delivery Method
                     </h4>
@@ -1082,7 +1082,7 @@ export default function CheckoutPage() {
                         Express
                       </button>
                     </div>
-                  </div>
+                  </div> */}
 
                   <div className="grid md:flex gap-3 m-2 ml-[-10px] lg:ml-0 float-start lg:float-end justify-normal md:justify-between">
                     <button

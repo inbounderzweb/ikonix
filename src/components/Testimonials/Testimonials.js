@@ -63,7 +63,7 @@ const settings = {
 
 function Testimonials() {
   return (
-    <div className='bg-white w-full'>
+    <div className='w-full'>
       <div className="w-[95%] md:w-[75%] mx-auto lg:py-16 py-8">
         <div className='lg:w-[700px] w-[95%] mx-auto'>
           <h1 className='text-[#B39384] font-[Luxia] text-center text-[27px] font-normal tracking-[0.5px]'>User Testimonials</h1>
@@ -72,7 +72,7 @@ function Testimonials() {
 
         <Slider {...settings}>
           {deals.map((deal) => (
-            <div key={deal.id} className="flex flex-col items-start p-4 gap-5">
+            <div key={deal.id} className="flex flex-col items-start p-1 gap-5">
               <div className="bg-[#EDE2DD] rounded-[24px]">
                 <div className="w-[300px] h-[250px] mx-auto flex flex-col items-center justify-center gap-3">
                   <img src={deal.img} alt="testimonial-profile" className="w-16 h-16 rounded-full object-cover" />

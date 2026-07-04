@@ -78,7 +78,7 @@ const SliderComponent = () => {
             <img
               src={slide.image}
               alt={`Product ${index + 1}`}
-              className="w-full object-cover object-[center_55%] bg-center rounded-[28px] h-[540px]"
+              className="w-full object-cover object-[center_55%] bg-center rounded-[28px] h-[50%]"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent" />
             <div className="absolute top-1/2 -translate-y-1/2 text-left text-white pl-[52px] lg:pl-[72px] xl:pl-[90px] w-[470px] lg:w-[520px]">
