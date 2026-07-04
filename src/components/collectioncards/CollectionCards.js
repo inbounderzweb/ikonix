@@ -9,17 +9,25 @@ function CollectionCards() {
 const Navigate = useNavigate();
 
   return (
-    <div className='mx-auto w-[95vw] max-w-[1640px] mt-[18px]'>
+   <div className="mx-auto w-[90%] max-w-[1640px] mt-5">
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 
-<div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+    {[info, info1, info2].map((image, index) => (
+      <div
+        key={index}
+        onClick={() => Navigate("/contact")}
+        className="w-full rounded-3xl overflow-hidden cursor-pointer border border-gray-200 hover:shadow-lg transition-all duration-300"
+      >
+        <img
+          src={image}
+          alt={`Collection ${index + 1}`}
+          className="w-full h-auto object-contain"
+        />
+      </div>
+    ))}
 
-<div onClick={()=>Navigate(`/contact`)} className='w-full h-[220px] rounded-[24px] bg-no-repeat bg-cover bg-center cursor-pointer' style={{ backgroundImage: `url(${info})`}}></div>
-<div onClick={()=>Navigate(`/contact`)} className='w-full h-[220px] rounded-[24px] bg-no-repeat bg-cover bg-center cursor-pointer' style={{ backgroundImage: `url(${info1})`}}></div>
-<div onClick={()=>Navigate(`/contact`)} className='w-full h-[220px] rounded-[24px] bg-no-repeat bg-cover bg-center cursor-pointer' style={{ backgroundImage: `url(${info2})`}}></div>
-
+  </div>
 </div>
-
-    </div>
   )
 }
 

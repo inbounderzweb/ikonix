@@ -7,8 +7,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['main', 'Luxia'],     // default utility class: font-sans
-        fancy: ['second', 'Lato'],       // custom utility class: font-fancy
+        sans: ['Luxia', 'Georgia', 'serif'],     // default utility class: font-sans
+        fancy: ['Lato', 'sans-serif'],           // custom utility class: font-fancy
         
       },
     },

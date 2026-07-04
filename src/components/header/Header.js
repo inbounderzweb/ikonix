@@ -62,7 +62,7 @@ function Header() {
   return (
     <>
       <div
-        className={`fixed top-0 left-1/2 -translate-x-1/2 z-50 w-[95%]
+        className={`fixed top-0 left-1/2 -translate-x-1/2 z-50 w-[90%]
         transition-all duration-300 ease-in-out font-fancy
         ${scrolled ? "bg-[#2d3545]/95 shadow-md backdrop-blur-md" : "bg-[#2d3545]"}
         rounded-[18px] md:rounded-[22px] mt-3 ring-1 ring-white/5`}
