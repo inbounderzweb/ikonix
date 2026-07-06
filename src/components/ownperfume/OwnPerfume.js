@@ -8,7 +8,7 @@ export default function OwnPerfume() {
   const Navigate = useNavigate();
   return (
     <section className="bg-bg-brand">
-      <div className=" w-[95%] md:w-[75%] mx-auto px-4 py-16">
+      <div className=" w-[90%] lg:w-[80%] mx-auto px-4 py-16">
         {/* card wrapper */}
         <div className="flex flex-col overflow-hidden rounded-[24px] bg-white/10 backdrop-blur-md md:flex-row">
           {/* image */}
@@ -29,7 +29,7 @@ export default function OwnPerfume() {
               Design a custom luxury fragrance crafted exclusively for you. At Ikonix Perfumer, we blend premium ingredients, rare aroma notes, and expert craftsmanship to create a scent that reflects your personality. From fresh citrus accords to deep woody undertones, experience bespoke perfumery tailored to your style.
             </p>
 
-            <button onClick={() => Navigate(`contact`)} className="mt-2 w-max rounded-full bg-[#dab6a7] px-8 py-3 text-base font-medium text-[#44403c] transition hover:bg-[#e2c4b8]">
+            <button onClick={() => Navigate(`contact`)} className="mt-2 w-max rounded-full bg-[#dab6a7] px-5 py-3 text-base font-medium text-[#44403c] transition hover:bg-[#e2c4b8]">
               Start Your Custom Fragrance
             </button>
           </div>

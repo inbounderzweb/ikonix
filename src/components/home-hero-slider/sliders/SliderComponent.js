@@ -72,7 +72,7 @@ const SliderComponent = () => {
 
 
   return (
-    <section className="w-[90%] mx-auto mt-5 flex flex-col gap-5 mb-12">
+    <section className="w-[90%] lg:w-[80%] mx-auto md:mt-10 flex flex-col gap-5 mb-12">
 
       {/* Hero */}
       <div className="overflow-hidden rounded-[18px]">

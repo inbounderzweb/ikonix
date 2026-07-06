@@ -77,7 +77,7 @@ function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-[#E0D6CF] mt-8 pt-4 flex flex-col md:flex-row items-center justify-between text-sm w-[75%] mx-auto">
+      <div className="border-t border-[#E0D6CF] mt-8 pt-4 flex flex-col md:flex-row items-center justify-between text-sm w-[90%] lg:w-[80%] mx-auto">
         <p>
           Copyright © 2026 &nbsp; | &nbsp; Ikonix Perfumer &nbsp; | &nbsp; All Rights Reserved
         </p>

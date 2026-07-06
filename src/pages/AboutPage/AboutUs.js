@@ -43,7 +43,7 @@ const whyChooseCards = [
 function AboutUs() {
   return (
     <div className="text-[#3b312e]">
-      <section className="mx-auto mt-6 w-[90%] overflow-hidden rounded-2xl">
+      <section className="mx-auto mt-5 md:mt-10 w-[90%] lg:w-[80%] overflow-hidden rounded-2xl">
         <img
           src={shopherobg}
           alt="Ikonix about banner"
@@ -56,7 +56,7 @@ function AboutUs() {
         />
       </section>
 
-      <section className="mx-auto w-[90%] md:w-[75%] py-10 md:py-16 font-['Inter',sans-serif]">
+      <section className="mx-auto w-[90%] lg:w-[80%] py-10 md:py-16 font-['Inter',sans-serif]">
         <div className="flex flex-col items-center gap-8 md:flex-row-reverse md:items-center md:gap-10">
           <div className="order-1 space-y-4 md:order-none md:w-1/2">
             <h2 className="text-center md:text-left text-2xl md:text-3xl font-semibold mt-2">
@@ -87,7 +87,7 @@ function AboutUs() {
       </section>
 
       <section className="bg-[#EDE2DD] py-10 md:py-12">
-        <div className="mx-auto grid w-[90%] md:w-[75%] grid-cols-1 gap-10 md:grid-cols-2 md:gap-10">
+        <div className="mx-auto grid w-[90%] lg:w-[80%] grid-cols-1 gap-10 md:grid-cols-2 md:gap-10">
           <div className="flex flex-col items-center text-center gap-4 md:flex-row md:items-start md:text-left md:gap-5">
             <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-[#d9cfc9]">
               <img src={mission} alt="Mission icon" className="w-7 h-7 object-contain" />
@@ -120,7 +120,7 @@ function AboutUs() {
         </div>
       </section>
 
-      <section className="mx-auto w-[90%] md:w-[75%] py-12 md:py-16">
+      <section className="mx-auto w-[90%] lg:w-[80%] py-12 md:py-16">
         <h2 className="mb-10 text-center text-2xl md:text-3xl text-[#B39384] font-[luxia]">
           Why Choose Us
         </h2>

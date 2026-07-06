@@ -64,8 +64,8 @@ const settings = {
 function Testimonials() {
   return (
     <div className='bg-white w-full'>
-      <div className="w-[95%] md:w-[75%] mx-auto lg:py-16 py-8">
-        <div className='lg:w-[700px] w-[95%] mx-auto'>
+      <div className="w-[90%] lg:w-[80%] mx-auto lg:py-16 py-8">
+        <div className='lg:w-[700px] w-[90%] mx-auto'>
           <h1 className='text-[#B39384] font-[Luxia] text-center text-[27px] font-normal tracking-[0.5px]'>User Testimonials</h1>
           <p className='font-[lato] text-[#53443D] text-center text-[16px] font-normal tracking-[0.5px]'>Hear what our customers say about their experience with Ikonix Perfumer. From signature scents to custom fragrances, our perfumes leave a lasting impression.</p>
         </div>

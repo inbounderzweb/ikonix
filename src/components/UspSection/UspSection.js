@@ -29,7 +29,7 @@ export default function UspSection() {
 
 
     <div className="bg-[#e8d5cf] w-full">
-      <section className="grid xl:flex justify-start md:justify-center md:space-x-6 md:p-4 md:w-[80%] space-x-2 p-2 w-[95%] mx-auto">
+      <section className="grid xl:flex justify-start md:justify-center md:space-x-6 md:p-4 md:w-[90%] space-x-2 p-2 w-[90%] lg:w-[80%] mx-auto">
 
 
         {usps.map(({ id, icon, title, copy }) => (

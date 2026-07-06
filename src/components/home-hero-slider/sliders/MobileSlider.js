@@ -53,7 +53,7 @@ const MobileSlider = () => {
 
   return (
     <section className="w-full mt-3">
-      <div className="mobile-slider w-[90%] mx-auto relative overflow-hidden rounded-[6px]">
+      <div className="mobile-slider w-[90%] lg:w-[80%] mx-auto relative overflow-hidden rounded-[6px]">
         <Slider {...settings}>
           {sliderData.map((slide, idx) => (
             <div key={idx} className="relative overflow-hidden rounded-[6px]">
