@@ -14,7 +14,7 @@ function App() {
       <AuthProvider>
         <CartProvider>
           <ScrollToTop />
-          <div className="pt-[90px]"> {/* Adjust based on header height */}
+          <div className="pt-[54px] md:pt-[82px]"> {/* Adjust based on header height */}
             <Header />
           </div>
           <AppRoutes />

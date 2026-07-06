@@ -9,19 +9,19 @@ function CollectionCards() {
 const Navigate = useNavigate();
 
   return (
-   <div className="mx-auto w-[90%] max-w-[1640px] mt-5">
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+   <div className="mx-auto w-[90%] md:w-full">
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-5">
 
     {[info, info1, info2].map((image, index) => (
       <div
         key={index}
         onClick={() => Navigate("/contact")}
-        className="w-full rounded-3xl overflow-hidden cursor-pointer border border-gray-200 hover:shadow-lg transition-all duration-300"
+        className="w-full overflow-hidden cursor-pointer rounded-[6px] md:rounded-[8px] transition-all duration-300 hover:shadow-lg"
       >
         <img
           src={image}
           alt={`Collection ${index + 1}`}
-          className="w-full h-auto object-contain"
+          className="block w-full h-auto"
         />
       </div>
     ))}

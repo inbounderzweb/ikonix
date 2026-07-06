@@ -1,7 +1,6 @@
 import React from 'react'
 import SliderComponent from '../../components/home-hero-slider/sliders/SliderComponent'
 import MobileSlider from '../../components/home-hero-slider/sliders/MobileSlider'
-import CollectionCards from '../../components/collectioncards/CollectionCards'
 import SpecialDealsSlider from '../../components/SpecialDealsSlider/SpecialDealsSlider'
 import OwnPerfume from '../../components/ownperfume/OwnPerfume'
 import UspSection from '../../components/UspSection/UspSection'
@@ -14,7 +13,7 @@ function Home() {
 
   return (
     <div className=''>
-      <div className='hidden md:block'><SliderComponent /></div>
+      <div className='hidden md:block w-[100%]'><SliderComponent /></div>
       <div className='block md:hidden'><MobileSlider /></div>
       {/* <div><CollectionCards /></div> */}
       <div><ProductList /></div>

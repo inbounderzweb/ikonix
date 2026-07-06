@@ -94,6 +94,14 @@ color: white;
 }
 
 
+.hero-slider,
+.hero-slider .slick-list,
+.hero-slider .slick-track,
+.hero-slider .slick-slide,
+.hero-slider .slick-slide > div {
+  height: 100%;
+}
+
 
 
 

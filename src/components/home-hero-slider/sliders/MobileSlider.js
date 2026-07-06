@@ -9,6 +9,7 @@ import mobilefirstBanner from "../../../assets/Mob-banner-1.jpg";
 import mobilesecondBanner from "../../../assets/Mob-banner-2.jpg";
 // import mobilethirdBanner from "../../../assets/mobilethird.svg";
 import { Link } from "react-router-dom";
+import CollectionCards from "../../collectioncards/CollectionCards";
 
 const sliderData = [
   {
@@ -51,37 +52,42 @@ const MobileSlider = () => {
   };
 
   return (
-    <div className="mobile-slider w-full max-w-[90%] mt-3 mx-auto relative overflow-hidden">
-      <Slider {...settings}>
-        {sliderData.map((slide, idx) => (
-          <div key={idx} className="relative overflow-hidden rounded-[22px]">
-            <img
-              src={slide.image}
-              alt={`Slide ${idx + 1}`}
-              className="w-full h-auto object-cover rounded-[22px]"
-            />
+    <section className="w-full mt-3">
+      <div className="mobile-slider w-[90%] mx-auto relative overflow-hidden rounded-[6px]">
+        <Slider {...settings}>
+          {sliderData.map((slide, idx) => (
+            <div key={idx} className="relative overflow-hidden rounded-[6px]">
+              <img
+                src={slide.image}
+                alt={`Slide ${idx + 1}`}
+                className="block w-full h-auto rounded-[6px]"
+              />
 
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/10" />
 
-            {/* gradient overlay + contents */}
-            <div className="absolute inset-0 flex flex-col justify-end items-center text-center px-4 pb-10">
-              <h2 className="text-[24px] leading-tight font-semibold mb-3 bg-gradient-to-r from-[#FFF8F1] via-[#E9C9B2] to-[#FFF0DE] bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(0,0,0,0.25)]">
-                {slide.title}
-              </h2>
-              <p className="text-white/90 text-sm leading-relaxed mb-5 drop-shadow-[0_1px_8px_rgba(0,0,0,0.22)]">
-                {slide.subtitle}
-              </p>
-              <Link
-                to={slide.buttonLink}
-                className="bg-[#E2C4AD] cursor-pointer text-black text-base px-6 py-2 rounded-xl font-medium hover:bg-[#d5b49b] transition-all duration-300"
-              >
-                {slide.buttonText}
-              </Link>
+              {/* gradient overlay + contents */}
+              <div className="absolute inset-0 flex flex-col justify-end items-center text-center px-4 pb-10">
+                <h2 className="text-[24px] leading-tight font-semibold mb-3 bg-gradient-to-r from-[#FFF8F1] via-[#E9C9B2] to-[#FFF0DE] bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(0,0,0,0.25)]">
+                  {slide.title}
+                </h2>
+                <p className="text-white/90 text-sm leading-relaxed mb-5 drop-shadow-[0_1px_8px_rgba(0,0,0,0.22)]">
+                  {slide.subtitle}
+                </p>
+                <Link
+                  to={slide.buttonLink}
+                  className="bg-[#E2C4AD] cursor-pointer text-black text-base px-6 py-2 rounded-xl font-medium hover:bg-[#d5b49b] transition-all duration-300"
+                >
+                  {slide.buttonText}
+                </Link>
+              </div>
             </div>
-          </div>
-        ))}
-      </Slider>
-    </div>
+          ))}
+        </Slider>
+      </div>
+      <div className="mt-3">
+        <CollectionCards />
+      </div>
+    </section>
   );
 };
 

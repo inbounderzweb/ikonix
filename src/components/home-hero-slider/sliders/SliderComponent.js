@@ -38,7 +38,7 @@ const sliderData = [
 const PrevArrow = ({ onClick }) => (
   <div
     onClick={onClick}
-    className="absolute bottom-4 right-16 z-10 cursor-pointer"
+    className="absolute bottom-5 right-16 z-10 cursor-pointer"
   >
     <img src={arrowleft} alt='arrow-left' />
     {/* <ChevronLeftIcon className="text-white w-6 h-6" /> */}
@@ -48,7 +48,7 @@ const PrevArrow = ({ onClick }) => (
 const NextArrow = ({ onClick }) => (
   <div
     onClick={onClick}
-    className="absolute bottom-4 right-4 z-10 cursor-pointer"
+    className="absolute bottom-5 right-5 z-10 cursor-pointer"
   >
     <img src={arrowright} alt='arrow-right' />
     {/* <ChevronRightIcon className="text-white w-6 h-6" /> */}
@@ -72,28 +72,37 @@ const SliderComponent = () => {
 
 
   return (
-    <div className="w-[95%] max-w-[1700px] mx-auto mt-5 h-[82vh] flex flex-col items-center gap-4">
+    <section className="w-[90%] max-w-[1128px] mx-auto mt-5 flex flex-col gap-5 bg-yellow-300">
 
       {/* Hero */}
-      <div className="flex-[4] flex-wrap rounded-[28px] h-[50%] bg-red-800 w-[95%]">
-        <Slider {...settings} className="hero-slider h-full w-full bg-green-400" >
+      <div className="overflow-hidden rounded-[18px]">
+        <Slider {...settings} className="hero-slider h-full w-full" >
           {sliderData.map((slide, index) => (
-            <div key={index} className="bg-yellow-400 w-f h-full">
-              <div className="relative h-[50%] rounded-[28px] bg-yellow-400 flex">
+            <div key={index}>
+              <div className="relative overflow-hidden rounded-[18px]">
 
-                {/* <img
-              src={slide.image}
-              className="w-full h-full object-fill"
-            /> */}
-                {/* <img
+                <img
                   src={slide.image}
                   alt={slide.title}
-                  className="w-full h-full object-contain object-center"
-                /> */}
+                  className="block w-full h-auto"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/25 to-transparent" />
 
-                <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
+                <div className="absolute inset-y-0 left-0 flex w-[48%] flex-col justify-center px-10 lg:px-16 text-white">
+                  <h1 className="font-serif text-[32px] lg:text-[44px] leading-[0.95] font-medium">
+                    {slide.title}
+                  </h1>
+                  <p className="mt-3 max-w-[360px] text-[10px] lg:text-[13px] leading-relaxed text-white/90">
+                    {slide.subtitle}
+                  </p>
+                  <Link
+                    to={slide.buttonLink}
+                    className="mt-5 inline-flex w-fit items-center justify-center rounded-[6px] bg-[#2d3545] px-5 py-2 text-[11px] font-medium text-white transition-colors duration-300 hover:bg-[#1f2633]"
+                  >
+                    {slide.buttonText}
+                  </Link>
+                </div>
 
-                
               </div>
             </div>
           ))}
@@ -101,11 +110,11 @@ const SliderComponent = () => {
       </div>
 
       {/* Collections */}
-      <div className="flex-[1] justify-evenly w-[95%] h-[30%]">
+      <div>
         <CollectionCards />
       </div>
 
-    </div>
+    </section>
   );
 };
 

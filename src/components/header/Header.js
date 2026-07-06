@@ -62,25 +62,25 @@ function Header() {
   return (
     <>
       <div
-        className={`fixed top-0 left-1/2 -translate-x-1/2 z-50 w-[90%]
+        className={`fixed top-0 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-[1128px]
         transition-all duration-300 ease-in-out font-fancy
         ${scrolled ? "bg-[#2d3545]/95 shadow-md backdrop-blur-md" : "bg-[#2d3545]"}
-        rounded-[18px] md:rounded-[22px] mt-3 ring-1 ring-white/5`}
+        rounded-[5px] md:rounded-[8px] mt-2 md:mt-5 ring-1 ring-white/5`}
       >
-        <div className="bg-[#2d3545] h-[78px] rounded-[18px] md:rounded-[22px]">
+        <div className="bg-[#2d3545] h-[42px] md:h-[50px] rounded-[5px] md:rounded-[8px]">
           <div className="flex items-center h-full justify-between">
-            <div className="pl-6">
+            <div className="pl-4 md:pl-6">
               <Link to="/">
-                <img src={logo} alt="Ikonix logo" className="h-8 md:h-10" />
+                <img src={logo} alt="Ikonix logo" className="h-5 md:h-7" />
               </Link>
             </div>
 
-            <button onClick={() => setSidebar(true)} className="md:hidden pr-6">
-              <img src={burger} alt="Open menu" className="w-6 h-6" />
+            <button onClick={() => setSidebar(true)} className="md:hidden pr-4">
+              <img src={burger} alt="Open menu" className="w-4 h-4" />
             </button>
 
-            <div className="hidden md:flex items-center gap-8 pr-6 text-white">
-              <ul className="flex gap-8 items-center text-[16px] font-normal">
+            <div className="hidden md:flex items-center gap-6 pr-5 text-white">
+              <ul className="flex gap-6 items-center text-[11px] font-normal">
                 <li onClick={() => navigate("/")} className="cursor-pointer">
                   Home
                 </li>
@@ -113,21 +113,21 @@ function Header() {
                 </li>
               </ul>
 
-              <div className="flex gap-3 items-center">
-                <button onClick={() => setSearchOpen(true)} className="cursor-pointer w-11 h-11 rounded-full bg-white/10 grid place-items-center">
-                  <img src={search} alt="Search" className="w-5 h-5" />
+              <div className="flex gap-2 items-center">
+                <button onClick={() => setSearchOpen(true)} className="cursor-pointer w-7 h-7 rounded-full bg-white/10 grid place-items-center">
+                  <img src={search} alt="Search" className="w-3.5 h-3.5" />
                 </button>
 
                 <button
-                  className="cursor-pointer w-11 h-11 rounded-full bg-white/10 grid place-items-center"
+                  className="cursor-pointer w-7 h-7 rounded-full bg-white/10 grid place-items-center"
                   onClick={() => (user ? navigate("/user-profile") : setAuthOpen(true))}
                 >
-                  <img src={profile} alt="Profile" className="w-5 h-5" />
+                  <img src={profile} alt="Profile" className="w-3.5 h-3.5" />
                 </button>
 
                 <div className="relative cursor-pointer" onClick={() => setCartOpen(true)}>
-                  <div className="w-11 h-11 rounded-full bg-white/10 grid place-items-center">
-                    <img src={cartIco} alt="Cart" className="w-5 h-5" />
+                  <div className="w-7 h-7 rounded-full bg-white/10 grid place-items-center">
+                    <img src={cartIco} alt="Cart" className="w-3.5 h-3.5" />
                   </div>
                   {cartCount > 0 && (
                     <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-semibold w-5 h-5 flex items-center justify-center rounded-full">
