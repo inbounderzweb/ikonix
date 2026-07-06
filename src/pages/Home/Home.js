@@ -16,7 +16,7 @@ function Home() {
       <div className='hidden md:block w-[100%]'><SliderComponent /></div>
       <div className='block md:hidden'><MobileSlider /></div>
       {/* <div><CollectionCards /></div> */}
-      <div><ProductList /></div>
+      <div className='bg-[#F9F6F4]'><ProductList /></div>
       <div><SpecialDealsSlider /></div>
       <div><OwnPerfume /></div>
       <div><UspSection /></div>

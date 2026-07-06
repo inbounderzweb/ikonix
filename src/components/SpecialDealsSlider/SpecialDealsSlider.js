@@ -2,30 +2,21 @@
 import React from "react";
 import Slider from "react-slick";
 import { ArrowLeftIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
-import spl1 from '../../assets/spl1.svg';
-import spl2 from '../../assets/spl2.svg';
+import desktopAboutBanner from '../../assets/desktop_about.svg';
+import mobileAboutBanner from '../../assets/mobileBanner_about.svg';
 import { useNavigate } from "react-router-dom";
 
 // Slide data
 const deals = [
   {
     id: 1,
-    img: spl1,
+    desktopImg: desktopAboutBanner,
+    mobileImg: mobileAboutBanner,
     title1: "Special Day Special Offer",
     blurb: "Experience our signature fragrances at special prices",
     oldPrice: "Rs.899/-",
     newPrice: "Rs.699/-",
     dataurl: `/product-details/68?vid=1`,
-  },
-  {
-    id: 2,
-    img: spl2,
-    title1: "Special Day Special Offer",
-    blurb: "Experience our signature fragrances at special prices",
-    oldPrice: "Rs.899/-",
-    newPrice: "Rs.699/-",
-    dataurl: `product-details/68?vid=1`,
-
   },
 ];
 
@@ -51,7 +42,7 @@ const settings = {
   arrows: true,
   infinite: true,
   speed: 500,
-  slidesToShow: 2,
+  slidesToShow: 1,
   slidesToScroll: 1,
   prevArrow: <Arrow direction="prev" />,
   nextArrow: <Arrow direction="next" />,
@@ -98,8 +89,8 @@ export default function SpecialDealsSlider() {
         }
       `}</style>
 
-      <section className="bg-[#e8d5cf] py-16">
-        <div className="mx-auto w-[95%] md:w-[80%] lg:px-4 px-0">
+      <section className="bg-[#e8d5cf] py-10 md:py-16">
+        <div className="mx-auto w-[90%] lg:px-4 px-0">
           {/* Header */}
           <h1 className="text-[27px] text-[#8C7367] text-center tracking-[0.5px]">
             special deals
@@ -109,21 +100,28 @@ export default function SpecialDealsSlider() {
           </p>
 
           {/* Slider */}
-          <Slider {...settings} className="lg:mt-12 mt-4">
+          <Slider {...settings} className="``lg:mt-12 mt-6">
             {deals.map(deal => (
-              <div key={deal.id} className="px-3">
-                <div className="relative overflow-hidden rounded-[24px]">
+              <div key={deal.id} className="px-0 md:px-3">
+                <div className="relative aspect-[414/552] md:aspect-[1128/520] overflow-hidden rounded-[20px] md:rounded-[24px]">
                   <img
-                    src={deal.img}
+                    src={deal.mobileImg}
                     alt={deal.title1}
-                    className="w-full h-full object-cover"
+                    className="absolute inset-0 block h-full w-full object-cover object-center md:hidden"
+                  />
+                  <img
+                    src={deal.desktopImg}
+                    alt={deal.title1}
+                    className="absolute inset-0 hidden block h-full w-full object-cover object-center md:block"
                   />
                   <div className="absolute inset-0 bg-black/20 md:bg-transparent z-10" />
-                  <div className="absolute inset-0 z-20 flex flex-col justify-center md:pl-[50%] p-6 text-white text-left">
-                    <span className="text-[18px] md:text-[27px] font-[luxia]">
+                  <div className="absolute inset-0 z-20 flex flex-col justify-end md:justify-center md:pl-[50%] p-4 md:p-6 text-white text-left">
+                    <span className="text-[18px] md:text-[27px] font-[luxia] leading-tight">
                       {deal.title1}
                     </span>
-                    <p className="text-[13px] font-fancy">{deal.blurb}</p>
+                    <p className="text-[12px] md:text-[13px] font-fancy max-w-[280px]">
+                      {deal.blurb}
+                    </p>
                     <div className="flex flex-wrap items-center gap-4 mt-4">
                       <div className="grid">
                         <span className="line-through text-[#F9F6F4] text-[12px] font-normal font-[lato]">

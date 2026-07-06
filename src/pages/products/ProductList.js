@@ -244,9 +244,9 @@ export default function ProductList({ hideFilters = false }) {
       {/* kick off token validation */}
       <ValidateOnLoad />
 
-      <section className="mx-auto w-[95vw] max-w-[1640px] py-12">
+      <section className="mx-auto w-[90%] py-6 mt-18">
         {!hideFilters && (
-          <div className="flex gap-4 mb-8 overflow-x-auto scrollbar-hide pb-2">
+          <div className="flex gap-4 mb-4 overflow-x-auto scrollbar-hide">
             {filters.map((cat) => (
               <button
                 key={cat}

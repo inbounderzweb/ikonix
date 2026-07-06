@@ -52,7 +52,8 @@
   }
   
   body{
-    background-color: #f3ebe6;
+    /* background-color: #f3ebe6; */
+    background-color: #EDE2DD;
     font-family: 'Poppins', sans-serif;
     color: #2f3647;
   }

@@ -1,9 +1,9 @@
 import React from 'react';
 import Slider from 'react-slick';
 // import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/20/solid';
-import firstBanner from '../../../assets/firstBanner.jpg';
-import secondBanner from '../../../assets/secondBanner.jpg';
-import thirdbanner from '../../../assets/thirdBanner.jpg';
+import firstBanner from '../../../assets/banner/firstBanner.svg';
+import secondBanner from '../../../assets/banner/secondBanner.svg';
+import thirdbanner from '../../../assets/banner/thirdBanner.svg';
 import arrowleft from '../../../assets/Arrow-left.svg';
 import arrowright from '../../../assets/Arrow-right.svg'
 import { Link } from 'react-router-dom';
@@ -72,19 +72,19 @@ const SliderComponent = () => {
 
 
   return (
-    <section className="w-[90%] max-w-[1128px] mx-auto mt-5 flex flex-col gap-5 bg-yellow-300">
+    <section className="w-[90%] mx-auto mt-5 flex flex-col gap-5 mb-12">
 
       {/* Hero */}
       <div className="overflow-hidden rounded-[18px]">
         <Slider {...settings} className="hero-slider h-full w-full" >
           {sliderData.map((slide, index) => (
             <div key={index}>
-              <div className="relative overflow-hidden rounded-[18px]">
+              <div className="relative aspect-[1128/520] overflow-hidden rounded-[18px]">
 
                 <img
                   src={slide.image}
                   alt={slide.title}
-                  className="block w-full h-auto"
+                  className="absolute inset-0 block h-full w-full object-cover object-center"
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/25 to-transparent" />
 
