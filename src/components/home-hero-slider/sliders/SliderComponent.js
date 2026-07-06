@@ -1,6 +1,7 @@
 import React from 'react';
 import Slider from 'react-slick';
 // import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/20/solid';
+// import firstBanner from '../../../assets/banner/firstBanner.svg';
 import firstBanner from '../../../assets/banner/firstBanner.svg';
 import secondBanner from '../../../assets/banner/secondBanner.svg';
 import thirdbanner from '../../../assets/banner/thirdBanner.svg';
@@ -86,18 +87,19 @@ const SliderComponent = () => {
                   alt={slide.title}
                   className="absolute inset-0 block h-full w-full object-cover object-center"
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/25 to-transparent" />
+                {/* <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/25 to-transparent" /> */}
+                    <div className="absolute inset-0" />
 
-                <div className="absolute inset-y-0 left-0 flex w-[48%] flex-col justify-center px-10 lg:px-16 text-white">
-                  <h1 className="font-serif text-[32px] lg:text-[44px] leading-[0.95] font-medium">
+                <div className="absolute inset-y-0 left-0 flex w-[48%] flex-col justify-center px-10 lg:px-16 text-[#53443D]">
+                  <h1 className="font-serif text-[32px] lg:text-[54px] leading-[0.95] font-medium">
                     {slide.title}
                   </h1>
-                  <p className="mt-3 max-w-[360px] text-[10px] lg:text-[13px] leading-relaxed text-white/90">
+                  <p className="mt-3 max-w-[360px] text-[10px] lg:text-[16`px] leading-relaxed text-[#53443D]">
                     {slide.subtitle}
                   </p>
                   <Link
                     to={slide.buttonLink}
-                    className="mt-5 inline-flex w-fit items-center justify-center rounded-[6px] bg-[#2d3545] px-5 py-2 text-[11px] font-medium text-white transition-colors duration-300 hover:bg-[#1f2633]"
+                    className="mt-5 inline-flex w-fit items-center justify-center rounded-3xl bg-[#2d3545] px-5 py-2 lg:px-10 lg:py-4 text-[11px] font-medium text-white transition-colors duration-300 hover:bg-[#1f2633]"
                   >
                     {slide.buttonText}
                   </Link>
