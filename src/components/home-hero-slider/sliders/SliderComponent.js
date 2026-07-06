@@ -7,6 +7,7 @@ import thirdbanner from '../../../assets/thirdBanner.jpg';
 import arrowleft from '../../../assets/Arrow-left.svg';
 import arrowright from '../../../assets/Arrow-right.svg'
 import { Link } from 'react-router-dom';
+import CollectionCards from '../../collectioncards/CollectionCards';
 
 
 const sliderData = [
@@ -71,33 +72,39 @@ const SliderComponent = () => {
 
 
   return (
-    <div className="relative w-[90%] mx-auto mt-[20px]">
-      <Slider {...settings}>
-        {sliderData.map((slide, index) => (
-          <div key={index} className="relative overflow-hidden rounded-[28px]">
-            <img
+    <div className="w-[95%] max-w-[1700px] mx-auto mt-5 h-[82vh] flex flex-col items-center gap-4">
+
+      {/* Hero */}
+      <div className="flex-[4] flex-wrap rounded-[28px] h-[50%] bg-red-800 w-[95%]">
+        <Slider {...settings} className="hero-slider h-full w-full bg-green-400" >
+          {sliderData.map((slide, index) => (
+            <div key={index} className="bg-yellow-400 w-f h-full">
+              <div className="relative h-[50%] rounded-[28px] bg-yellow-400 flex">
+
+                {/* <img
               src={slide.image}
-              alt={`Product ${index + 1}`}
-              className="w-full object-cover object-[center_55%] bg-center rounded-[28px] h-[540px]"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent" />
-            <div className="absolute top-1/2 -translate-y-1/2 text-left text-white pl-[52px] lg:pl-[72px] xl:pl-[90px] w-[470px] lg:w-[520px]">
-              <h2 className="font-sans mb-[10px] text-[20px] lg:text-[42px] xl:text-[64px] leading-[0.95] bg-gradient-to-r from-[#FFFDF9] via-[#EFD2BF] to-[#F3D8C7] bg-clip-text text-transparent drop-shadow-[0_2px_10px_rgba(0,0,0,0.2)]">
-                {slide.title}
-              </h2>
-              <p className="font-fancy text-[16px] font-normal mb-[18px] text-white/90 drop-shadow-[0_1px_8px_rgba(0,0,0,0.18)]">
-                {slide.subtitle}
-              </p>
-              <Link
-                to={slide.buttonLink}
-                className="inline-block cursor-pointer bg-[#2f3a4e] text-white py-3 px-9 rounded-full font-fancy text-[16px] tracking-wide font-medium hover:bg-[#243043]"
-              >
-                {slide.buttonText}
-              </Link>
+              className="w-full h-full object-fill"
+            /> */}
+                {/* <img
+                  src={slide.image}
+                  alt={slide.title}
+                  className="w-full h-full object-contain object-center"
+                /> */}
+
+                <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
+
+                
+              </div>
             </div>
-          </div>
-        ))}
-      </Slider>
+          ))}
+        </Slider>
+      </div>
+
+      {/* Collections */}
+      <div className="flex-[1] justify-evenly w-[95%] h-[30%]">
+        <CollectionCards />
+      </div>
+
     </div>
   );
 };

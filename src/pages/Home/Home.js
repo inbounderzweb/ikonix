@@ -16,7 +16,7 @@ function Home() {
     <div className=''>
       <div className='hidden md:block'><SliderComponent /></div>
       <div className='block md:hidden'><MobileSlider /></div>
-      <div><CollectionCards /></div>
+      {/* <div><CollectionCards /></div> */}
       <div><ProductList /></div>
       <div><SpecialDealsSlider /></div>
       <div><OwnPerfume /></div>
