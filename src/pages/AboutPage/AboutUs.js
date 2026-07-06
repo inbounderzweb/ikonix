@@ -1,6 +1,8 @@
 import React from 'react'
-import shopherobg from '../../assets/shopherobg.svg';
-import shopherobgmob from '../../assets/shopheromobbg.svg';
+// import shopherobg from '../../assets/shopherobg.svg';
+import shopherobg from '../../assets/about/about_banner.svg';
+// import shopherobgmob from '../../assets/shopheromobbg.svg';
+import shopherobgmob from '../../assets/about/BrandShowcaseBanner_mobile.svg';
 import aboutmain from '../../assets/aboutmain.svg';
 import mission from '../../assets/mission.svg';
 import vision from '../../assets/vision.svg';
@@ -20,13 +22,9 @@ function AboutUs() {
 
 {/* Hero section for*/}
 <div
-  className='h-[242px] hidden md:flex w-[90%]  xl:w-[75%] mx-auto bg-center bg-cover justify-end bg-no-repeat mt-[24px]'
+  className='h-[242px] hidden rounded-2xl md:flex w-[95%]  xl:w-[75%] mx-auto bg-center bg-cover justify-end bg-no-repeat mt-[24px]'
   style={{ backgroundImage: `url(${shopherobg})` }}
 >
-
-
-<span className='font-[luxia] text-[#53443D] text-[36px] leading-[112.5%] tracking-[0.5px] flex  align-middle items-center lg:mr-[80px] xl:mr-[150px]'>Abouts Us</span>
-  
 </div>
 {/* End Hero section for desktop  */}
 
@@ -34,13 +32,9 @@ function AboutUs() {
 
 {/* Hero section for mobile*/}
 <div
-  className='h-[300px] flex md:hidden w-[98%] mx-auto bg-center bg-cover justify-center bg-no-repeat mt-[24px]'
+  className='h-[300px] flex md:hidden w-[90%] mx-auto bg-center bg-cover justify-center bg-no-repeat mt-[24px] rounded-2xl'
   style={{ backgroundImage: `url(${shopherobgmob})` }}
 >
-
-
-<p className='text-center mt-[24px] font-[luxia] font-[400] text-[27px] tracking-[0.5px]'>Abouts Us</p>
-  
 </div>
 {/* End Hero section mobile  */}
     </div>
@@ -48,15 +42,11 @@ function AboutUs() {
 
 
     {/* <!-- BEGIN: About / Mission / Why Choose Us section --> */}
-<section class="w-[98%] md:w-[75%] mx-auto text-[#3b312e] font-['Inter',sans-serif]">
+<section class="w-[90%] md:w-[75%] mx-auto text-[#3b312e] font-['Inter',sans-serif]">
   {/* <!-- Who We Are --> */}
-  <div class="max-w-7xl mx-auto px-4 md:px-8 py-16 flex flex-col md:flex-row items-center gap-10">
-    {/* <!-- Illustration --> */}
-    <img src={aboutmain} alt="Custom perfume illustration" class="w-full md:w-1/2 max-w-[480px] object-contain" />
-
-    {/* <!-- Copy --> */}
+   {/* <!-- Copy --> */}
     <div class="flex-1 space-y-4 md:pr-10">
-      <h2 class="text-2xl md:text-3xl font-semibold">Who We Are</h2>
+      <h2 class="text-2xl md:text-3xl font-semibold text-center mt-5">Who We Are</h2>
       <p className='text-[14px] text-justify'>
         Ikonix is built around one simple idea – scent should be personal. We specialise in
         creating custom fragrances that capture who you are and what you love. Whether you’re
@@ -70,6 +60,10 @@ function AboutUs() {
         like you.
       </p>
     </div>
+
+  <div class="max-w-7xl mx-auto px-4 md:px-8 py-16 flex flex-col md:flex-row items-center gap-10">
+    {/* <!-- Illustration --> */}
+    <img src={aboutmain} alt="Custom perfume illustration" class="w-full md:w-1/2 max-w-[480px] object-contain" />
   </div>
 </section>
 

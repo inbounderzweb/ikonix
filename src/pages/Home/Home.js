@@ -7,6 +7,7 @@ import UspSection from '../../components/UspSection/UspSection'
 import InstagramShowcase from '../../components/InstagramShowcase/InstagramShowcase'
 import Testimonials from '../../components/Testimonials/Testimonials'
 import ProductList from '../products/ProductList'
+import BrandShowcaseBanner from '../../components/ BrandShowcaseBanner/ BrandShowcaseBanner'
 
 
 function Home() {
@@ -17,6 +18,7 @@ function Home() {
       <div className='block md:hidden'><MobileSlider /></div>
       {/* <div><CollectionCards /></div> */}
       <div className='bg-[#F9F6F4]'><ProductList /></div>
+      <div><BrandShowcaseBanner className="w-full"/></div>
       <div><SpecialDealsSlider /></div>
       <div><OwnPerfume /></div>
       <div><UspSection /></div>
