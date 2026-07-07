@@ -101,10 +101,10 @@ export default function SpecialDealsSlider() {
       <section className="bg-[#e8d5cf] py-16">
         <div className="mx-auto w-[90%] lg:w-[80%] lg:px-4 px-0">
           {/* Header */}
-          <h1 className="text-[27px] text-[#8C7367] text-center tracking-[0.5px]">
-            special deals
+          <h1 className="font-heading text-[27px] text-[#8C7367] text-center tracking-[0.5px]">
+            Special deals
           </h1>
-          <p className="text-[#53443D] text-[16px] font-[lato] text-center font-[400] w-full md:w-[710px] mx-auto">
+          <p className="text-[#53443D] text-[16px] font-fancy text-center font-[400] w-full md:w-[710px] mx-auto">
             Our exclusive perfume creations blend rare ingredients and refined expertise. Discover captivating notes that tell your story with confidence and style.
           </p>
 
@@ -120,20 +120,20 @@ export default function SpecialDealsSlider() {
                   />
                   <div className="absolute inset-0 bg-black/20 md:bg-transparent z-10" />
                   <div className="absolute inset-0 z-20 flex flex-col justify-center md:pl-[50%] p-6 text-white text-left">
-                    <span className="text-[18px] md:text-[27px] font-[luxia]">
+                    <span className="text-[18px] md:text-[27px] font-heading">
                       {deal.title1}
                     </span>
                     <p className="text-[13px] font-fancy">{deal.blurb}</p>
                     <div className="flex flex-wrap items-center gap-4 mt-4">
                       <div className="grid">
-                        <span className="line-through text-[#F9F6F4] text-[12px] font-normal font-[lato]">
+                        <span className="line-through text-[#F9F6F4] text-[12px] font-normal font-fancy">
                           {deal.oldPrice}
                         </span>
-                        <span className="text-[#F9F6F4] text-[16px] font-[700] font-[lato]">
+                        <span className="text-[#F9F6F4] text-[16px] font-[700] font-fancy">
                           {deal.newPrice}
                         </span>
                       </div>
-                      <button onClick={() => Navigate(`${deal.dataurl}`)} className="text-[#13181F] font-[lato] text-[14px] bg-[#C5A291] py-[8px] px-[20px] rounded-[24px]">
+                      <button onClick={() => Navigate(`${deal.dataurl}`)} className="text-[#13181F] font-fancy text-[14px] bg-[#C5A291] py-[8px] px-[20px] rounded-[24px]">
                         Add To Cart
                       </button>
                     </div>

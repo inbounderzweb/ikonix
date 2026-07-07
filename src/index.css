@@ -3,19 +3,13 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;500;700&family=Pacifico&family=Poppins:wght@400;500;600;700&display=swap');
 
-/*
-  Luxia is NOT on Google Fonts. To make it work on all systems:
-  1. Copy the Luxia font file (e.g. luxia.ttf or Luxia.woff2 from C:\Windows\Fonts) into src/assets/fonts/
-  2. Uncomment the @font-face rule below (adjust the filename/format if needed)
-
 @font-face {
   font-family: 'Luxia';
-  src: url('./assets/fonts/Luxia.woff2') format('woff2');
+  src: url('./assets/font/LuxiaDisplay.otf') format('opentype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
-*/
 
 
 @tailwind base;

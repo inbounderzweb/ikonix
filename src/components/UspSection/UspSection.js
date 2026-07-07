@@ -39,8 +39,8 @@ export default function UspSection() {
             </div>
 
             <div className="text-left">
-              <span className="block text-xl font-bold">{title}</span>
-              <p className="text-sm text-gray-700 mt-2">{copy}</p>
+              <span className="font-fancy block text-xl font-bold">{title}</span>
+              <p className="font-fancy text-sm text-gray-700 mt-2">{copy}</p>
             </div>
           </div>
         ))}

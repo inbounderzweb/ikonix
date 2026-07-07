@@ -252,10 +252,10 @@ export default function ProductList({ hideFilters = false }) {
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
                 className={`
-                  px-6 py-3 rounded-full flex-shrink-0 transition text-[16px]
+                  px-6 py-3 rounded-full flex-shrink-0 transition text-[16px] font-fancy
                   ${selectedCategory === cat
-                    ? 'bg-[#b99b89] text-white shadow-sm'
-                    : 'bg-white text-[#b99b89] border border-[#d8bcae]'
+                    ? 'bg-[#b49d91] text-[#3f342c]'
+                    : 'bg-transparent text-[#a08876] border border-[#c9b6a9]'
                   }
                 `}
               >
@@ -276,60 +276,51 @@ export default function ProductList({ hideFilters = false }) {
             const vid = variant.vid ?? '';
             const msrp = Number(variant.price) || 0;
             const sale = Number(variant.sale_price) || msrp;
-            const discountPct = msrp > 0 && sale < msrp ? Math.round(((msrp - sale) / msrp) * 100) : 0;
-            const savings = msrp > sale ? msrp - sale : 0;
-            const badgeLabel = discountPct >= 40 ? "Best Deal" : discountPct > 0 ? `${discountPct}% OFF` : null;
+            const hasDiscount = msrp > 0 && sale < msrp;
 
             return (
-              <div
-                key={`${product.id}-${vid}`}
-                className="relative overflow-hidden rounded-[22px] bg-[#f5e8dc] shadow-[0_4px_16px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_22px_rgba(0,0,0,0.08)] transition-shadow duration-200 min-h-[430px]"
-              >
-                {/* Discount badge */}
-                {badgeLabel && (
-                  <span className={`absolute top-3 left-3 z-10 text-white text-xs font-bold px-3 py-1.5 rounded-md ${discountPct >= 40 ? "bg-orange-500" : "bg-red-500"}`}>
-                    {discountPct >= 40 ? "🔥 " : ""}{badgeLabel}
-                  </span>
-                )}
+              <div key={`${product.id}-${vid}`} className="flex flex-col">
+                {/* Image tile */}
+                <div className="relative aspect-square overflow-hidden rounded-[22px] bg-[#f0e4da]">
+                  {/* Category chip */}
+                  {product.category_name && (
+                    <span className="absolute top-4 left-4 z-10 rounded-full border border-[#c9b6a9] bg-white/50 px-4 py-1.5 text-sm text-[#6b5d52]">
+                      {product.category_name}
+                    </span>
+                  )}
 
-                {/* Add-to-cart button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAddToCart(product);
-                  }}
-                  className="absolute top-3 right-3 z-10 rounded-full p-2 bg-white/80 backdrop-blur-sm shadow"
-                >
-                  <img src={bag} alt="cart" className="h-5 w-5" />
-                </button>
+                  {/* Add-to-cart button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddToCart(product);
+                    }}
+                    className="absolute top-4 right-4 z-10 rounded-full border border-[#c9b6a9] bg-white/50 p-2.5 hover:bg-white transition"
+                  >
+                    <img src={bag} alt="cart" className="h-4 w-4" />
+                  </button>
 
-                {/* Product Image */}
-                <img
-                  onClick={() => navigate(`/product-details/${product.id}?vid=${vid}`)}
-                  src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
-                  alt={product.name}
-                  className="w-full h-[280px] object-contain cursor-pointer px-10 pt-10"
-                />
+                  {/* Product Image */}
+                  <img
+                    onClick={() => navigate(`/product-details/${product.id}?vid=${vid}`)}
+                    src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
+                    alt={product.name}
+                    className="h-full w-full cursor-pointer object-contain p-8"
+                  />
+                </div>
 
-                {/* Info */}
-                <div className="px-5 pb-6 pt-2">
-                  <h3 className="text-[#2f3647] font-[Lato] text-[17px] leading-snug font-medium min-h-[48px]">
+                {/* Info below tile */}
+                <div className="mt-4 flex items-start justify-between gap-3 px-1">
+                  <h3 className="font-fancy text-[17px] leading-snug text-[#2f3647]">
                     {product.name}
                   </h3>
-
-                  {/* Pricing */}
-                  <div className="mt-3">
-                    <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="font-semibold text-[#2f3647] text-[17px]">₹{sale}/-</span>
-                      {discountPct > 0 && (
-                        <>
-                          <span className="text-xs line-through text-gray-400">₹{msrp}/-</span>
-                        </>
-                      )}
-                    </div>
-                    {savings > 0 && (
-                      <p className="text-xs text-[#8b6b58] mt-0.5">Save ₹{savings}</p>
+                  <div className="text-right shrink-0">
+                    {hasDiscount && (
+                      <span className="block text-sm text-[#2f3647]/70 line-through">
+                        Rs.{msrp}/-
+                      </span>
                     )}
+                    <span className="text-[17px] text-[#2f3647]">Rs.{sale}/-</span>
                   </div>
                 </div>
               </div>
@@ -341,7 +332,7 @@ export default function ProductList({ hideFilters = false }) {
         <div className="flex justify-center mt-8">
           <button
             onClick={() => navigate('/shop')}
-            className="px-6 py-2 bg-[#b49d91] text-white rounded-full hover:opacity-90 transition"
+            className="px-10 py-3 bg-[#b49d91] text-[#3f342c] font-fancy text-[17px] rounded-full hover:opacity-90 transition"
           >
             View all Products
           </button>

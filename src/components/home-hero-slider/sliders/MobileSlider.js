@@ -67,10 +67,10 @@ const MobileSlider = () => {
 
               {/* gradient overlay + contents */}
               <div className="absolute inset-0 flex flex-col justify-end items-center text-center px-4 pb-10">
-                <h2 className="text-[24px] leading-tight font-semibold mb-3 bg-gradient-to-r from-[#FFF8F1] via-[#E9C9B2] to-[#FFF0DE] bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(0,0,0,0.25)]">
+                <h2 className="font-heading text-[24px] leading-tight font-semibold mb-3 bg-gradient-to-r from-[#FFF8F1] via-[#E9C9B2] to-[#FFF0DE] bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(0,0,0,0.25)]">
                   {slide.title}
                 </h2>
-                <p className="text-white/90 text-sm leading-relaxed mb-5 drop-shadow-[0_1px_8px_rgba(0,0,0,0.22)]">
+                <p className="font-fancy text-white/90 text-sm leading-relaxed mb-5 drop-shadow-[0_1px_8px_rgba(0,0,0,0.22)]">
                   {slide.subtitle}
                 </p>
                 <Link

@@ -22,14 +22,14 @@ export default function OwnPerfume() {
 
           {/* content */}
           <div className="flex flex-1 flex-col justify-center gap-6 lg:p-8 p-0 md:p-14">
-            <h2 className="text-3xl font-medium text-left text-[#7c706c] md:text-4xl">
+            <h2 className="font-heading text-3xl font-medium text-left text-[#7c706c] md:text-4xl">
               Create Your Own Signature Perfume
             </h2>
-            <p className="max-w-prose text-[#7c706c] text-left">
+            <p className="font-fancy max-w-prose text-[#7c706c] text-left">
               Design a custom luxury fragrance crafted exclusively for you. At Ikonix Perfumer, we blend premium ingredients, rare aroma notes, and expert craftsmanship to create a scent that reflects your personality. From fresh citrus accords to deep woody undertones, experience bespoke perfumery tailored to your style.
             </p>
 
-            <button onClick={() => Navigate(`contact`)} className="mt-2 w-max rounded-full bg-[#dab6a7] px-5 py-3 text-base font-medium text-[#44403c] transition hover:bg-[#e2c4b8]">
+            <button onClick={() => Navigate(`contact`)} className="font-fancy mt-2 w-max rounded-full bg-[#dab6a7] px-5 py-3 text-base font-medium text-[#44403c] transition hover:bg-[#e2c4b8]">
               Start Your Custom Fragrance
             </button>
           </div>

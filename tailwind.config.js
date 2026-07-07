@@ -8,6 +8,7 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: ['Luxia', 'Georgia', 'serif'],     // default utility class: font-sans
+        heading: ['Luxia', 'Georgia', 'serif'],  // custom utility class: font-heading
         fancy: ['Lato', 'sans-serif'],           // custom utility class: font-fancy
         
       },

@@ -114,19 +114,19 @@ function Header() {
               </ul>
 
               <div className="flex gap-3 items-center">
-                <button onClick={() => setSearchOpen(true)} className="cursor-pointer w-10 h-10 rounded-full bg-white/10 grid place-items-center">
+                <button onClick={() => setSearchOpen(true)} className="cursor-pointer rounded-full grid place-items-center">
                   <img src={search} alt="Search" className="w-6 h-6" />
                 </button>
 
                 <button
-                  className="cursor-pointer w-10 h-10 rounded-full bg-white/10 grid place-items-center"
+                  className="cursor-pointer rounded-full grid place-items-center"
                   onClick={() => (user ? navigate("/user-profile") : setAuthOpen(true))}
                 >
                   <img src={profile} alt="Profile" className="w-6 h-6" />
                 </button>
 
                 <div className="relative cursor-pointer" onClick={() => setCartOpen(true)}>
-                  <div className="w-8 h-8 rounded-full bg-white/10 grid place-items-center">
+                  <div className="rounded-full grid place-items-center">
                     <img src={cartIco} alt="Cart" className="w-6 h-6" />
                   </div>
                   {cartCount > 0 && (
