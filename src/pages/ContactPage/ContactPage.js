@@ -19,29 +19,29 @@ export default function ContactPage() {
     "w-full border text-[14px] rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#b49d91]";
 
   return (
-    <section className="w-[98%] md:w-[75%] mx-auto text-[#3b312e] font-[\'Inter\',sans-serif] pb-20">
+    <section className="w-[90%] md:w-[90%] lg:w-[80%] mx-auto text-[#3b312e] font-[\'Inter\',sans-serif] pb-20">
       {/* breadcrumb */}
       <nav className="mx-auto pt-6 text-sm text-gray-500">
         Home / <span className="text-black">Contact us</span>
       </nav>
 
       {/* heading */}
-      <h1 className="text-center text-[#8C7367] font-[luxia] text-[36px] font-[400] pt-4 pb-8">
+      <h1 className="text-center text-[#8C7367] font-[luxia] text-[32px] md:text-[36px] font-[400] pt-4 pb-8">
         Contact us
       </h1>
 
       {/* main card */}
       <div className="mx-auto ">
-        <div className="bg-[#EDE2DD] rounded-[24px] p-8 md:p-12 flex flex-col md:flex-row gap-10 items-center md:items-start">
+        <div className="bg-[#EDE2DD] rounded-[24px] p-6 md:p-8 lg:p-12 grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-10 items-center">
           {/* illustration – on left desktop, bottom mobile */}
           <img
             src={illustration}
             alt="Customer Support Illustration"
-            className="max-w-[480px] object-contain order-2 md:order-1"
+            className="w-full max-w-[520px] mx-auto lg:mx-0 object-contain order-2 lg:order-1"
           />
 
           {/* form */}
-          <form className="flex-1 w-full order-1 md:order-2" onSubmit={(e) => {
+          <form className="w-full order-1 lg:order-2" onSubmit={(e) => {
             e.preventDefault();
             const { first, last, email, phone, comment } = form;
 
@@ -147,7 +147,7 @@ export default function ContactPage() {
             {/* submit */}
             <button
               type="submit"
-              className="mt-6 w-full md:w-auto px-16 bg-[#12131a] text-[#EAEBED] text-[lato] tracking-[0.5px] font-[400] py-3 rounded-md hover:opacity-90 transition block mx-auto"
+              className="mt-6 w-full sm:w-auto px-10 sm:px-16 bg-[#12131a] text-[#EAEBED] text-[lato] tracking-[0.5px] font-[400] py-3 rounded-md hover:opacity-90 transition block sm:mx-auto"
             >
               Send Message
             </button>

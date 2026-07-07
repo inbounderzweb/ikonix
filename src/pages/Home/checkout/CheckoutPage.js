@@ -725,8 +725,10 @@ export default function CheckoutPage() {
   );
 
   return (
-    <div className="max-w-5xl mx-auto py-10 px-4">
-      <h1 className="text-4xl font-semibold mb-8 text-[#6d5a52]">Your Order</h1>
+    <div className="w-[90%] lg:w-[80%] mx-auto py-8 md:py-10 px-0">
+      <h1 className="text-3xl md:text-4xl font-semibold mb-8 text-[#6d5a52]">
+        Your Order
+      </h1>
 
       {!user ? (
         <div className="text-center py-20 bg-[#fdf8f5] rounded-3xl border border-[#eadcd5]">
@@ -749,7 +751,7 @@ export default function CheckoutPage() {
       ) : (
         <>
           {/* Header row */}
-          <div className="grid grid-cols-12 bg-[#eadcd5] text-[#6d5a52] rounded-md py-3 px-4 font-semibold mb-4 text-lg">
+          <div className="hidden md:grid grid-cols-12 bg-[#eadcd5] text-[#6d5a52] rounded-md py-3 px-4 font-semibold mb-4 text-lg">
             <div className="col-span-7">product</div>
             <div className="col-span-3 text-center">QTY</div>
             <div className="col-span-2 text-right">Total</div>
@@ -764,11 +766,13 @@ export default function CheckoutPage() {
                   <img
                     src={`https://ikonixperfumer.com/beta/assets/uploads/${item.image}`}
                     alt={item.name}
-                    className="w-20 h-20 rounded-xl object-cover bg-[#f6ebe6]"
+                    className="w-20 h-20 md:w-24 md:h-24 rounded-xl object-cover bg-[#f6ebe6]"
                   />
                   <div>
-                    <p className="text-xl text-[#6d5a52] font-medium">{item.name}</p>
-                    <p className="text-[#2A3443] text-lg font-semibold">Rs.{item.price.toFixed(2)}/-</p>
+                    <p className="text-base md:text-xl text-[#6d5a52] font-medium">{item.name}</p>
+                    <p className="text-[#2A3443] text-sm md:text-lg font-semibold">
+                      Rs.{item.price.toFixed(2)}/-
+                    </p>
                   </div>
                 </div>
 
@@ -807,7 +811,7 @@ export default function CheckoutPage() {
 
           {/* Totals */}
           <div className="mt-10 flex justify-end text-[#6d5a52]">
-            <div className="w-1/2 max-w-sm space-y-2">
+            <div className="w-full md:w-1/2 max-w-sm space-y-2">
               <div className="flex justify-between">
                 <span className="text-base">Subtotal</span>
                 <span className="text-[#b49d91] font-semibold">
@@ -825,7 +829,7 @@ export default function CheckoutPage() {
           <div className="flex justify-center mt-10">
             <button
               onClick={handlePlaceOrder}
-              className="bg-[#1e2633] text-white text-lg px-16 py-4 rounded-xl hover:opacity-90 transition"
+              className="bg-[#1e2633] text-white text-base md:text-lg px-10 md:px-16 py-3 md:py-4 rounded-xl hover:opacity-90 transition"
             >
               Place order
             </button>
@@ -840,13 +844,15 @@ export default function CheckoutPage() {
       {showAddressModal && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center px-4 py-6">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleCancel} />
-          <div className="relative bg-[#fdf8f5] w-full lg:max-w-[90%] rounded-3xl shadow-2xl p-6 max-h-[80vh] overflow-y-auto">
+          <div className="relative bg-[#fdf8f5] w-full max-w-[96vw] md:max-w-[92vw] lg:max-w-[90%] rounded-3xl shadow-2xl p-5 md:p-6 max-h-[90vh] overflow-y-auto">
             <CloseBtn onClick={handleCancel} />
 
             {/* STEP: FORM */}
             {step === 'form' && (
               <>
-                <h2 className="text-3xl font-semibold text-[#6d5a52] mb-6">Enter Shipping Address</h2>
+                <h2 className="text-2xl md:text-3xl font-semibold text-[#6d5a52] mb-6">
+                  Enter Shipping Address
+                </h2>
 
                 <button
                   onClick={handleUseLocation}
@@ -858,7 +864,7 @@ export default function CheckoutPage() {
 
                 <hr className="mb-6 border-[#eadcd5]" />
 
-                <div className="grid grid-cols-2 gap-4 text-[#6d5a52]">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[#6d5a52]">
                   {!user && (
                     <>
                       <div className="flex flex-col gap-1 col-span-2 md:col-span-1">
@@ -1084,7 +1090,7 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  <div className="grid md:flex gap-3 m-2 ml-[-10px] lg:ml-0 float-start lg:float-end justify-normal md:justify-between">
+                  <div className="grid md:flex gap-3 m-2 ml-0 justify-normal md:justify-between">
                     <button
                       onClick={handleCancel}
                       className="px-6 py-2 md:px-12 md:py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]"
@@ -1110,7 +1116,9 @@ export default function CheckoutPage() {
 
               return (
                 <>
-                  <h2 className="text-3xl font-semibold text-[#6d5a52] mb-8">Confirm your Order</h2>
+                  <h2 className="text-2xl md:text-3xl font-semibold text-[#6d5a52] mb-8">
+                    Confirm your Order
+                  </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* Products list */}
                     <div>
