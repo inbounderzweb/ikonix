@@ -69,7 +69,7 @@ function Header() {
       >
         <div className="bg-[#2d3545] h-[45px] md:h-[82px] rounded-[5px] md:rounded-[8px]">
           <div className="flex items-center h-full justify-between">
-            <div className="pl-4 md:pl-6">
+            <div className="pl-4 md:pl-6 -mt-2">
               <Link to="/">
                 <img src={logo} alt="Ikonix logo" className="h-5 md:h-8" />
               </Link>
@@ -114,20 +114,20 @@ function Header() {
               </ul>
 
               <div className="flex gap-3 items-center">
-                <button onClick={() => setSearchOpen(true)} className="cursor-pointer w-8 h-8 rounded-full bg-white/10 grid place-items-center">
-                  <img src={search} alt="Search" className="w-4 h-4" />
+                <button onClick={() => setSearchOpen(true)} className="cursor-pointer w-10 h-10 rounded-full bg-white/10 grid place-items-center">
+                  <img src={search} alt="Search" className="w-6 h-6" />
                 </button>
 
                 <button
-                  className="cursor-pointer w-8 h-8 rounded-full bg-white/10 grid place-items-center"
+                  className="cursor-pointer w-10 h-10 rounded-full bg-white/10 grid place-items-center"
                   onClick={() => (user ? navigate("/user-profile") : setAuthOpen(true))}
                 >
-                  <img src={profile} alt="Profile" className="w-4 h-4" />
+                  <img src={profile} alt="Profile" className="w-6 h-6" />
                 </button>
 
                 <div className="relative cursor-pointer" onClick={() => setCartOpen(true)}>
                   <div className="w-8 h-8 rounded-full bg-white/10 grid place-items-center">
-                    <img src={cartIco} alt="Cart" className="w-4 h-4" />
+                    <img src={cartIco} alt="Cart" className="w-6 h-6" />
                   </div>
                   {cartCount > 0 && (
                     <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-semibold w-5 h-5 flex items-center justify-center rounded-full">

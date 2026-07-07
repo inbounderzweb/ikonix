@@ -89,7 +89,14 @@ export default function CheckoutPage() {
   const [shippingId, setShippingId] = useState(null);
   const [billingId, setBillingId] = useState(null);
   const [sameAsShip, setSameAsShip] = useState(true);
-  const [deliveryMethod, setDeliveryMethod] = useState(1); // 1 std, 2 express
+  const [deliveryMethod] = useState(1); // Standard only
+  const [chargeSummary, setChargeSummary] = useState({
+    delivery: 0,
+    tax: null,
+    packing: null,
+    total: 0,
+    raw: null,
+  });
 
   /* Status */
   const [loading, setLoading] = useState(false);
@@ -146,6 +153,12 @@ export default function CheckoutPage() {
     [a.street, a.city, a.district, a.state, a.country, a.pincode]
       .filter(Boolean)
       .join(', ');
+
+  const getShippingCountry = () => {
+    const activeBillId = sameAsShip ? shippingId : billingId;
+    const selectedAddress = addresses.find(a => String(a.id) === String(activeBillId));
+    return selectedAddress?.country || form.country || 'India';
+  };
 
   // helper to push the selected address to the top
   const ordered = (list, selectedId) => {
@@ -368,6 +381,65 @@ export default function CheckoutPage() {
     setError('');
     setStep('confirm');
   };
+
+  useEffect(() => {
+    const fetchChargeSummary = async () => {
+      const uid = user?.id || guestId;
+      const shipping_country = getShippingCountry();
+
+      if (!uid) return;
+
+      try {
+        const { data } = await api.post(
+          `${API_BASE}/cart`,
+          qs.stringify({
+            userid: uid,
+            delivery_method: 1,
+            shipping_country,
+          }),
+          {
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+          }
+        );
+
+        const raw = data?.data || data || {};
+        const delivery = Number(
+          data?.delivery_charge ??
+          raw.delivery_charge ??
+          raw.delivery ??
+          raw.shipping_charge ??
+          0
+        ) || 0;
+        const tax = raw.tax ?? raw.tax_charge ?? null;
+        const packing = raw.packing ?? raw.packing_charge ?? null;
+        const taxValue = tax !== null ? Number(tax) || 0 : null;
+        const packingValue = packing !== null ? Number(packing) || 0 : null;
+        const totalFromApi = Number(raw.total ?? raw.total_charge ?? raw.grand_total ?? 0) || 0;
+        const totalFromParts = subtotal + delivery + (taxValue || 0) + (packingValue || 0);
+
+        setChargeSummary({
+          delivery,
+          tax: taxValue,
+          packing: packingValue,
+          total: totalFromApi || totalFromParts,
+          raw,
+        });
+      } catch (err) {
+        console.error('Charge summary fetch failed:', err?.response?.data || err);
+        setChargeSummary({
+          delivery: 0,
+          tax: null,
+          packing: null,
+          total: subtotal,
+          raw: null,
+        });
+      }
+    };
+
+    fetchChargeSummary();
+  }, [api, guestId, shippingId, billingId, sameAsShip, subtotal, user?.id, form.country, addresses]);
 
   // ---------------------------
   // Razorpay Pay Click Handler
@@ -616,7 +688,8 @@ export default function CheckoutPage() {
         userid: uid || '0',
         shipping_address: shippingId,
         billing_address: billId,
-        delivery_method: deliveryMethod,
+        delivery_method: 1,
+        shipping_country: getShippingCountry(),
         customer_name: form.name,
         customer_email: form.email,
         customer_phone: form.phone,
@@ -1060,37 +1133,17 @@ export default function CheckoutPage() {
 
                 <hr className="my-8 border-[#eadcd5]" />
 
-                <div className="grid justify-between lg:flex items-center">
-                  {/* Delivery method */}
-                  <div className="flex items-center gap-3 m-2">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div className="m-2">
                     <h4 className="text-[20px] lg:text-xl font-semibold text-[#6d5a52]">
                       Delivery Method
                     </h4>
-                    <div className="flex bg-[#f6ebe6] border border-[#d7c6bfd7] rounded-xl p-1">
-                      <button
-                        type="button"
-                        onClick={() => setDeliveryMethod(1)}
-                        className={`px-5 py-2 rounded-lg text-sm lg:text-base transition font-medium ${deliveryMethod === 1
-                          ? 'bg-[#1e2633] text-white shadow'
-                          : 'text-[#6d5a52] hover:bg-[#eadcd5]'
-                          }`}
-                      >
-                        Standard
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeliveryMethod(2)}
-                        className={`px-5 py-2 rounded-lg text-sm lg:text-base transition font-medium ${deliveryMethod === 2
-                          ? 'bg-[#1e2633] text-white shadow'
-                          : 'text-[#6d5a52] hover:bg-[#eadcd5]'
-                          }`}
-                      >
-                        Express
-                      </button>
-                    </div>
+                    <p className="mt-2 inline-flex items-center rounded-xl border border-[#d7c6bfd7] bg-[#f6ebe6] px-5 py-2 text-sm lg:text-base font-medium text-[#6d5a52]">
+                      Standard
+                    </p>
                   </div>
 
-                  <div className="grid md:flex gap-3 m-2 ml-0 justify-normal md:justify-between">
+                  <div className="flex gap-3 m-2">
                     <button
                       onClick={handleCancel}
                       className="px-6 py-2 md:px-12 md:py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]"
@@ -1183,9 +1236,31 @@ export default function CheckoutPage() {
                             Rs.{subtotal.toFixed(2)}/-
                           </span>
                         </div>
+                        <div className="flex justify-between text-base">
+                          <span>Delivery Charge</span>
+                          <span className="text-[#b49d91] font-semibold">
+                            Rs.{chargeSummary.delivery.toFixed(2)}/-
+                          </span>
+                        </div>
+                        {chargeSummary.tax !== null && (
+                          <div className="flex justify-between text-base">
+                            <span>Tax</span>
+                            <span className="text-[#b49d91] font-semibold">
+                              Rs.{Number(chargeSummary.tax).toFixed(2)}/-
+                            </span>
+                          </div>
+                        )}
+                        {chargeSummary.packing !== null && (
+                          <div className="flex justify-between text-base">
+                            <span>Packing</span>
+                            <span className="text-[#b49d91] font-semibold">
+                              Rs.{Number(chargeSummary.packing).toFixed(2)}/-
+                            </span>
+                          </div>
+                        )}
                         <div className="flex justify-between text-2xl font-bold text-[#2A3443]">
                           <span>Total</span>
-                          <span>Rs.{total.toFixed(2)}/-</span>
+                          <span>Rs.{(chargeSummary.total || total).toFixed(2)}/-</span>
                         </div>
                       </div>
                     </div>
