@@ -13,22 +13,22 @@ import CollectionCards from '../../collectioncards/CollectionCards';
 
 const sliderData = [
   {
-    title: 'Indulge in \nSignature Scents',
-    subtitle: 'Discover handcrafted fragrances that captivate the senses and define your presence.',
+    title: 'Define\n Your Signature',
+    subtitle: 'Discover timeless fragrances crafted to leave a lasting impression.',
     image: firstBanner,
     buttonText: 'View Products',
     buttonLink: '/shop',
   },
   {
-    title: 'Awaken Your  \nSenses',
-    subtitle: 'Where luxury meets emotion — find your perfect scent.',
+    title: 'Awaken \n Your Senses',
+    subtitle: 'Experience luxurious aromas designed to inspire every moment.',
     image: secondBanner,
     buttonText: 'View Products',
     buttonLink: '/shop',
   },
   {
-    title: 'Define Your Signature',
-    subtitle: 'Elevate every moment with an unforgettable scent.',
+    title: 'Indulge in \n Signature Scents',
+    subtitle: 'Explore premium perfumes created to express your unique style.',
     image: thirdbanner,
     buttonText: 'View Products',
     buttonLink: '/shop',

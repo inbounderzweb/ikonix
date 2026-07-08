@@ -9,9 +9,9 @@ import CollectionCards from "../../collectioncards/CollectionCards";
 
 const sliderData = [
   {
-    title: "Indulge in Signature Scents",
+    title: "Define Your Signature",
     subtitle:
-      "Discover handcrafted fragrances that captivate the senses and define your presence.",
+      "Discover timeless fragrances crafted to leave a lasting impression.",
     image: mobilefirstBanner,
     buttonText: "View Products",
     buttonLink: '/shop',
@@ -19,7 +19,7 @@ const sliderData = [
   {
     title: "Awaken Your Senses",
     subtitle:
-      "Where luxury meets emotion — find your perfect scent.",
+      "Experience luxurious aromas designed to inspire every moment.",
     image: mobilesecondBanner,
     buttonText: "View Products",
     buttonLink: '/shop',

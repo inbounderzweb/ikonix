@@ -224,9 +224,9 @@ export default function ProductList({ hideFilters = false }) {
 
   if (isLoading) {
     return (
-      <p className="text-center py-8">
+      <div className="text-center py-8">
         <Spinner />
-      </p>
+      </div>
     );
   }
 
