@@ -91,37 +91,39 @@ function AboutUs() {
         </div>
       </section>
 
-      <section className="bg-[#EDE2DD] py-10 md:py-12">
-        <div className="mx-auto grid w-[90%] lg:w-[80%] grid-cols-1 gap-10 md:grid-cols-2 md:gap-10">
-          <div className="flex flex-col items-center text-center gap-4 md:flex-row md:items-start md:text-left md:gap-5">
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-[#d9cfc9]">
-              <img src={mission} alt="Mission icon" className="w-7 h-7 object-contain" />
+      <section className="bg-[#EDE2DD] py-10 md:py-14">
+        <div className="mx-auto grid w-[90%] lg:w-[80%] grid-cols-1 gap-10 md:grid-cols-2 md:gap-12 lg:gap-16 md:justify-items-center">
+          {[
+            {
+              icon: mission,
+              alt: 'Mission icon',
+              title: 'Our Mission',
+              text: 'To create high-quality, personalised fragrances that express individual style, evoke emotion, and make luxury scent experiences accessible to everyone.',
+            },
+            {
+              icon: vision,
+              alt: 'Vision icon',
+              title: 'Our Vision',
+              text: 'To become a trusted name in custom perfumery by changing the way people connect with fragrance through creativity, affordability, and thoughtful craftsmanship.',
+            },
+          ].map(({ icon, alt, title, text }) => (
+            <div
+              key={title}
+              className="flex flex-col items-center text-center gap-4 md:flex-row md:items-center md:text-left md:gap-5"
+            >
+              <div className="flex h-[70px] w-[70px] md:h-16 md:w-16 flex-shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
+                <img src={icon} alt={alt} className="h-9 w-9 md:h-8 md:w-8 object-contain" />
+              </div>
+              <div>
+                <h3 className="mb-1 text-[22px] md:text-xl font-[Luxia] text-[#8C7367]">
+                  {title}
+                </h3>
+                <p className="mx-auto max-w-[300px] md:mx-0 md:max-w-[380px] font-[Lato] text-[13px] md:text-[14px] leading-relaxed text-[#53443D]">
+                  {text}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="mb-2 text-lg font-semibold text-[#8C7367] font-[Luxia]">
-                Our Mission
-              </h3>
-              <p className="mx-auto max-w-[320px] leading-relaxed font-[Lato] text-[15px] md:text-[16px] font-[400] text-[#53443D] md:mx-0 md:max-w-none">
-                To create high-quality, personalised fragrances that express individual style,
-                evoke emotion, and make luxury scent experiences accessible to everyone.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-center text-center gap-4 md:flex-row md:items-start md:text-left md:gap-5">
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-[#d9cfc9]">
-              <img src={vision} alt="Vision icon" className="w-7 h-7 object-contain" />
-            </div>
-            <div>
-              <h3 className="mb-2 text-lg font-semibold text-[#8C7367] font-[Luxia]">
-                Our Vision
-              </h3>
-              <p className="mx-auto max-w-[320px] leading-relaxed font-[Lato] text-[15px] md:text-[16px] font-[400] text-[#53443D] md:mx-0 md:max-w-none">
-                To become a trusted name in custom perfumery by changing the way people connect with
-                fragrance through creativity, affordability, and thoughtful craftsmanship.
-              </p>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 

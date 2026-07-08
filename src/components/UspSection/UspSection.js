@@ -33,9 +33,9 @@ export default function UspSection() {
 
 
         {usps.map(({ id, icon, title, copy }) => (
-          <div key={id} className="flex items-start space-x-4 m-[10px] border-b-[1px] md:border-r-[1px] md:border-b-[0px] border-[#B39384] p-2">
-            <div className="p-2 rounded-full bg-[#b39384]">
-              <img src={icon} alt="icon" className="w-24" />
+          <div key={id} className="flex items-center space-x-4 m-[10px] border-b-[1px] md:border-r-[1px] md:border-b-[0px] last:border-b-0 md:last:border-r-0 border-[#B39384] p-2">
+            <div className="flex h-20 w-20 md:h-24 md:w-24 flex-shrink-0 items-center justify-center rounded-full bg-[#b39384]">
+              <img src={icon} alt="icon" className="w-10 md:w-12 object-contain" />
             </div>
 
             <div className="text-left">
