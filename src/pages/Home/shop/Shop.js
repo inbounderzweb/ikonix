@@ -5,15 +5,15 @@ import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
 import qs from "qs";
 import bag from "../../../assets/bag.svg";
 import Spinner from "../../../components/loader/Spinner";
-import shopherobg from "../../../assets/about/about_banner.svg";
-import shopherobgmob from "../../../assets/about/BrandShowcaseBanner_mobile.svg";
+import shopherobg from "../../../assets/about/aboutBannerDesk.svg";
+import shopherobgmob from "../../../assets/about/aboutBannerMob.svg";
 import ValidateOnLoad from "../../../components/ValidateOnLoad";
 import { useGetProductsQuery } from "../../../features/product/productApi";
 import { useAuth } from "../../../context/AuthContext";
 import { useCart } from "../../../context/CartContext";
 import { createApiClient } from "../../../api/client";
 
-const API_BASE = "https://ikonixperfumer.com/beta/api";
+const API_BASE = "http://ikonixperfumer.com/beta/api";
 
 /* ---------------- Guest helpers ---------------- */
 const safeJsonParse = (val, fallback) => {

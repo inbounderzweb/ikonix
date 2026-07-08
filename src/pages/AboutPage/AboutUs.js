@@ -1,5 +1,5 @@
 import React from 'react';
-import shopherobg from '../../assets/about/about_banner.svg';
+import shopherobg from '../../assets/about/aboutBannerDesk.svg';
 import shopherobgmob from '../../assets/about/BrandShowcaseBanner_mobile.svg';
 import aboutmain from '../../assets/aboutmain.svg';
 import mission from '../../assets/mission.svg';
@@ -43,7 +43,7 @@ const whyChooseCards = [
 function AboutUs() {
   return (
     <div className="text-[#3b312e]">
-      <section className="mx-auto mt-5 md:mt-10 w-[90%] lg:w-[80%] overflow-hidden rounded-2xl">
+      <section className="relative mx-auto mt-5 md:mt-10 w-[90%] lg:w-[80%] overflow-hidden rounded-2xl">
         <img
           src={shopherobg}
           alt="Ikonix about banner"
@@ -54,12 +54,17 @@ function AboutUs() {
           alt="Ikonix about banner mobile"
           className="block md:hidden w-full object-cover"
         />
+        {/* <h1 className="absolute font-[Luxia] text-[#53443D] leading-snug text-center md:text-left top-4 left-1/2 -translate-x-1/2 w-[169px] text-[18px] md:w-auto md:top-1/2 md:left-auto md:right-[10%] md:translate-x-0 md:-translate-y-1/2 md:text-3xl lg:text-4xl">
+          Lorem ipsum
+          <br />
+          dolor sit amet
+        </h1> */}
       </section>
 
-      <section className="mx-auto w-[90%] lg:w-[80%] py-10 md:py-16 font-['Inter',sans-serif]">
+      <section className="mx-auto w-[90%] lg:w-[80%] py-10 md:py-16 font-[Lato]">
         <div className="flex flex-col items-center gap-8 md:flex-row-reverse md:items-center md:gap-10">
           <div className="order-1 space-y-4 md:order-none md:w-1/2">
-            <h2 className="text-center md:text-left text-2xl md:text-3xl font-semibold mt-2">
+            <h2 className="text-center md:text-left text-2xl md:text-3xl font-[Luxia] text-[#8C7367] mt-2">
               Who We Are
             </h2>
             <p className="mx-auto max-w-[340px] text-center md:mx-0 md:max-w-none md:text-left text-[14px] leading-relaxed">

@@ -2,9 +2,9 @@ import React from 'react';
 import Slider from 'react-slick';
 // import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/20/solid';
 // import firstBanner from '../../../assets/banner/firstBanner.svg';
-import firstBanner from '../../../assets/banner/firstBanner.svg';
-import secondBanner from '../../../assets/banner/secondBanner.svg';
-import thirdbanner from '../../../assets/banner/thirdBanner.svg';
+import firstBanner from '../../../assets/banner/bannerDesk1.svg';
+import secondBanner from '../../../assets/banner/bannerDesk2.svg';
+import thirdbanner from '../../../assets/banner/bannerDesk3.svg';
 import arrowleft from '../../../assets/Arrow-left.svg';
 import arrowright from '../../../assets/Arrow-right.svg'
 import { Link } from 'react-router-dom';
@@ -13,7 +13,7 @@ import CollectionCards from '../../collectioncards/CollectionCards';
 
 const sliderData = [
   {
-    title: 'Indulge in Signature Scents',
+    title: 'Indulge in \nSignature Scents',
     subtitle: 'Discover handcrafted fragrances that captivate the senses and define your presence.',
     image: firstBanner,
     buttonText: 'View Products',
@@ -99,7 +99,7 @@ const SliderComponent = () => {
                   </p>
                   <Link
                     to={slide.buttonLink}
-                    className="mt-5 inline-flex w-fit items-center justify-center rounded-3xl bg-[#2d3545] px-5 py-2 lg:px-10 lg:py-4 text-[11px] font-medium text-white transition-colors duration-300 hover:bg-[#1f2633]"
+                    className="mt-5 inline-flex w-fit items-center justify-center rounded-3xl bg-[#2d3545] px-5 py-2 lg:px-10 lg:py-4 text-[14px] font-medium text-white transition-colors duration-300 hover:bg-[#1f2633]"
                   >
                     {slide.buttonText}
                   </Link>

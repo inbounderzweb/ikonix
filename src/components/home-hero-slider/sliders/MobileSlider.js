@@ -2,12 +2,8 @@ import React from "react";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-// import mobilefirstBanner from "../../../assets/mobilefirst.svg";
-// import mobilesecondBanner from "../../../assets/mobilesecond.svg";
-// import mobilethirdBanner from "../../../assets/mobilethird.svg";
-import mobilefirstBanner from "../../../assets/Mob-banner-1.jpg";
-import mobilesecondBanner from "../../../assets/Mob-banner-2.jpg";
-// import mobilethirdBanner from "../../../assets/mobilethird.svg";
+import mobilefirstBanner from "../../../assets/banner/bannerMob1.svg";
+import mobilesecondBanner from "../../../assets/banner/bannerMob2.svg";
 import { Link } from "react-router-dom";
 import CollectionCards from "../../collectioncards/CollectionCards";
 
