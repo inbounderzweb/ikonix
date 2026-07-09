@@ -90,7 +90,7 @@ const SliderComponent = () => {
                 {/* <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/25 to-transparent" /> */}
                     <div className="absolute inset-0" />
 
-                <div className="absolute inset-y-0 left-0 flex w-[48%] flex-col justify-center px-10 lg:px-16 text-[#53443D]">
+                <div className="absolute inset-y-0 left-0 lg:ms-6 2xl:ms-14 flex w-[48%] flex-col justify-center px-10 lg:px-16 text-[#53443D]">
                   <h1 className="font-heading text-[32px] lg:text-[54px] leading-[0.95] font-medium whitespace-pre-line">
                     {slide.title}
                   </h1>

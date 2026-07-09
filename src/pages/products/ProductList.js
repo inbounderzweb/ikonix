@@ -305,7 +305,7 @@ export default function ProductList({ hideFilters = false }) {
                     onClick={() => navigate(`/product-details/${product.id}?vid=${vid}`)}
                     src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
                     alt={product.name}
-                    className="h-full w-full cursor-pointer object-contain p-8"
+                    className="h-full w-full cursor-pointer object-cover"
                   />
                 </div>
 

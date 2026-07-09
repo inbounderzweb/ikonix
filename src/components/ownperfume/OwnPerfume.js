@@ -8,22 +8,22 @@ export default function OwnPerfume() {
   const Navigate = useNavigate();
   return (
     <section className="bg-bg-brand">
-      <div className=" w-[90%] lg:w-[80%] mx-auto px-4 py-16">
+      <div className="w-[90%] lg:w-[80%] mx-auto py-16">
         {/* card wrapper */}
-        <div className="flex flex-col overflow-hidden rounded-[24px] bg-white/10 backdrop-blur-md md:flex-row">
+        <div className="mx-auto flex max-w-[960px] flex-col items-center gap-8 md:flex-row md:gap-10">
           {/* image */}
-          <div className="shrink-0 md:w-5/12">
+          <div className="shrink-0 w-full md:w-[440px] overflow-hidden rounded-2xl">
             <img
-              src={makeperfume} // ⬅️ replace with your image
+              src={makeperfume}
               alt="Perfumer crafting fragrance"
-
+              className="w-full object-cover"
             />
           </div>
 
           {/* content */}
-          <div className="flex flex-1 flex-col justify-center gap-6 lg:p-8 p-0 md:p-14">
-            <h2 className="font-heading text-3xl font-medium text-left text-[#7c706c] md:text-4xl">
-              Create Your Own Signature Perfume
+          <div className="flex flex-1 flex-col justify-center gap-4">
+            <h2 className="font-heading text-3xl font-medium text-left text-[#7c706c] md:text-[34px]">
+              Create Your Own <br/>Signature Perfume
             </h2>
             <p className="font-fancy max-w-prose text-[#7c706c] text-left">
               Design a custom luxury fragrance crafted exclusively for you. At Ikonix Perfumer, we blend premium ingredients, rare aroma notes, and expert craftsmanship to create a scent that reflects your personality. From fresh citrus accords to deep woody undertones, experience bespoke perfumery tailored to your style.

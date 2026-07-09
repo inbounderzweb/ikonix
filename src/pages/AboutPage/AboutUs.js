@@ -54,16 +54,14 @@ function AboutUs() {
           alt="Ikonix about banner mobile"
           className="block md:hidden w-full object-cover"
         />
-        {/* <h1 className="absolute font-[Luxia] text-[#53443D] leading-snug text-center md:text-left top-4 left-1/2 -translate-x-1/2 w-[169px] text-[18px] md:w-auto md:top-1/2 md:left-auto md:right-[10%] md:translate-x-0 md:-translate-y-1/2 md:text-3xl lg:text-4xl">
-          Lorem ipsum
-          <br />
-          dolor sit amet
-        </h1> */}
+        <h2 className="absolute z-10 hidden md:block font-[Luxia] text-[#53443D] leading-snug text-left md:top-1/2 md:right-[18%] md:-translate-y-1/2 md:text-3xl lg:text-4xl">
+          About Us
+        </h2>
       </section>
 
       <section className="mx-auto w-[90%] lg:w-[80%] py-10 md:py-16 font-[Lato]">
-        <div className="flex flex-col items-center gap-8 md:flex-row-reverse md:items-center md:gap-10">
-          <div className="order-1 space-y-4 md:order-none md:w-1/2">
+        <div className="flex flex-col items-center gap-8 md:flex-row-reverse md:items-center md:justify-center md:gap-10">
+          <div className="order-1 space-y-4 md:order-none md:max-w-[560px]">
             <h2 className="text-center md:text-left text-2xl md:text-3xl font-[Luxia] text-[#8C7367] mt-2">
               Who We Are
             </h2>
@@ -81,7 +79,7 @@ function AboutUs() {
             </p>
           </div>
 
-          <div className="order-2 flex justify-center md:order-none md:w-1/2 md:justify-start">
+          <div className="order-2 flex justify-center md:order-none md:shrink-0">
             <img
               src={aboutmain}
               alt="Custom perfume illustration"
@@ -92,7 +90,7 @@ function AboutUs() {
       </section>
 
       <section className="bg-[#EDE2DD] py-10 md:py-14">
-        <div className="mx-auto grid w-[90%] lg:w-[80%] grid-cols-1 gap-10 md:grid-cols-2 md:gap-12 lg:gap-16 md:justify-items-center">
+        <div className="mx-auto flex w-[90%] lg:w-[80%] flex-col items-center gap-10 md:flex-row md:items-start md:justify-center md:gap-16 lg:gap-24">
           {[
             {
               icon: mission,

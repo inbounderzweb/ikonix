@@ -29,11 +29,11 @@ export default function UspSection() {
 
 
     <div className="bg-[#e8d5cf] w-full">
-      <section className="grid xl:flex justify-start md:justify-center md:space-x-6 md:p-4 md:w-[90%] space-x-2 p-2 w-[90%] lg:w-[80%] mx-auto">
+      <section className="grid xl:flex justify-start md:justify-center md:space-x-10 md:p-4 md:w-[90%] space-x-2 p-2 w-[90%] lg:w-[80%] mx-auto">
 
 
         {usps.map(({ id, icon, title, copy }) => (
-          <div key={id} className="flex items-center space-x-4 m-[10px] border-b-[1px] md:border-r-[1px] md:border-b-[0px] last:border-b-0 md:last:border-r-0 border-[#B39384] p-2">
+          <div key={id} className="flex xl:flex-1 items-center space-x-4 md:space-x-6 m-[10px] border-b-[1px] md:border-r-[1px] md:border-b-[0px] last:border-b-0 md:last:border-r-0 border-[#B39384] p-2 md:py-4 md:pr-10 md:last:pr-0">
             <div className="flex h-20 w-20 md:h-24 md:w-24 flex-shrink-0 items-center justify-center rounded-full bg-[#b39384]">
               <img src={icon} alt="icon" className="w-10 md:w-12 object-contain" />
             </div>
