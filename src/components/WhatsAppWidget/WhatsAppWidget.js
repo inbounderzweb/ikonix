@@ -7,7 +7,7 @@ const WhatsAppWidget = () => {
             href="https://wa.me/919072416518"
             target="_blank"
             rel="noopener noreferrer"
-            className="fixed bottom-6 right-6 z-50 flex items-center justify-center bg-[#25D366] rounded-full shadow-lg hover:bg-[#128C7E] transition-colors"
+            className="hidden md:flex fixed bottom-6 right-6 z-50 items-center justify-center bg-[#25D366] rounded-full shadow-lg hover:bg-[#128C7E] transition-colors"
             aria-label="Chat on WhatsApp"
         >
             {/* Simple WhatsApp icon using Unicode or you can replace with an SVG */}

@@ -67,11 +67,11 @@ function Header() {
         ${scrolled ? "bg-[#2d3545]/95 shadow-md backdrop-blur-md" : "bg-[#2d3545]"}
         rounded-[5px] md:rounded-[8px] mt-2 md:mt-5 ring-1 ring-white/5`}
       >
-        <div className="bg-[#2d3545] h-[45px] md:h-[82px] rounded-[5px] md:rounded-[8px]">
+        <div className="bg-[#2d3545] h-[60px] md:h-[82px] rounded-[5px] md:rounded-[8px]">
           <div className="flex items-center h-full justify-between">
-            <div className="pl-4 md:pl-6 -mt-2">
+            <div className="pl-4 md:pl-6 -mt-1 m-2">
               <Link to="/">
-                <img src={logo} alt="Ikonix logo" className="h-5 md:h-8" />
+                <img src={logo} alt="Ikonix logo" className="h-6 md:h-8" />
               </Link>
             </div>
 
