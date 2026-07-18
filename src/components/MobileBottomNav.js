@@ -21,12 +21,12 @@ const MobileBottomNav = ({ onSearchOpen, onCartOpen, onAuthOpen }) => {
 
   return (
     <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[45] w-[90%] max-w-[400px]">
-      <div className="bg-[#2A3443] border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-full h-16 flex items-center justify-around px-4">
+      <div className="bg-[#2A3443] border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-full h-12 flex items-center justify-around px-4">
 
         {/* Search */}
         <button
           onClick={onSearchOpen}
-          className="flex flex-col items-center justify-center w-12 h-12 rounded-full active:bg-white/10 transition-all hover:scale-110"
+          className="flex flex-col items-center justify-center w-10 h-10 rounded-full active:bg-white/10 transition-all hover:scale-110"
         >
           <img src={search} alt="Search" className="w-6 h-6 opacity-90" />
         </button>
@@ -34,7 +34,7 @@ const MobileBottomNav = ({ onSearchOpen, onCartOpen, onAuthOpen }) => {
         {/* Cart */}
         <button
           onClick={onCartOpen}
-          className="relative flex flex-col items-center justify-center w-12 h-12 rounded-full active:bg-white/10 transition-all hover:scale-110"
+          className="relative flex flex-col items-center justify-center w-10 h-10 rounded-full active:bg-white/10 transition-all hover:scale-110"
         >
           <img src={cartIco} alt="Cart" className="w-6 h-6 opacity-90" />
           {cartCount > 0 && (
@@ -47,7 +47,7 @@ const MobileBottomNav = ({ onSearchOpen, onCartOpen, onAuthOpen }) => {
         {/* Profile */}
         <button
           onClick={handleProfileClick}
-          className="flex flex-col items-center justify-center w-12 h-12 rounded-full active:bg-white/10 transition-all hover:scale-110"
+          className="flex flex-col items-center justify-center w-10 h-10 rounded-full active:bg-white/10 transition-all hover:scale-110"
         >
           <img src={profile} alt="Profile" className="w-6 h-6 opacity-90" />
         </button>

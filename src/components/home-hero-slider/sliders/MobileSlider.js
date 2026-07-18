@@ -59,16 +59,18 @@ const MobileSlider = () => {
                 className="block w-full h-auto rounded-[6px]"
               />
 
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/10" />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/25 to-black/60" />
 
               {/* gradient overlay + contents */}
-              <div className="absolute inset-0 flex flex-col justify-end items-center text-center px-4 pb-10">
-                <h2 className="font-heading text-[24px] md:m-60 leading-tight font-semibold mb-3 bg-gradient-to-r from-[#FFF8F1] via-[#E9C9B2] to-[#FFF0DE] bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(0,0,0,0.25)]">
-                  {slide.title}
-                </h2>
-                <p className="font-fancy text-white/90 text-sm leading-relaxed mb-5 drop-shadow-[0_1px_8px_rgba(0,0,0,0.22)]">
-                  {slide.subtitle}
-                </p>
+              <div className="absolute inset-0 flex flex-col justify-between items-center text-center px-4 pt-8 pb-10">
+                <div>
+                  <h2 className="font-heading text-[24px] leading-tight font-semibold mb-3 bg-gradient-to-r from-[#FFF8F1] via-[#E9C9B2] to-[#FFF0DE] bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(0,0,0,0.25)]">
+                    {slide.title}
+                  </h2>
+                  <p className="font-fancy text-[#F3E4D6] text-sm leading-relaxed drop-shadow-[0_1px_8px_rgba(0,0,0,0.22)]">
+                    {slide.subtitle}
+                  </p>
+                </div>
                 <Link
                   to={slide.buttonLink}
                   className="bg-[#E2C4AD] cursor-pointer text-black text-base px-6 py-2 rounded-xl font-medium hover:bg-[#d5b49b] transition-all duration-300"

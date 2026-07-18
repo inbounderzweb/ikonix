@@ -76,7 +76,7 @@ function Header() {
             </div>
 
             <button onClick={() => setSidebar(true)} className="md:hidden pr-4">
-              <img src={burger} alt="Open menu" className="w-4 h-4" />
+              <img src={burger} alt="Open menu" className="w-8 h-8" />
             </button>
 
             <div className="hidden md:flex items-center gap-7 pr-5 text-white">
