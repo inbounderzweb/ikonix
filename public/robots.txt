@@ -1,3 +1,15 @@
+# robots.txt for https://www.ayushmanayurvedic.in/
 # https://www.robotstxt.org/robotstxt.html
+
 User-agent: *
-Disallow:
+Disallow: /login
+Disallow: /blog/wp-admin/
+Disallow: /blog/wp-includes/
+Disallow: /blog/wp-content/plugins/
+Disallow: /?s=
+Disallow: /blog/?s=
+Allow: /
+
+# Sitemaps
+Sitemap: https://www.ayushmanayurvedic.in/sitemap.xml
+Sitemap: https://www.ayushmanayurvedic.in/blog/sitemap_index.xml

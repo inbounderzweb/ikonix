@@ -57,13 +57,13 @@ const settings = {
 export default function InstagramShowcase() {
 
   return (
-    <section className="bg-gradient-to-b lg:bg-gradient-to-r from-[#c7a895] to-[#EDE2DD] lg:to-white pt-[40px] w-full">
+    <section className="bg-gradient-to-b lg:bg-gradient-to-r from-[#c7a895] to-[#EDE2DD] lg:to-white pt-[20px] w-full">
       {/*
         Wrapper width capped at 75% of viewport (`w-[75%]`) and pushed flush to the
         right with `ml-auto`, so the carousel kisses the screen edge while the
         phone mock‑up sits just to its left.
       */}
-      <div className="mx:auto ml-4 md:ml-auto flex w-[90%] flex-col relative gap-6 md:flex-row md:items-end md:justify-between">
+      <div className="mx:auto ml-4 md:ml-auto flex w-[90%] flex-col relative gap-1 md:flex-row md:items-end md:justify-between">
 
         {/* Left ─ Instagram profile preview */}
         <img
