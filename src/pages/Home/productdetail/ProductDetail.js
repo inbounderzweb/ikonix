@@ -777,11 +777,11 @@ export default function ProductDetails() {
             <hr className="border-[#B39384]/60 mt-6" />
 
             <div className="mt-6 grid gap-4">
-              <span className="inline-block bg-[#EDE2DD] border border-[#B39384] py-[8px] px-[20px] rounded-[24px] font-[Lato] text-[16px] text-[#8C7367] tracking-[0.5px]">
+              {/* <span className="inline-block bg-[#EDE2DD] border border-[#B39384] py-[8px] px-[20px] rounded-[24px] font-[Lato] text-[16px] text-[#8C7367] tracking-[0.5px]">
                 Flat 20%off — No discount code required.
-              </span>
+              </span> */}
               <span className="inline-block bg-[#EDE2DD] border border-[#B39384] py-[8px] px-[20px] rounded-[24px] font-[Lato] text-[16px] text-[#8C7367] tracking-[0.5px]">
-                Free Perfume 100ml on shopping above Rs 1099/-
+               Enjoy Free Delivery on Orders Over ₹1,099/-
               </span>
             </div>
 

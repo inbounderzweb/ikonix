@@ -8,41 +8,66 @@ import { useCart } from '../context/CartContext';
 import {
   XMarkIcon,
   LockClosedIcon,
-  EnvelopeIcon,
   DevicePhoneMobileIcon,
 } from '@heroicons/react/24/outline';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
+const RESEND_SECONDS = 30;
+const MOBILE_REGEX = /^[6-9]\d{9}$/;
+const OTP_LENGTH = 4;
 
 export default function AuthModal({ open, onClose }) {
-  const [tab, setTab]            = useState('register');    // 'login' | 'register' | 'otp' | 'reset'
-  const [authMethod, setMethod]  = useState('email');    // 'email' | 'mobile'
-  const [usePassword, setUsePwd] = useState(false);
+  const [tab, setTab] = useState('login'); // 'login' | 'register' | 'otp' | 'reset'
 
   const [form, setForm] = useState({
-    name:     '',
-    email:    '',
-    mobile:   '',
+    name: '',
+    mobile: '',
     password: '',
     newPassword: '',
   });
 
-  const [otpDigits, setOtp]      = useState(Array(6).fill(''));
+  const [otpDigits, setOtp]      = useState(Array(OTP_LENGTH).fill(''));
   const [verifyToken, setVToken] = useState('');
-  const [otpFlow, setOtpFlow]    = useState(null);       // 'login' | 'register' | 'reset'
+  const [otpFlow, setOtpFlow]    = useState(null); // 'login' | 'register' | 'reset'
+  const [mobileError, setMobileError] = useState('');
+  const [sending, setSending]     = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [resendIn, setResendIn]   = useState(0);
 
   const otpRefs = useRef([]);
   const { token, setUser, setToken } = useAuth();
   const { refresh } = useCart();
 
-  // clear on tab change (but not wiping when entering OTP)
+  // clear fields whenever we leave the OTP screen
   useEffect(() => {
     if (tab !== 'otp') {
-      setForm({ name:'', email:'', mobile:'', password:'', newPassword:'' });
-      setOtp(Array(6).fill(''));
-      setUsePwd(false);
+      setForm({ name: '', mobile: '', password: '', newPassword: '' });
+      setOtp(Array(OTP_LENGTH).fill(''));
+      setMobileError('');
     }
   }, [tab]);
+
+  // focus first box + start resend countdown when entering OTP screen
+  useEffect(() => {
+    if (tab === 'otp') {
+      otpRefs.current[0]?.focus();
+      setResendIn(RESEND_SECONDS);
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    if (tab !== 'otp' || resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [tab, resendIn]);
+
+  // auto-verify once all digits are entered
+  useEffect(() => {
+    if (tab === 'otp' && otpDigits.every(d => d !== '') && !verifying) {
+      verifyOtp();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otpDigits]);
 
   const apiPost = (url, payload) =>
     axios.post(url, qs.stringify(payload), {
@@ -54,170 +79,96 @@ export default function AuthModal({ open, onClose }) {
 
   const handleField = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  /* STEP 1a: LOGIN or REGISTER → request OTP */
-  const sendOtp = async () => {
-    if (!token) return Swal('Auth token missing');
-    const isLogin = tab === 'login';
-    setOtpFlow(isLogin ? 'login' : 'register');
-
-    // always include all fields
-    const base = {
-      name:     form.name,
-      email:    form.email,
-      mobile:   form.mobile,
-      password: form.password,
-    };
-
-    const payload = isLogin
-      ? { ...base, otp_login: 1 }
-      : { ...base, otp: 0 };
-
-    try {
-      const { data } = await apiPost(
-        isLogin ? `${API_BASE}/login` : `${API_BASE}/register`,
-        payload
-      );
-      if (data.otp) {
-        setVToken(data.verify_token || data.vtoken);
-        setTab('otp');
-        Swal(`Your code is ${data.otp}`);
-      } else {
-        Swal(data.message || 'OTP not received');
-    
-      }
-    } catch (e) {
-      console.error(e);
-      // alert(e.response?.data?.message || 'Error sending OTP');
-      console.log(e.response.data.message)
-     if (e.response && e.response.data && e.response.data.message) {
-    Swal(e.response.data.message);
-}
-      // alert('testing')
-    }
+  const extractError = (e, fallback) => {
+    const messages = e.response?.data?.message;
+    if (!messages) return fallback;
+    if (typeof messages === 'string') return messages;
+    if (typeof messages === 'object') return Object.values(messages)[0] || fallback;
+    return fallback;
   };
 
-  /* STEP 1b: LOGIN with password */
-  const loginWithPassword = async () => {
-    if (!token) return Swal('Auth token missing');
+  const validateMobile = () => {
+    if (!MOBILE_REGEX.test(form.mobile)) {
+      setMobileError('Enter a valid 10-digit mobile number');
+      return false;
+    }
+    setMobileError('');
+    return true;
+  };
 
-    const payload = {
-      name:     form.name,
-      email:    form.email,
-      mobile:   form.mobile,
-      password: form.password,
-      pass_login: 1,
-    };
+  /* STEP 1: LOGIN / REGISTER / RESET → request OTP */
+  const sendOtp = async (flow = tab) => {
+    if (!token) return Swal('Auth token missing');
+    if (!validateMobile()) return;
+    if (flow === 'register' && !form.name.trim()) return Swal('Enter your name');
+    if (flow === 'reset' && form.newPassword.length < 6) return Swal('New password must be at least 6 characters');
+
+    setOtpFlow(flow);
+    setSending(true);
+
+    let url, payload;
+    if (flow === 'login') {
+      url = `${API_BASE}/login`;
+      payload = { name: form.name, mobile: form.mobile, password: form.password, otp_login: 1 };
+    } else if (flow === 'register') {
+      url = `${API_BASE}/register`;
+      payload = { name: form.name, mobile: form.mobile, password: form.password, otp: 0 };
+    } else {
+      url = `${API_BASE}/forgot-password`;
+      payload = { name: form.name, mobile: form.mobile, password: form.newPassword, otp: 0 };
+    }
 
     try {
-      const { data } = await apiPost(`${API_BASE}/login`, payload);
-      if (!data.token || !data.user) {
-        Swal(data.message || 'Login failed');
+      const { data } = await apiPost(url, payload);
+      if (data.status === false) {
+        Swal(data.message || 'Failed to send OTP');
         return;
       }
-      await finalizeLogin(data);
-    } catch (e) {
- console.error(e);
-
-if (e.response && e.response.data && e.response.data.message) {
-  const messages = e.response.data.message;
-
-  let firstError;
-
-  if (typeof messages === "string") {
-    // If it's already a string
-    firstError = messages;
-  } else if (typeof messages === "object") {
-    // If it's an object with field errors
-    firstError = Object.values(messages)[0];
-  }
-
-  Swal(firstError);
-}
-      // alert('Network error during password login');
-    }
-  };
-
-  /* STEP 1c: RESET PASSWORD → request code (otp:0) */
-  const resetPwd = async () => {
-    if (!token) return Swal('Auth token missing');
-    setOtpFlow('reset');
-
-    const payload = {
-      name:     form.name,
-      email:    form.email,
-      mobile:   form.mobile,
-      password: form.newPassword, // use password for the new one
-      otp:      0,
-    };
-
-    try {
-      const { data } = await apiPost(`${API_BASE}/forgot-password`, payload);
-      if (data.otp) {
-        setVToken(data.verify_token || data.vtoken);
-        setTab('otp');
-        Swal(`Your reset code is ${data.otp}`);
-      } else {
-        Swal(data.message || 'Failed to send reset code');
-      }
+      setVToken(data.verify_token || data.vtoken || '');
+      setTab('otp');
     } catch (e) {
       console.error(e);
-      console.log(e.response.data.message);
-      if (e.response && e.response.data && e.response.data.message) {
-    Swal(e.response.data.message);
-}
+      Swal(extractError(e, 'Error sending OTP'));
+    } finally {
+      setSending(false);
     }
   };
 
   /* STEP 2: VERIFY OTP for all flows */
   const verifyOtp = async () => {
     const entered = otpDigits.join('');
-    if (!entered) return Swal('Enter OTP');
+    if (entered.length < OTP_LENGTH) return Swal(`Enter the ${OTP_LENGTH}-digit OTP`);
 
-    // RESET flow verify with same payload + otp:1
-    if (otpFlow === 'reset') {
-      const payload = {
-        name:     form.name,
-        email:    form.email,
-        mobile:   form.mobile,
-        password: form.newPassword,  // again new password here
-        otp:      1,
-        verify_token: verifyToken,
-      };
-      try {
+    setVerifying(true);
+    try {
+      if (otpFlow === 'reset') {
+        const payload = {
+          name: form.name,
+          mobile: form.mobile,
+          password: form.newPassword,
+          otp: 1,
+          verify_token: verifyToken,
+        };
         const { data } = await apiPost(`${API_BASE}/forgot-password`, payload);
         if (data.status === true) {
-          Swal(data.message);
+          Swal(data.message || 'Password reset successful');
           setTab('login');
         } else {
           Swal(data.message || 'Reset verification failed');
         }
-      } catch (e) {
-        console.error(e);
-        console.log(e.response.data.message);
-      if (e.response && e.response.data && e.response.data.message) {
-    Swal(e.response.data.message);
-}
+        return;
       }
-      return;
-    }
 
-    // LOGIN or REGISTER verify
-    const isLogin = otpFlow === 'login';
-    const payload = {
-      name:     form.name,
-      email:    form.email,
-      mobile:   form.mobile,
-      password: form.password,
-      otp:      entered,
-      verify_token: verifyToken,
-      ...(isLogin ? { otp_login: 2 } : {}),
-    };
-
-    try {
-      const { data } = await apiPost(
-        isLogin ? `${API_BASE}/login` : `${API_BASE}/register`,
-        payload
-      );
+      const isLogin = otpFlow === 'login';
+      const payload = {
+        name: form.name,
+        mobile: form.mobile,
+        password: form.password,
+        otp: entered,
+        verify_token: verifyToken,
+        ...(isLogin ? { otp_login: 2 } : {}),
+      };
+      const { data } = await apiPost(isLogin ? `${API_BASE}/login` : `${API_BASE}/register`, payload);
       if (!data.token || !data.user) {
         Swal(data.message || 'Verification failed');
         return;
@@ -225,10 +176,9 @@ if (e.response && e.response.data && e.response.data.message) {
       await finalizeLogin(data);
     } catch (e) {
       console.error(e);
-      console.log(e.response.data.message);
-      if (e.response && e.response.data && e.response.data.message) {
-    Swal(e.response.data.message);
-}
+      Swal(extractError(e, 'Verification failed'));
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -240,8 +190,8 @@ if (e.response && e.response.data && e.response.data.message) {
       email:  data.user.email,
       mobile: data.user.mobile,
     };
-    
-    setOtp('')
+
+    setOtp(Array(OTP_LENGTH).fill(''));
     setTab('login');
     setUser(userInfo);
     setToken(data.token);
@@ -285,13 +235,36 @@ if (e.response && e.response.data && e.response.data.message) {
     onClose?.();
   };
 
-  /* OTP input handling */
+  /* OTP input handling: type, backspace, paste */
   const handleOtpField = (e, idx) => {
-    if (/[^0-9]/.test(e.target.value)) return;
+    const digits = e.target.value.replace(/\D/g, '');
     const next = [...otpDigits];
-    next[idx] = e.target.value;
+    next[idx] = digits ? digits[digits.length - 1] : '';
     setOtp(next);
-    if (e.target.value && idx < 5) otpRefs.current[idx + 1].focus();
+    if (digits && idx < OTP_LENGTH - 1) otpRefs.current[idx + 1]?.focus();
+  };
+
+  const handleOtpKeyDown = (e, idx) => {
+    if (e.key === 'Backspace' && !otpDigits[idx] && idx > 0) {
+      otpRefs.current[idx - 1]?.focus();
+      setOtp(d => { const n = [...d]; n[idx - 1] = ''; return n; });
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    const text = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH);
+    if (!text) return;
+    e.preventDefault();
+    const next = Array(OTP_LENGTH).fill('');
+    text.split('').forEach((c, i) => { next[i] = c; });
+    setOtp(next);
+    otpRefs.current[Math.min(text.length, OTP_LENGTH - 1)]?.focus();
+  };
+
+  const resendOtp = () => {
+    if (resendIn > 0) return;
+    sendOtp(otpFlow);
+    setResendIn(RESEND_SECONDS);
   };
 
   if (!open) return null;
@@ -315,7 +288,7 @@ if (e.response && e.response.data && e.response.data.message) {
         <h2 className="text-center text-xl font-semibold text-[#2A3443] mb-6">
           {tab==='login'   ? 'Sign In'
           : tab==='register'? 'Create Account'
-          : tab==='otp'     ? 'Enter OTP'
+          : tab==='otp'     ? 'Verify OTP'
           :                  'Reset Password'}
         </h2>
 
@@ -327,49 +300,11 @@ if (e.response && e.response.data && e.response.data.message) {
           >← Back to Login</button>
         )}
 
-        {/* Method toggle */}
-        {['login','register','reset'].includes(tab) && (
-          <div className="flex mb-5 rounded-lg overflow-hidden border border-[#eadcd5]">
-            <ToggleBtn
-              active={authMethod==='email'}
-              onClick={()=>{
-                setMethod('email');
-                setForm(f=>({...f,mobile:''}));
-              }}
-              icon={<EnvelopeIcon className="w-4 h-4"/>}
-              label="Email"
-            />
-            <ToggleBtn
-              active={authMethod==='mobile'}
-              onClick={()=>{
-                setMethod('mobile');
-                setForm(f=>({...f,email:''}));
-              }}
-              icon={<DevicePhoneMobileIcon className="w-4 h-4"/>}
-              label="Mobile"
-            />
-          </div>
-        )}
-
         {/* LOGIN */}
         {tab==='login' && (
           <div>
-            {authMethod==='email'
-              ? <Input type="email" placeholder="Email" value={form.email} onChange={e=>handleField('email',e.target.value)}/>
-              : <Input type="tel"   placeholder="Mobile" value={form.mobile} onChange={e=>handleField('mobile',e.target.value)}/>
-            }
-
-            {!usePassword
-              ? <PrimaryBtn onClick={sendOtp} label="Login with OTP"/>
-              : <>
-                  <Input type="password" placeholder="Password" value={form.password} onChange={e=>handleField('password',e.target.value)}/>
-                  <PrimaryBtn onClick={loginWithPassword} label="Login"/>
-                </>
-            }
-
-            <p className="text-xs text-center text-[#b49d91] cursor-pointer mb-3" onClick={()=>setUsePwd(p=>!p)}>
-              {usePassword ? 'Use OTP instead' : 'Use password instead'}
-            </p>
+            <MobileInput value={form.mobile} onChange={v=>handleField('mobile', v)} error={mobileError}/>
+            <PrimaryBtn onClick={()=>sendOtp('login')} label="Send OTP" loading={sending} loadingLabel="Sending OTP..." disabled={!MOBILE_REGEX.test(form.mobile)}/>
 
             <div className="text-center space-y-1 text-xs">
               <p className="text-[#b49d91] cursor-pointer" onClick={()=>setTab('reset')}>Forgot password?</p>
@@ -384,57 +319,59 @@ if (e.response && e.response.data && e.response.data.message) {
         {tab==='register' && (
           <div>
             <Input type="text" placeholder="Full name" value={form.name} onChange={e=>handleField('name',e.target.value)}/>
-            {authMethod==='email'
-              ? <Input type="email" placeholder="Email" value={form.email} onChange={e=>handleField('email',e.target.value)}/>
-              : <Input type="tel"   placeholder="Mobile" value={form.mobile} onChange={e=>handleField('mobile',e.target.value)}/>
-            }
+            <MobileInput value={form.mobile} onChange={v=>handleField('mobile', v)} error={mobileError}/>
             <Input type="password" placeholder="Password" value={form.password} onChange={e=>handleField('password',e.target.value)}/>
-            <PrimaryBtn onClick={sendOtp} label="Send verification code"/>
+            <PrimaryBtn onClick={()=>sendOtp('register')} label="Send verification code" loading={sending} loadingLabel="Sending..." disabled={!form.name.trim() || !MOBILE_REGEX.test(form.mobile)}/>
           </div>
         )}
 
-      
-       {/* OTP */}
-{tab==='otp' && (
-  <div>
-    {/* ← Back to Login */}
-    <button
-      className="mb-4 text-xs text-[#b49d91] hover:underline"
-      onClick={() => setTab('login')}
-    >
-      ←  Login
-    </button>
+        {/* OTP */}
+        {tab==='otp' && (
+          <div>
+            <button
+              className="mb-4 text-xs text-[#b49d91] hover:underline"
+              onClick={() => setTab(otpFlow || 'login')}
+            >
+              ← Change number
+            </button>
 
-    <p className="text-center text-xs text-gray-500 mb-4">Enter the 6-digit code</p>
-    <div className="flex justify-between mb-6">
-      {otpDigits.map((d,i) => (
-        <input
-          key={i}
-          maxLength={1}
-          value={d}
-          ref={el => otpRefs.current[i] = el}
-          onChange={e => handleOtpField(e, i)}
-          className="w-10 h-10 border border-[#eadcd5] text-center rounded focus:ring-1 focus:ring-[#b49d91]"
-        />
-      ))}
-    </div>
-    <PrimaryBtn onClick={verifyOtp} label="Verify OTP" />
-  </div>
-)}
+            <p className="text-center text-xs text-gray-500 mb-1">Enter the {OTP_LENGTH}-digit code sent to</p>
+            <p className="text-center text-sm font-medium text-[#2A3443] mb-5">+91 {form.mobile}</p>
 
+            <div className="flex justify-center gap-4 mb-2" onPaste={handleOtpPaste}>
+              {otpDigits.map((d,i) => (
+                <input
+                  key={i}
+                  maxLength={1}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete={i===0 ? 'one-time-code' : 'off'}
+                  value={d}
+                  ref={el => otpRefs.current[i] = el}
+                  onChange={e => handleOtpField(e, i)}
+                  onKeyDown={e => handleOtpKeyDown(e, i)}
+                  className="w-10 h-10 border border-[#eadcd5] text-center rounded focus:outline-none focus:ring-1 focus:ring-[#b49d91]"
+                />
+              ))}
+            </div>
 
+            <div className="text-center text-xs mb-5">
+              {resendIn > 0
+                ? <span className="text-gray-400">Resend OTP in {resendIn}s</span>
+                : <span className="text-[#b49d91] cursor-pointer hover:underline" onClick={resendOtp}>Resend OTP</span>
+              }
+            </div>
 
-
+            <PrimaryBtn onClick={verifyOtp} label="Verify OTP" loading={verifying} loadingLabel="Verifying..." disabled={otpDigits.some(d => d === '')}/>
+          </div>
+        )}
 
         {/* RESET */}
         {tab==='reset' && (
           <div>
-            {authMethod==='email'
-              ? <Input type="email" placeholder="Email" value={form.email} onChange={e=>handleField('email',e.target.value)}/>
-              : <Input type="tel"   placeholder="Mobile" value={form.mobile} onChange={e=>handleField('mobile',e.target.value)}/>
-            }
+            <MobileInput value={form.mobile} onChange={v=>handleField('mobile', v)} error={mobileError}/>
             <Input type="password" placeholder="New Password" value={form.newPassword} onChange={e=>handleField('newPassword',e.target.value)}/>
-            <PrimaryBtn onClick={resetPwd} label="Send Reset Code"/>
+            <PrimaryBtn onClick={()=>sendOtp('reset')} label="Send Reset Code" loading={sending} loadingLabel="Sending..." disabled={!MOBILE_REGEX.test(form.mobile) || form.newPassword.length < 6}/>
           </div>
         )}
       </div>
@@ -446,9 +383,34 @@ if (e.response && e.response.data && e.response.data.message) {
 const Input = props => (
   <input {...props} className="w-full p-3 mb-4 border border-[#eadcd5] rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#b49d91]" />
 );
-const PrimaryBtn = ({ onClick, label }) => (
-  <button onClick={onClick} className="w-full p-3 bg-[#b49d91] text-white rounded-lg text-sm hover:opacity-90 mb-4">{label}</button>
+
+const MobileInput = ({ value, onChange, error }) => (
+  <div>
+    <div className={`flex items-center border rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-[#b49d91] ${error ? 'border-red-400' : 'border-[#eadcd5]'}`}>
+      <span className="flex items-center gap-1 px-3 py-3 bg-[#faf6f4] text-sm text-[#6d5a52] border-r border-[#eadcd5]">
+        <DevicePhoneMobileIcon className="w-4 h-4"/>
+        +91
+      </span>
+      <input
+        type="tel"
+        inputMode="numeric"
+        maxLength={10}
+        placeholder="Mobile number"
+        value={value}
+        onChange={e => onChange(e.target.value.replace(/\D/g, '').slice(0, 10))}
+        className="flex-1 p-3 text-sm focus:outline-none"
+      />
+    </div>
+    <p className={`text-xs mt-1 mb-3 ${error ? 'text-red-500' : 'invisible'}`}>{error || 'placeholder'}</p>
+  </div>
 );
-const ToggleBtn = ({ active, onClick, icon, label }) => (
-  <button onClick={onClick} className={`flex-1 flex items-center justify-center gap-1 py-2 text-xs ${active?'bg-[#b49d91] text-white':'bg-white text-[#6d5a52]'}`}>{icon}<span>{label}</span></button>
+
+const PrimaryBtn = ({ onClick, label, loading, loadingLabel, disabled }) => (
+  <button
+    onClick={onClick}
+    disabled={loading || disabled}
+    className={`w-full p-3 rounded-lg text-sm mb-4 ${loading || disabled ? 'bg-[#b49d91]/60 text-white cursor-not-allowed' : 'bg-[#b49d91] text-white hover:opacity-90'}`}
+  >
+    {loading ? (loadingLabel || 'Please wait...') : label}
+  </button>
 );
