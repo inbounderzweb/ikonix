@@ -8,9 +8,9 @@ import React from "react";
 import Slider from "react-slick";
 import { HiOutlineArrowRight, HiOutlineArrowLeft } from "react-icons/hi";
 import instapage from "../../assets/instapage.svg";
-import post1 from "../../assets/post1.svg";
-import post2 from "../../assets/post2.svg";
-import post3 from "../../assets/post3.svg";
+import post1 from "../../assets/instagram/post1.svg";
+import post2 from "../../assets/instagram/post2.svg";
+import post3 from "../../assets/instagram/post3.svg";
 
 const CARDS = [
   { id: 1, img: post1, title: "The Haze Of Desire" },
@@ -49,7 +49,7 @@ const settings = {
   responsive: [
     {
       breakpoint: 1024,
-      settings: { slidesToShow: 1 },
+      settings: { slidesToShow: 1, centerMode: true, centerPadding: "36px" },
     },
   ],
 };
@@ -66,16 +66,17 @@ export default function InstagramShowcase() {
       <div className="mx:auto ml-4 md:ml-auto flex w-[90%] flex-col relative gap-1 md:flex-row md:items-end md:justify-between">
 
         {/* Left ─ Instagram profile preview */}
-        <img
-          src={instapage}
-          alt="Instagram page preview"
-          className="mx-auto object-contain md:mx-0 w-full md:w-[55%] lg:w-[28%]"
-        />
-    <div className="pointer-events-none z-10 absolute top-[22.3rem] right-0 w-full h-40 flex lg:hidden bg-gradient-to-t from-[#c8a997] via-[#c8a997]/80 to-transparent" />
-
+        <div className="relative mx-auto w-full overflow-hidden aspect-[365/372] md:mx-0 md:w-[55%] md:aspect-[365/352] lg:aspect-auto lg:overflow-visible lg:w-[28%]">
+          <img
+            src={instapage}
+            alt="Instagram page preview"
+            className="h-full w-full object-cover object-top lg:h-auto lg:object-contain"
+          />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#c7a895] via-[#c7a895]/70 to-transparent lg:hidden" />
+        </div>
 
         {/* Right ─ Carousel flush‑right */}
-        <div className="relative ml-auto w-full overflow-hidden md:flex-1 md:pl-4 mt-[-4rem] lg:mt-0 z-20 pb-[40px] lg:pb-0">
+        <div className="relative ml-auto w-full overflow-hidden md:flex-1 md:pl-4 mt-[-1.5rem] lg:mt-0 z-20 pb-[40px] lg:pb-0">
 
 
  <Slider {...settings}>

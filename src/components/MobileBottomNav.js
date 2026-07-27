@@ -88,7 +88,7 @@ const MobileBottomNav = ({ onSearchOpen, onCartOpen, onAuthOpen }) => {
         href="https://wa.me/919072416518"
         target="_blank"
         rel="noopener noreferrer"
-        className="flex-shrink-0 w-14 h-14 rounded-2xl bg-[#25D366] shadow-[0_4px_20px_rgba(37,211,102,0.35)] flex items-center justify-center active:opacity-80 transition-opacity"
+        className="flex-shrink-0 w-14 h-14 rounded-2xl bg-[#FFFFFF] shadow-[0_4px_20px_rgba(37,211,102,0.35)] flex items-center justify-center active:opacity-80 transition-opacity"
         aria-label="Chat on WhatsApp"
       >
         <img src={waicon} alt="WhatsApp" className="w-8 h-8" />
