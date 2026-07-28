@@ -17,6 +17,7 @@ import AuthModal from "../../Authmodal/AuthModal";
 import CartDrawer from "../cartdraw/CartDrawer";
 import SearchModal from "../search/Search";
 import MobileBottomNav from "../MobileBottomNav";
+import useMobileNavScroll from "../../hooks/useMobileNavScroll";
 
 function Header() {
   const navigate = useNavigate();
@@ -38,6 +39,9 @@ function Header() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  const { isMobile, navVisible, footerVisible } = useMobileNavScroll();
+  const hideNavbar = isMobile && !navVisible;
 
   const menuRef = useRef(null);
   useEffect(() => {
@@ -63,8 +67,9 @@ function Header() {
     <>
       <div
         className={`fixed top-0 left-1/2 -translate-x-1/2 z-50 w-[90%] lg:w-[80%]
-        transition-all duration-300 ease-in-out font-fancy
-        ${scrolled ? "bg-[#2d3545]/95 shadow-md backdrop-blur-md" : "bg-[#2d3545]"}
+        transition-transform duration-300 ease-in-out will-change-transform font-fancy
+        ${hideNavbar ? "-translate-y-[150%]" : "translate-y-0"}
+        ${scrolled ? "bg-[#2d3545]/95 shadow-md backdrop-blur-md transition-colors duration-300" : "bg-[#2d3545] transition-colors duration-300"}
         rounded-[5px] md:rounded-[8px] mt-2 md:mt-5 ring-1 ring-white/5`}
       >
         <div className="bg-[#2d3545] h-[60px] md:h-[82px] rounded-[5px] md:rounded-[8px]">
@@ -145,10 +150,11 @@ function Header() {
         {/* mobile menu */}
       </Drawer>
 
-      <MobileBottomNav 
+      <MobileBottomNav
         onSearchOpen={() => setSearchOpen(true)}
         onCartOpen={() => setCartOpen(true)}
         onAuthOpen={() => setAuthOpen(true)}
+        visible={footerVisible}
       />
 
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />

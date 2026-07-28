@@ -26,7 +26,7 @@ const ProfileIcon = () => (
   </svg>
 );
 
-const MobileBottomNav = ({ onSearchOpen, onCartOpen, onAuthOpen }) => {
+const MobileBottomNav = ({ onSearchOpen, onCartOpen, onAuthOpen, visible = false }) => {
   const navigate = useNavigate();
   const { cartCount } = useCart();
   const { user } = useAuth();
@@ -40,7 +40,11 @@ const MobileBottomNav = ({ onSearchOpen, onCartOpen, onAuthOpen }) => {
   };
 
   return (
-    <div className="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[45] w-[92%] max-w-[420px] flex items-center gap-3">
+    <div
+      className={`md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[45] w-[92%] max-w-[420px] flex items-center gap-3
+      transition-transform duration-300 ease-in-out will-change-transform
+      ${visible ? "translate-y-0" : "translate-y-[150%]"}`}
+    >
       {/* Main nav pill */}
       <div className="flex-1 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.12)] rounded-2xl flex items-center justify-around px-2 py-2">
 

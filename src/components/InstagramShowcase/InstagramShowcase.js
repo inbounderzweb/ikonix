@@ -11,11 +11,13 @@ import instapage from "../../assets/instapage.svg";
 import post1 from "../../assets/instagram/post1.svg";
 import post2 from "../../assets/instagram/post2.svg";
 import post3 from "../../assets/instagram/post3.svg";
+import post4 from "../../assets/instagram/post4.svg";
 
 const CARDS = [
   { id: 1, img: post1, title: "The Haze Of Desire" },
   { id: 2, img: post2, title: "Mystery In Every Mist" },
   { id: 3, img: post3, title: "A Fragrance Forged in Fire" },
+  { id: 4, img: post4, title: "Smell expensive" }
 ];
 
 /* ───────── Custom arrow component ───────── */
