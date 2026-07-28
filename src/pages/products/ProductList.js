@@ -246,7 +246,7 @@ export default function ProductList({ hideFilters = false }) {
 
       <section className="mx-auto w-[90%] lg:w-[80%] py-6 mt-18">
         {!hideFilters && (
-          <div className="flex gap-4 mb-4 overflow-x-auto scrollbar-hide">
+          <div className="flex gap-4 mb-4 overflow-x-auto scrollbar-hide no-scrollbar">
             {filters.map((cat) => (
               <button
                 key={cat}

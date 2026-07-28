@@ -309,7 +309,7 @@ export default function Shop() {
 
       <section className="mx-auto w-[95%] xl:w-[80%] py-8">
         {/* Tabs */}
-        <div className="flex gap-4 mb-6 overflow-x-auto scrollbar-hide pb-4">
+        <div className="flex gap-4 mb-6 overflow-x-auto scrollbar-hide no-scrollbar pb-4">
           {filters.map((cat) => (
             <button
               key={cat}
