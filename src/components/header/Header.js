@@ -67,8 +67,8 @@ function Header() {
     <>
       <div
         className={`fixed top-0 left-1/2 -translate-x-1/2 z-50 w-[90%] lg:w-[80%]
-        transition-transform duration-300 ease-in-out will-change-transform font-fancy
-        ${hideNavbar ? "-translate-y-[150%]" : "translate-y-0"}
+        transition-all duration-300 ease-in-out will-change-transform font-fancy origin-top
+        ${hideNavbar ? "-translate-y-[150%] scale-75 opacity-0" : "translate-y-0 scale-100 opacity-100"}
         ${scrolled ? "bg-[#2d3545]/95 shadow-md backdrop-blur-md transition-colors duration-300" : "bg-[#2d3545] transition-colors duration-300"}
         rounded-[5px] md:rounded-[8px] mt-2 md:mt-5 ring-1 ring-white/5`}
       >

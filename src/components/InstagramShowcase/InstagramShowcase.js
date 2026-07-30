@@ -7,7 +7,7 @@
 import React from "react";
 import Slider from "react-slick";
 import { HiOutlineArrowRight, HiOutlineArrowLeft } from "react-icons/hi";
-import instapage from "../../assets/instapage.svg";
+import instapage from "../../assets/instagram/instapage.svg";
 import post1 from "../../assets/instagram/post1.jpeg";
 import post2 from "../../assets/instagram/post2.jpeg";
 import post3 from "../../assets/instagram/post3.jpeg";

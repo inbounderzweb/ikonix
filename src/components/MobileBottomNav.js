@@ -42,8 +42,8 @@ const MobileBottomNav = ({ onSearchOpen, onCartOpen, onAuthOpen, visible = false
   return (
     <div
       className={`md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[45] w-[92%] max-w-[420px] flex items-center gap-3
-      transition-transform duration-300 ease-in-out will-change-transform
-      ${visible ? "translate-y-0" : "translate-y-[150%]"}`}
+      transition-all duration-300 ease-in-out will-change-transform origin-bottom
+      ${visible ? "translate-y-0 scale-100 opacity-100" : "translate-y-[150%] scale-75 opacity-0"}`}
     >
       {/* Main nav pill */}
       <div className="flex-1 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.12)] rounded-2xl flex items-center justify-around px-2 py-2">
