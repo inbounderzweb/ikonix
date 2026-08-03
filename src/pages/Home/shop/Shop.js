@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
+import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import qs from "qs";
 import bag from "../../../assets/bag.svg";
 import Spinner from "../../../components/loader/Spinner";
@@ -352,7 +353,7 @@ export default function Shop() {
         </div>
 
         {/* Products */}
-        <div className="flex flex-row gap-6 overflow-x-auto pb-4 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:pb-0">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {paginatedProducts.map((product) => {
             const variant = product.variants?.[0] || {};
             const vid = variant.vid ?? "";
@@ -365,7 +366,7 @@ export default function Shop() {
             return (
               <div
                 key={`${product.id}-${vid}`}
-                className="min-w-[80%] lg:min-w-[60%] sm:min-w-0 relative overflow-hidden rounded-[10px] bg-white shadow-sm hover:shadow-md transition-shadow duration-200"
+                className="relative overflow-hidden rounded-[10px] bg-white shadow-sm hover:shadow-md transition-shadow duration-200"
               >
                 {/* Discount badge */}
                 {badgeLabel && (
@@ -388,7 +389,7 @@ export default function Shop() {
                   onClick={() => navigate(`/product-details/${product.id}?vid=${vid}`)}
                   src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
                   alt={product.name}
-                  className="w-full h-64 object-cover cursor-pointer"
+                  className="w-full h-40 sm:h-64 object-cover cursor-pointer"
                 />
 
                 <div className="p-3">
@@ -425,35 +426,27 @@ export default function Shop() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex justify-center items-center flex-wrap gap-2 mt-10">
+          <div className="flex justify-center items-center gap-6 mt-10 pt-6 border-t border-[#e6d9d0]">
             <button
               onClick={() => goToPage(currentPage - 1)}
               disabled={currentPage === 1}
-              className="px-4 py-2 rounded-full border border-[#b49d91] text-[#b49d91] disabled:opacity-40 disabled:cursor-not-allowed transition"
+              aria-label="Previous page"
+              className="text-[#b49d91] disabled:opacity-40 disabled:cursor-not-allowed transition"
             >
-              Prev
+              <ChevronLeftIcon className="h-6 w-6" />
             </button>
 
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-              <button
-                key={pageNum}
-                onClick={() => goToPage(pageNum)}
-                className={`h-10 w-10 rounded-full transition ${
-                  currentPage === pageNum
-                    ? "bg-[#b49d91] text-white"
-                    : "bg-white text-[#b49d91] border border-[#b49d91]"
-                }`}
-              >
-                {pageNum}
-              </button>
-            ))}
+            <span className="text-[#8C7367] font-fancy text-[15px]">
+              Page {currentPage} of {totalPages}
+            </span>
 
             <button
               onClick={() => goToPage(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="px-4 py-2 rounded-full border border-[#b49d91] text-[#b49d91] disabled:opacity-40 disabled:cursor-not-allowed transition"
+              aria-label="Next page"
+              className="text-[#b49d91] disabled:opacity-40 disabled:cursor-not-allowed transition"
             >
-              Next
+              <ChevronRightIcon className="h-6 w-6" />
             </button>
           </div>
         )}

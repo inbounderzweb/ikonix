@@ -272,12 +272,8 @@ export default function ProductList({ hideFilters = false }) {
           </div>
         )}
 
-        {/* Products Grid/List */}
-        <div
-          className="
-            grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6
-          "
-        >
+        {/* Products Grid/List — horizontal scroll on mobile, grid from sm up */}
+        <div className="flex flex-row gap-6 overflow-x-auto scrollbar-hide pb-4 sm:grid sm:grid-cols-2 xl:grid-cols-4 sm:overflow-visible sm:pb-0">
           {visibleProducts.map((product) => {
             const variant = product.variants?.[0] || {};
             const vid = variant.vid ?? '';
@@ -286,7 +282,7 @@ export default function ProductList({ hideFilters = false }) {
             const hasDiscount = msrp > 0 && sale < msrp;
 
             return (
-              <div key={`${product.id}-${vid}`} className="flex flex-col">
+              <div key={`${product.id}-${vid}`} className="w-[70%] sm:w-full flex-shrink-0 flex flex-col">
                 {/* Image tile */}
                 <div className="relative aspect-square overflow-hidden rounded-[22px] bg-[#f0e4da]">
                   {/* Category chip */}

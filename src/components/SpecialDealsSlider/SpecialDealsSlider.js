@@ -45,7 +45,7 @@ const Arrow = ({ onClick, direction }) => (
   </button>
 );
 
-// Slider settings
+// Slider settings (desktop/tablet only — mobile uses a native scroll strip below)
 const settings = {
   dots: true,
   arrows: true,
@@ -63,25 +63,40 @@ const settings = {
   customPaging: i => (
     <div className="dot h-1 w-[25px] bg-[#44322B] rounded-full transition-all duration-300 mt-2" />
   ),
-  responsive: [
-    {
-      breakpoint: 1024,
-      settings: {
-        slidesToShow: 1,
-        arrows: false,
-        dots: true,
-        appendDots: dots => (
-          <div className="mt-6 flex justify-center items-center gap-2">
-            {dots}
-          </div>
-        ),
-        customPaging: i => (
-          <div className="dot h-1 w-[25px] bg-[#44322B] rounded-full transition-all duration-300 mt-2" />
-        ),
-      },
-    },
-  ],
 };
+
+// Card content shared by the mobile scroll strip and the desktop slider
+function DealCard({ deal, onNavigate }) {
+  return (
+    <div className="relative overflow-hidden rounded-[24px]">
+      <img
+        src={deal.img}
+        alt={deal.title1}
+        className="w-full h-full object-cover"
+      />
+      <div className="absolute inset-0 bg-black/20 md:bg-transparent z-10" />
+      <div className="absolute inset-0 z-20 flex flex-col justify-center md:pl-[50%] p-6 text-white text-left">
+        <span className="text-[18px] md:text-[27px] font-heading">
+          {deal.title1}
+        </span>
+        <p className="text-[13px] font-fancy">{deal.blurb}</p>
+        <div className="flex flex-wrap items-center gap-4 mt-4">
+          <div className="grid">
+            <span className="line-through text-[#F9F6F4] text-[12px] font-normal font-fancy">
+              {deal.oldPrice}
+            </span>
+            <span className="text-[#F9F6F4] text-[16px] font-[700] font-fancy">
+              {deal.newPrice}
+            </span>
+          </div>
+          <button onClick={() => onNavigate(deal.dataurl)} className="text-[#13181F] font-fancy text-[14px] bg-[#C5A291] py-[8px] px-[20px] rounded-[24px]">
+            Add To Cart
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function SpecialDealsSlider() {
 
@@ -94,7 +109,7 @@ export default function SpecialDealsSlider() {
       <style>{`
         .slick-dots li.slick-active div {
           background-color: white !important;
-          
+
         }
       `}</style>
 
@@ -108,40 +123,25 @@ export default function SpecialDealsSlider() {
             Our exclusive perfume creations blend rare ingredients and refined expertise. Discover captivating notes that tell your story with confidence and style.
           </p>
 
-          {/* Slider */}
-          <Slider {...settings} className="lg:mt-12 mt-4">
+          {/* Mobile/tablet: native horizontal scroll, no dots/arrows needed */}
+          <div className="lg:hidden mt-4 flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2">
             {deals.map(deal => (
-              <div key={deal.id} className="px-3">
-                <div className="relative overflow-hidden rounded-[24px]">
-                  <img
-                    src={deal.img}
-                    alt={deal.title1}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/20 md:bg-transparent z-10" />
-                  <div className="absolute inset-0 z-20 flex flex-col justify-center md:pl-[50%] p-6 text-white text-left">
-                    <span className="text-[18px] md:text-[27px] font-heading">
-                      {deal.title1}
-                    </span>
-                    <p className="text-[13px] font-fancy">{deal.blurb}</p>
-                    <div className="flex flex-wrap items-center gap-4 mt-4">
-                      <div className="grid">
-                        <span className="line-through text-[#F9F6F4] text-[12px] font-normal font-fancy">
-                          {deal.oldPrice}
-                        </span>
-                        <span className="text-[#F9F6F4] text-[16px] font-[700] font-fancy">
-                          {deal.newPrice}
-                        </span>
-                      </div>
-                      <button onClick={() => Navigate(`${deal.dataurl}`)} className="text-[#13181F] font-fancy text-[14px] bg-[#C5A291] py-[8px] px-[20px] rounded-[24px]">
-                        Add To Cart
-                      </button>
-                    </div>
-                  </div>
-                </div>
+              <div key={deal.id} className="w-[85%] sm:w-[48%] flex-shrink-0 snap-start">
+                <DealCard deal={deal} onNavigate={url => Navigate(url)} />
               </div>
             ))}
-          </Slider>
+          </div>
+
+          {/* Desktop: slick carousel with arrows + dots */}
+          <div className="hidden lg:block">
+            <Slider {...settings} className="mt-12">
+              {deals.map(deal => (
+                <div key={deal.id} className="px-3">
+                  <DealCard deal={deal} onNavigate={url => Navigate(url)} />
+                </div>
+              ))}
+            </Slider>
+          </div>
         </div>
       </section>
     </>

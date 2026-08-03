@@ -27,14 +27,23 @@ export const productApi = createApi({
       // no extra config needed – baseQuery will retry once automatically
     }),
 
-    // Server-side search: method is POST, but search/page/limit travel as
-    // URL query params (`params`) so the backend reads them via req.query.
+    // Server-side search: page/limit/search travel as multipart/form-data
+    // fields in the POST body (confirmed against the Postman collection).
+    // fetchBaseQuery detects the FormData body, drops the forced
+    // 'application/json' Content-Type, and lets fetch set the correct
+    // 'multipart/form-data; boundary=...' header itself.
     searchProducts: builder.query({
-      query: ({ search, page = 1, limit = 10 }) => ({
-        url: 'products',
-        method: 'POST',
-        params: { search, page, limit },
-      }),
+      query: ({ search, page = 1, limit = 10 }) => {
+        const formData = new FormData();
+        formData.append('page', page);
+        formData.append('limit', limit);
+        formData.append('search', search);
+        return {
+          url: 'products',
+          method: 'POST',
+          body: formData,
+        };
+      },
     }),
   }),
 });
