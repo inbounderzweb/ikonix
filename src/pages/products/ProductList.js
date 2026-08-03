@@ -13,6 +13,7 @@ import Spinner from '../../components/loader/Spinner';
 import { createApiClient } from '../../api/client';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
+const HOME_PRODUCTS_LIMIT = 8;
 
 /* ---------------- Guest cart helpers (consistent shape) ---------------- */
 
@@ -125,6 +126,12 @@ export default function ProductList({ hideFilters = false }) {
       ? products
       : products.filter((p) => p.category_name === selectedCategory);
   }, [selectedCategory, products]);
+
+  // Home page only teases a handful of products; the rest live on /shop
+  const visibleProducts = useMemo(
+    () => filtered.slice(0, HOME_PRODUCTS_LIMIT),
+    [filtered]
+  );
 
   /* ---------------- Guest: add item ---------------- */
   const saveGuestCart = useCallback(
@@ -271,7 +278,7 @@ export default function ProductList({ hideFilters = false }) {
             grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6
           "
         >
-          {filtered.map((product) => {
+          {visibleProducts.map((product) => {
             const variant = product.variants?.[0] || {};
             const vid = variant.vid ?? '';
             const msrp = Number(variant.price) || 0;

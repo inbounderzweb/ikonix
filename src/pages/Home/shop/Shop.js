@@ -1,5 +1,5 @@
 // src/pages/shop/Shop.js
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
 import qs from "qs";
@@ -14,6 +14,7 @@ import { useCart } from "../../../context/CartContext";
 import { createApiClient } from "../../../api/client";
 
 const API_BASE = "http://ikonixperfumer.com/beta/api";
+const PRODUCTS_PER_PAGE = 10;
 
 /* ---------------- Guest helpers ---------------- */
 const safeJsonParse = (val, fallback) => {
@@ -198,6 +199,27 @@ export default function Shop() {
     return products.filter((p) => p.category_name === selectedCategory);
   }, [selectedCategory, products]);
 
+  // Pagination (backend ignores page/limit params, so we page client-side)
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory]);
+
+  const totalPages = Math.ceil(filtered.length / PRODUCTS_PER_PAGE);
+
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * PRODUCTS_PER_PAGE;
+    return filtered.slice(start, start + PRODUCTS_PER_PAGE);
+  }, [filtered, currentPage]);
+
+  const resultsTopRef = useRef(null);
+
+  const goToPage = useCallback((page) => {
+    setCurrentPage(page);
+    resultsTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   // Guest add
   const saveGuestCart = useCallback(
     (product) => {
@@ -308,6 +330,7 @@ export default function Shop() {
       </div> */}
 
       <section className="mx-auto w-[95%] xl:w-[80%] py-8">
+        <div ref={resultsTopRef} />
         {/* Tabs */}
         <div className="flex gap-4 mb-6 overflow-x-auto scrollbar-hide no-scrollbar pb-4">
           {filters.map((cat) => (
@@ -330,7 +353,7 @@ export default function Shop() {
 
         {/* Products */}
         <div className="flex flex-row gap-6 overflow-x-auto pb-4 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:pb-0">
-          {filtered.map((product) => {
+          {paginatedProducts.map((product) => {
             const variant = product.variants?.[0] || {};
             const vid = variant.vid ?? "";
             const msrp = Number(variant.price) || 0;
@@ -399,6 +422,41 @@ export default function Shop() {
             );
           })}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center flex-wrap gap-2 mt-10">
+            <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-full border border-[#b49d91] text-[#b49d91] disabled:opacity-40 disabled:cursor-not-allowed transition"
+            >
+              Prev
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+              <button
+                key={pageNum}
+                onClick={() => goToPage(pageNum)}
+                className={`h-10 w-10 rounded-full transition ${
+                  currentPage === pageNum
+                    ? "bg-[#b49d91] text-white"
+                    : "bg-white text-[#b49d91] border border-[#b49d91]"
+                }`}
+              >
+                {pageNum}
+              </button>
+            ))}
+
+            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 rounded-full border border-[#b49d91] text-[#b49d91] disabled:opacity-40 disabled:cursor-not-allowed transition"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </section>
     </>
   );
