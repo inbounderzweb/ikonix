@@ -2,8 +2,13 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
-import { useGetProductsQuery } from '../../features/product/productApi';
+import { useSearchProductsQuery } from '../../features/product/productApi';
 import { useAuth } from '../../context/AuthContext';
+import useDebounce from '../../hooks/useDebounce';
+
+const SEARCH_DEBOUNCE_MS = 400;
+const SEARCH_PAGE = 1;
+const SEARCH_LIMIT = 10;
 
 /**
  * SearchModal – centred popup with blurred backdrop and Tailwind-only animations.
@@ -25,20 +30,18 @@ export default function SearchModal({ open, onClose, onSubmit = () => {}, onPick
   // 🔑 Auth
   const { isTokenReady } = useAuth();
 
-  // fetch products only once token is ready
-  const {
-    data,
-    isLoading,
-    refetch,
-  } = useGetProductsQuery(undefined, { skip: !isTokenReady });
+  // debounce keystrokes so we don't fire a request per character
+  const debouncedQuery = useDebounce(query, SEARCH_DEBOUNCE_MS);
+  const trimmedQuery = debouncedQuery.trim();
 
-  useEffect(() => {
-    if (isTokenReady) {
-      refetch();
-    }
-  }, [isTokenReady, refetch]);
+  // search/page/limit are sent as URL query params (req.query) on a POST request
+  const { data, isFetching } = useSearchProductsQuery(
+    { search: trimmedQuery, page: SEARCH_PAGE, limit: SEARCH_LIMIT },
+    { skip: !isTokenReady || !trimmedQuery }
+  );
 
   const allProducts = useMemo(() => data?.data || [], [data?.data]);
+  const isLoading = isTokenReady && Boolean(query.trim()) && (isFetching || query.trim() !== trimmedQuery);
 
   // mount/animate
   useEffect(() => {
@@ -52,17 +55,11 @@ export default function SearchModal({ open, onClose, onSubmit = () => {}, onPick
     if (!open) setShow(false);
   };
 
-  // filter products by name/category/price
-  const results = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.trim().toLowerCase();
-    return allProducts.filter(p =>
-      p.name?.toLowerCase().includes(q) ||
-      p.category_name?.toLowerCase().includes(q) ||
-      String(p.variants?.[0]?.price || '').includes(q) ||
-      String(p.variants?.[0]?.sale_price || '').includes(q)
-    );
-  }, [query, allProducts]);
+  // results now come pre-filtered from the server (search/page/limit sent as req.query)
+  const results = useMemo(
+    () => (trimmedQuery ? allProducts : []),
+    [trimmedQuery, allProducts]
+  );
 
   // attach first variant for display
   const displayList = useMemo(

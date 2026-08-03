@@ -26,10 +26,22 @@ export const productApi = createApi({
       query: () => 'products',
       // no extra config needed – baseQuery will retry once automatically
     }),
+
+    // Server-side search: method is POST, but search/page/limit travel as
+    // URL query params (`params`) so the backend reads them via req.query.
+    searchProducts: builder.query({
+      query: ({ search, page = 1, limit = 10 }) => ({
+        url: 'products',
+        method: 'POST',
+        params: { search, page, limit },
+      }),
+    }),
   }),
 });
 
 export const {
   useGetProductsQuery,
   useLazyGetProductsQuery,
+  useSearchProductsQuery,
+  useLazySearchProductsQuery,
 } = productApi;
