@@ -83,7 +83,7 @@ const MobileBottomNav = ({ onSearchOpen, onCartOpen, onAuthOpen, visible = false
           className="flex flex-col items-center justify-center gap-0.5 px-4 py-1 text-[#3D3934] active:opacity-60 transition-opacity"
         >
           <ProfileIcon />
-          <span className="text-[10px] font-medium tracking-wide">Products</span>
+          <span className="text-[10px] font-medium tracking-wide">Profile</span>
         </button>
       </div>
 
