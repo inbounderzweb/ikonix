@@ -2,7 +2,6 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import qs from "qs";
-import Swal from "sweetalert2";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
 import { MinusIcon, PlusIcon } from "@heroicons/react/24/outline";
 import checkedCircle from "../../../assets/checkcircle.svg";
@@ -11,6 +10,7 @@ import ValidateOnLoad from "../../../components/ValidateOnLoad";
 import { useAuth } from "../../../context/AuthContext";
 import { useCart, readGuest, writeGuest, toKey } from "../../../context/CartContext";
 import { createApiClient } from "../../../api/client";
+import { toastSuccess, toastInfo, toastError, truncateName } from "../../../utils/toast";
 
 const API_BASE = "https://ikonixperfumer.com/beta/api";
 
@@ -325,7 +325,7 @@ export default function ProductDetails() {
 
     writeGuest(current);
     refresh();
-    Swal.fire(`${product.name} added to cart`);
+    toastSuccess(`${truncateName(product.name)} added to cart`);
   }, [pid, product, selectedVar, qty, refresh]);
 
   const addServer = useCallback(async () => {
@@ -346,12 +346,7 @@ export default function ProductDetails() {
 
     // ✅ CHECK: no need to increase if already in cart
     if (checkInCart()) {
-      Swal.fire({
-         title: "Already in cart",
-         text: `${product.name} is already in your cart.`,
-         icon: "info",
-         timer: 2000
-      });
+      toastInfo("Already in cart", `${truncateName(product.name)} is already in your cart.`);
       return;
     }
 
@@ -391,15 +386,15 @@ export default function ProductDetails() {
       const resp = await addServer();
       if (resp?.data?.success || resp?.data?.status) {
         refresh();
-        Swal.fire(`${product.name} added to cart`);
+        toastSuccess(`${truncateName(product.name)} added to cart`);
       } else {
         refresh();
-        Swal.fire(resp?.data?.message || "Failed to add to cart");
+        toastError(resp?.data?.message || "Failed to add to cart");
       }
     } catch (e) {
       console.error("add to cart error:", e?.response?.data || e);
       refresh();
-      Swal.fire("Error adding to cart");
+      toastError("Error adding to cart");
     }
   }, [product, selectedVar, pid, qty, token, user, addGuest, addOrIncLocal, addServer, refresh, checkInCart]);
 
@@ -480,11 +475,11 @@ export default function ProductDetails() {
         navigate("/checkout");
         return;
       }
-      Swal.fire(data?.message || "Failed to add to cart");
+      toastError(data?.message || "Failed to add to cart");
     } catch (e) {
       console.error("BUY NOW error:", e?.response?.data || e);
       try { await refresh(); } catch {}
-      Swal.fire(e?.response?.data?.message || e?.message || "Error adding product");
+      toastError(e?.response?.data?.message || e?.message || "Error adding product");
     }
   }, [
     product,

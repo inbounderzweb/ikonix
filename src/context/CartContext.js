@@ -9,9 +9,9 @@ import React, {
   useRef,
 } from "react";
 import qs from "qs";
-import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext";
 import { createApiClient } from "../api/client";
+import { toastSuccess, toastError, truncateName } from "../utils/toast";
 
 const API_BASE = "/beta/api";
 const CartContext = createContext();
@@ -189,10 +189,15 @@ export function CartProvider({ children }) {
 
       const server = Array.isArray(data?.data) ? data.data : [];
 
-      if (server.length === 0 && !user) {
-        // Fallback to local guest cart if server is empty and we're a guest
+      if (!user) {
+        // Guest "add to cart" only ever writes to localStorage (it never
+        // calls the server), so the local guestCart is always at least as
+        // current as — usually more current than — whatever the server
+        // returns for the shared guest bucket. Treat it as authoritative
+        // whenever it has anything, and only fall back to the server
+        // response if there's truly nothing local yet.
         const guest = readGuest().map(normalizeGuestItem);
-        setItems(guest);
+        setItems(guest.length > 0 ? guest : server.map(normalizeServerItem));
       } else {
         setItems(server.map(normalizeServerItem));
       }
@@ -306,7 +311,7 @@ export function CartProvider({ children }) {
         // optimistic update already reflects the new qty; no refetch needed
       } catch (e) {
         console.error("inc error:", e);
-        Swal.fire({ icon: "error", title: "Couldn't update quantity", timer: 2000, showConfirmButton: false });
+        toastError("Couldn't update quantity");
         fetchCart(); // resync/rollback to server truth
       } finally {
         pendingItemsRef.current.delete(key);
@@ -354,7 +359,7 @@ export function CartProvider({ children }) {
         // optimistic update already reflects the new qty; no refetch needed
       } catch (e) {
         console.error("dec error:", e);
-        Swal.fire({ icon: "error", title: "Couldn't update quantity", timer: 2000, showConfirmButton: false });
+        toastError("Couldn't update quantity");
         fetchCart(); // resync/rollback to server truth
       } finally {
         pendingItemsRef.current.delete(key);
@@ -376,13 +381,20 @@ export function CartProvider({ children }) {
       if (pendingItemsRef.current.has(key)) return; // already in flight
       pendingItemsRef.current.add(key);
 
+      const removedName = items.find((x) => toKey(x.id, x.variantid) === key)?.name;
+
       setItems((prev) => {
         const arr = Array.isArray(prev) ? prev : [];
         return arr.filter((x) => toKey(x.id, x.variantid) !== key);
       });
 
       const uid = getEffectiveUserId();
-      if (cartid || uid) {
+      // Only call the server if this item actually has a real cartid.
+      // Guest items that were never synced to the server (added locally
+      // and never inc/dec'd) have cartid === null — there's nothing to
+      // delete server-side, and posting cartid=null 400s on the backend
+      // ("The cart id field is required.").
+      if (cartid) {
         try {
           await api.post(
             `${API_BASE}/delete-cart`,
@@ -390,14 +402,16 @@ export function CartProvider({ children }) {
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
           );
           // item already removed from local state; no refetch needed
+          toastSuccess(removedName ? `${truncateName(removedName)} removed from cart` : "Item removed from cart");
         } catch (e) {
           console.error("remove error:", e);
-          Swal.fire({ icon: "error", title: "Couldn't remove item", timer: 2000, showConfirmButton: false });
+          toastError("Couldn't remove item");
           fetchCart(); // resync/rollback to server truth
         } finally {
           pendingItemsRef.current.delete(key);
         }
       } else {
+        toastSuccess(removedName ? `${truncateName(removedName)} removed from cart` : "Item removed from cart");
         pendingItemsRef.current.delete(key);
       }
 
@@ -406,7 +420,7 @@ export function CartProvider({ children }) {
         writeGuest(guest);
       }
     },
-    [api, user, getEffectiveUserId, fetchCart]
+    [api, user, getEffectiveUserId, fetchCart, items]
   );
 
   const clear = useCallback(() => {

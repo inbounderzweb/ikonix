@@ -4,9 +4,9 @@ import bag from '../../../assets/bag.svg'; // adjust if needed
 import { useAuth } from '../../../context/AuthContext';
 import qs from 'qs';
 import { useNavigate } from 'react-router-dom';
-import swal from 'sweetalert';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import { useCart, readGuest, writeGuest, toKey } from '../../../context/CartContext';
+import { toastSuccess, toastError, truncateName } from '../../../utils/toast';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
@@ -60,7 +60,7 @@ const handleViewDetails = (item) => {
     }
 
     refresh();
-    swal(`${product.name} added to cart`);
+    toastSuccess(`${truncateName(product.name)} added to cart`);
   };
 
   /** Add to cart (server or guest) */
@@ -71,6 +71,7 @@ const handleViewDetails = (item) => {
 
     if (checkInCart(product.id, variantid)) {
       inc(null, product.id, variantid);
+      toastSuccess(`${truncateName(product.name)} quantity increased`);
       return;
     }
 
@@ -92,16 +93,16 @@ const handleViewDetails = (item) => {
       );
 
       if (resp?.success) {
-        swal(`${product.name} added to cart`);
         refresh();
+        toastSuccess(`${truncateName(product.name)} added to cart`);
       } else {
         refresh();
-        swal(resp?.message || 'Failed to add to cart');
+        toastError(resp?.message || 'Failed to add to cart');
       }
     } catch (err) {
       console.error('Error adding to cart:', err?.response?.data || err);
       refresh();
-      swal('Error adding to cart. See console.');
+      toastError('Error adding to cart. See console.');
     }
   };
 

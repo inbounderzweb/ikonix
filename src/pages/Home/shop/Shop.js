@@ -13,6 +13,7 @@ import { useGetProductsQuery } from "../../../features/product/productApi";
 import { useAuth } from "../../../context/AuthContext";
 import { useCart, readGuest, writeGuest, toKey } from "../../../context/CartContext";
 import { createApiClient } from "../../../api/client";
+import { toastSuccess, toastError, truncateName } from "../../../utils/toast";
 
 const API_BASE = "http://ikonixperfumer.com/beta/api";
 const PRODUCTS_PER_PAGE = 10;
@@ -197,6 +198,7 @@ export default function Shop() {
 
       writeGuest(current);
       refresh();
+      toastSuccess(`${truncateName(product.name)} added to cart`);
     },
     [refresh]
   );
@@ -210,6 +212,7 @@ export default function Shop() {
       // ✅ Already in cart: increase quantity instead of a silent no-op
       if (checkInCart(product.id, variantid)) {
         inc(null, product.id, variantid);
+        toastSuccess(`${truncateName(product.name)} quantity increased`);
         return;
       }
 
@@ -236,14 +239,17 @@ export default function Shop() {
           { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
 
-        if (resp?.success) refresh();
-        else {
+        if (resp?.success) {
           refresh();
-          alert(resp?.message || "Failed to add to cart");
+          toastSuccess(`${truncateName(product.name)} added to cart`);
+        } else {
+          refresh();
+          toastError(resp?.message || "Failed to add to cart");
         }
       } catch (e) {
         console.error("add to cart error:", e?.response?.data || e);
         refresh();
+        toastError("Error adding to cart");
       }
     },
     [api, token, user, addOrIncLocal, refresh, saveGuestCart, checkInCart, inc]
@@ -317,11 +323,11 @@ export default function Shop() {
             return (
               <div
                 key={`${product.id}-${vid}`}
-                className="relative overflow-hidden rounded-[10px] bg-white shadow-sm hover:shadow-md transition-shadow duration-200"
+                className="relative overflow-hidden rounded-2xl bg-white shadow-sm hover:shadow-md transition-shadow duration-200"
               >
                 {/* Discount badge */}
                 {badgeLabel && (
-                  <span className={`absolute top-2 left-2 z-10 text-white text-xs font-bold px-2 py-1 rounded-md ${discountPct >= 40 ? "bg-orange-500" : "bg-red-500"}`}>
+                  <span className="absolute top-2.5 left-2.5 z-10 flex items-center gap-0.5 rounded-full bg-[#2A3443] px-2 py-0.5 text-[9px] font-medium text-white">
                     {discountPct >= 40 ? "🔥 " : ""}{badgeLabel}
                   </span>
                 )}
@@ -331,9 +337,9 @@ export default function Shop() {
                     e.stopPropagation();
                     handleAddToCart(product);
                   }}
-                  className="absolute top-2 right-2 z-10 rounded-full p-1 bg-white/80 backdrop-blur-sm shadow"
+                  className="absolute top-3 right-3 z-10 rounded-full border border-[#c9b6a9] bg-white/70 p-2.5 backdrop-blur-sm hover:bg-white transition"
                 >
-                  <img src={bag} alt="cart" className="h-6 w-6" />
+                  <img src={bag} alt="cart" className="h-4 w-4" />
                 </button>
 
                 <img
@@ -344,7 +350,7 @@ export default function Shop() {
                 />
 
                 <div className="p-3">
-                  <h3 className="text-[#2A3443] font-[Lato] text-[15px] leading-snug font-medium">{product.name}</h3>
+                  <h3 className="text-[#2A3443] font-[Lato] text-[15px] leading-snug font-medium line-clamp-2 min-h-[2.4em]">{product.name}</h3>
 
                   {/* Rating */}
                   <div className="flex items-center gap-1 mt-1">
@@ -359,14 +365,11 @@ export default function Shop() {
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <span className="font-bold text-[#2A3443] text-[17px]">₹{sale}/-</span>
                       {discountPct > 0 && (
-                        <>
-                          <span className="text-xs line-through text-gray-400">₹{msrp}/-</span>
-                          <span className="text-xs text-green-600 font-bold">{discountPct}% OFF</span>
-                        </>
+                        <span className="text-xs line-through text-gray-400">₹{msrp}/-</span>
                       )}
                     </div>
                     {savings > 0 && (
-                      <p className="text-xs text-green-600 mt-0.5">Save ₹{savings}</p>
+                      <p className="text-xs text-green-600 font-medium mt-0.5">Save ₹{savings}</p>
                     )}
                   </div>
                 </div>

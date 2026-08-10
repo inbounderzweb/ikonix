@@ -11,6 +11,7 @@ import { useCart, readGuest, writeGuest, toKey } from '../../context/CartContext
 import Spinner from '../../components/loader/Spinner';
 
 import { createApiClient } from '../../api/client';
+import { toastSuccess, toastError, truncateName } from '../../utils/toast';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 const HOME_PRODUCTS_LIMIT = 8;
@@ -109,6 +110,7 @@ export default function ProductList({ hideFilters = false }) {
 
       // Refresh context so header badge updates instantly in guest mode
       refresh();
+      toastSuccess(`${truncateName(product.name)} added to cart`);
     },
     [refresh]
   );
@@ -123,6 +125,7 @@ export default function ProductList({ hideFilters = false }) {
       // ✅ Already in cart: increase quantity instead of a silent no-op
       if (checkInCart(product.id, variantid)) {
         inc(null, product.id, variantid);
+        toastSuccess(`${truncateName(product.name)} quantity increased`);
         return;
       }
 
@@ -163,16 +166,16 @@ export default function ProductList({ hideFilters = false }) {
 
         if (resp?.success) {
           refresh();
+          toastSuccess(`${truncateName(product.name)} added to cart`);
         } else {
           refresh(); // rollback by refetch
-          alert(resp?.message || 'Failed to add to cart');
+          toastError(resp?.message || 'Failed to add to cart');
         }
       } catch (error) {
         // client.js should re-auth + retry automatically; if it still fails, we rollback
         console.error('❌ Error adding to cart:', error?.response?.data || error);
         refresh();
-        // optional: avoid alert spam
-        // alert('Error adding to cart.');
+        toastError('Error adding to cart');
       }
     },
     [api, token, user, addOrIncLocal, refresh, saveGuestCart, checkInCart, inc]
@@ -236,7 +239,7 @@ export default function ProductList({ hideFilters = false }) {
                 <div className="relative aspect-square overflow-hidden rounded-[22px] bg-[#f0e4da]">
                   {/* Category chip */}
                   {product.category_name && (
-                    <span className="absolute top-4 left-4 z-10 rounded-full border border-[#c9b6a9] bg-white/50 px-4 py-1.5 text-sm text-[#6b5d52]">
+                    <span className="absolute top-3 left-3 z-10 rounded-full border border-[#c9b6a9] bg-white/60 px-2 py-0.5 text-[10px] text-[#6b5d52]">
                       {product.category_name}
                     </span>
                   )}
@@ -247,7 +250,7 @@ export default function ProductList({ hideFilters = false }) {
                       e.stopPropagation();
                       handleAddToCart(product);
                     }}
-                    className="absolute top-4 right-4 z-10 rounded-full border border-[#c9b6a9] bg-white/50 p-2.5 hover:bg-white transition"
+                    className="absolute top-3 right-3 z-10 rounded-full border border-[#c9b6a9] bg-white/50 p-2.5 hover:bg-white transition"
                   >
                     <img src={bag} alt="cart" className="h-4 w-4" />
                   </button>
@@ -262,17 +265,17 @@ export default function ProductList({ hideFilters = false }) {
                 </div>
 
                 {/* Info below tile */}
-                <div className="mt-4 flex items-start justify-between gap-3 px-1">
-                  <h3 className="font-fancy text-[17px] leading-snug text-[#2f3647]">
+                <div className="mt-4 px-1">
+                  <h3 className="font-fancy text-[16px] sm:text-[17px] leading-snug text-[#2f3647] line-clamp-2 min-h-[2.6em]">
                     {product.name}
                   </h3>
-                  <div className="text-right shrink-0">
+                  <div className="mt-2 flex items-baseline gap-2 flex-wrap">
+                    <span className="text-[17px] font-semibold text-[#2f3647]">Rs.{sale}/-</span>
                     {hasDiscount && (
-                      <span className="block text-sm text-[#2f3647]/70 line-through">
+                      <span className="text-sm text-[#2f3647]/50 line-through">
                         Rs.{msrp}/-
                       </span>
                     )}
-                    <span className="text-[17px] text-[#2f3647]">Rs.{sale}/-</span>
                   </div>
                 </div>
               </div>
