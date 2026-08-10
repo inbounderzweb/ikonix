@@ -1,24 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useGetProductsQuery } from '../../../features/product/productApi';
 import bag from '../../../assets/bag.svg'; // adjust if needed
 import { useAuth } from '../../../context/AuthContext';
-import axios from 'axios';
 import qs from 'qs';
 import { useNavigate } from 'react-router-dom';
 import swal from 'sweetalert';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
+import { useCart, readGuest, writeGuest, toKey } from '../../../context/CartContext';
+
+const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
 function DiscoverMore() {
 
-
     const navigate = useNavigate()
   const [moreProducts, setMoreProducts] = useState([]);
-   const { user, token,isTokenReady } = useAuth();
-  const { data, isLoading, isError,refetch } = useGetProductsQuery(undefined, { skip: !isTokenReady });
- 
+   const { user, token, isTokenReady } = useAuth();
+  const { data, isLoading, isError, refetch } = useGetProductsQuery(undefined, { skip: !isTokenReady });
 
-  const API_BASE = 'https://ikonixperfumer.com/beta/api';
+  // ✅ Use CartContext as source of truth so the header/mobile-nav badge
+  // updates live (this page was previously bypassing CartContext entirely).
+  const { items, refresh, addOrIncLocal, inc, api } = useCart();
 
+  const checkInCart = useCallback(
+    (pid, vid) =>
+      items.some(
+        (it) => Number(it.id) === Number(pid) && String(it.variantid) === String(vid)
+      ),
+    [items]
+  );
 
 useEffect(() => {
   if (isTokenReady) refetch();
@@ -32,115 +41,66 @@ const handleViewDetails = (item) => {
   navigate(`/product-details/${item.id}?vid=${variant.vid}`);
 };
 
-
-
-  
-  /** Write to localStorage */
-  const writeGuest = (items) => {
-    localStorage.setItem('guestCart', JSON.stringify(items));
-  };
-
-  /** Read guest cart safely */
-  const readGuest = () => {
-    const raw = JSON.parse(localStorage.getItem('guestCart') || '[]');
-    return (Array.isArray(raw) ? raw : []).map((x) => ({
-      id: x.productid ?? x.id,
-      vid: x.variantid ?? x.vid,
-      name: x.name,
-      image: x.image,
-      price: Number(x.price) || 0,
-      qty: Number(x.qty) || 1,
-    }));
-  };
-
-  /** Save guest cart */
-  const saveGuestCart = (product) => {
+  /** Save guest cart (shared shape/helpers from CartContext) */
+  const saveGuestCart = (product, variantid, price) => {
     const current = readGuest();
-    const variant = product.variants?.[0] || {};
-    const vid = variant.vid;
-    const price = Number(variant.sale_price || variant.price || 0) || 0;
+    const key = toKey(product.id, variantid);
+    const idx = current.findIndex((i) => toKey(i.id, i.variantid) === key);
 
-    const idx = current.findIndex((i) => i.id === product.id && i.vid === vid);
-    if (idx > -1) {
-      current[idx].qty = (Number(current[idx].qty) || 0) + 1;
-    } else {
+    if (idx === -1) {
       current.push({
         id: product.id,
-        vid,
+        variantid,
         name: product.name,
         image: product.image,
         price,
         qty: 1,
       });
+      writeGuest(current);
     }
 
-    writeGuest(current);
-    swal(`${product.name} added to cart (guest)`);
-  };
-
-  /** Sync guest cart with server */
-  const syncGuestCartWithServer = async (userId, token) => {
-    try {
-      const resp = await axios.post(
-        `${API_BASE}/cart`,
-        qs.stringify({ userid: userId }),
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        }
-      );
-
-      const serverItems = resp.data?.data || [];
-      writeGuest(
-        serverItems.map((i) => ({
-          id: i.id,
-          vid: i.variantid ?? i.vid,
-          name: i.name,
-          image: i.image,
-          price: Number(i.price) || 0,
-          qty: Number(i.qty) || 1,
-        }))
-      );
-    } catch (err) {
-      console.error('Error syncing guest cart:', err);
-    }
+    refresh();
+    swal(`${product.name} added to cart`);
   };
 
   /** Add to cart (server or guest) */
   const handleAddToCart = async (product) => {
     const variant = product.variants?.[0] || {};
-    if (!token || !user) {
-      saveGuestCart(product);
+    const variantid = variant.vid ?? '';
+    const price = Number(variant.sale_price || variant.price || 0) || 0;
+
+    if (checkInCart(product.id, variantid)) {
+      inc(null, product.id, variantid);
       return;
     }
 
+    if (!token || !user) {
+      saveGuestCart(product, variantid, price);
+      return;
+    }
+
+    addOrIncLocal(
+      { id: product.id, variantid, name: product.name, image: product.image, price, qty: 1 },
+      1
+    );
+
     try {
-      const { data: resp } = await axios.post(
+      const { data: resp } = await api.post(
         `${API_BASE}/cart`,
-        qs.stringify({
-          userid: user.id,
-          productid: product.id,
-          variantid: variant.vid,
-          qty: 1,
-        }),
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        }
+        qs.stringify({ userid: user.id, productid: product.id, variantid, qty: 1 }),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
 
       if (resp?.success) {
         swal(`${product.name} added to cart`);
-        await syncGuestCartWithServer(user.id, token);
+        refresh();
       } else {
+        refresh();
         swal(resp?.message || 'Failed to add to cart');
       }
     } catch (err) {
       console.error('Error adding to cart:', err?.response?.data || err);
+      refresh();
       swal('Error adding to cart. See console.');
     }
   };
@@ -171,7 +131,7 @@ const handleViewDetails = (item) => {
           return (
             <div
               onClick={() => handleViewDetails(item)}
-              key={`${item.id}-${item.vid}`}
+              key={`${item.id}-${variant.vid}`}
               className="relative overflow-hidden rounded-[10px] bg-white shadow hover:shadow-lg transition cursor-pointer"
             >
               {/* Discount badge */}

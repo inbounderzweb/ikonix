@@ -197,40 +197,11 @@ export default function AuthModal({ open, onClose }) {
     setToken(data.token);
     localStorage.setItem('authUser',  JSON.stringify(userInfo));
     localStorage.setItem('authToken', data.token);
+    localStorage.setItem('authTokenTime', Date.now().toString());
 
-    // sync guest cart
-    try {
-      const srv1 = await apiPost(`${API_BASE}/cart`, { userid: data.user.id });
-      const serverItems = Array.isArray(srv1.data.data) ? srv1.data.data : [];
-      const serverIds = new Set(serverItems.map(i => i.id));
-
-      const guest = JSON.parse(localStorage.getItem('guestCart') || '[]');
-      await Promise.all(
-        guest
-          .filter(g => !serverIds.has(g.id))
-          .map(g =>
-            apiPost(`${API_BASE}/cart`, {
-              userid: data.user.id,
-              productid: g.id,
-              qty: g.qty,
-            }).catch(err => console.error('Sync fail', g.id, err))
-          )
-      );
-
-      const srv2 = await apiPost(`${API_BASE}/cart`, { userid: data.user.id });
-      const fresh = Array.isArray(srv2.data.data) ? srv2.data.data : [];
-      const normalized = fresh.map(i => ({
-        id:    i.id,
-        image: i.image,
-        name:  i.name,
-        price: i.price,
-        qty:   Number(i.qty),
-      }));
-      localStorage.setItem('guestCart', JSON.stringify(normalized));
-    } catch (err) {
-      console.error('Cart sync error:', err);
-    }
-
+    // Guest cart -> server sync is handled centrally by CartContext's
+    // syncGuestToServer(), which fires automatically once user/token are
+    // set above. Just refresh so the UI picks up the merged cart.
     await refresh();
     onClose?.();
   };

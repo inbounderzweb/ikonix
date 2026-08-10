@@ -7,7 +7,7 @@ import ValidateOnLoad from '../../components/ValidateOnLoad';
 
 import { useGetProductsQuery } from '../../features/product/productApi';
 import { useAuth } from '../../context/AuthContext';
-import { useCart } from '../../context/CartContext';
+import { useCart, readGuest, writeGuest, toKey } from '../../context/CartContext';
 import Spinner from '../../components/loader/Spinner';
 
 import { createApiClient } from '../../api/client';
@@ -15,64 +15,12 @@ import { createApiClient } from '../../api/client';
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 const HOME_PRODUCTS_LIMIT = 8;
 
-/* ---------------- Guest cart helpers (consistent shape) ---------------- */
-
-const safeJsonParse = (val, fallback) => {
-  try {
-    return JSON.parse(val);
-  } catch {
-    return fallback;
-  }
-};
-
-const toKey = (id, variantid) => `${String(id)}::${String(variantid ?? '')}`;
-
-const readGuest = () => {
-  const raw = safeJsonParse(localStorage.getItem('guestCart') || '[]', []);
-  const arr = Array.isArray(raw) ? raw : [];
-
-  // Normalize to { id, variantid, qty, ... } and merge duplicates
-  const byKey = new Map();
-  for (const x of arr) {
-    const id = x.productid ?? x.id;
-    const variantid = x.variantid ?? x.vid ?? '';
-    const qty = Math.max(1, Number(x.qty) || 1);
-
-    const item = {
-      id: Number(id),
-      variantid: String(variantid),
-      name: x.name,
-      image: x.image,
-      price: Number(x.price) || 0,
-      qty,
-    };
-
-    const key = toKey(item.id, item.variantid);
-    const prev = byKey.get(key);
-    byKey.set(key, prev ? { ...item, qty: (prev.qty || 0) + item.qty } : item);
-  }
-
-  return Array.from(byKey.values());
-};
-
-const writeGuest = (arr) => {
-  const safe = (Array.isArray(arr) ? arr : []).map((i) => ({
-    id: Number(i.id),
-    variantid: String(i.variantid ?? ''),
-    name: i.name,
-    image: i.image,
-    price: Number(i.price) || 0,
-    qty: Math.max(1, Number(i.qty) || 1),
-  }));
-  localStorage.setItem('guestCart', JSON.stringify(safe));
-};
-
 export default function ProductList({ hideFilters = false }) {
   const navigate = useNavigate();
   const { user, token, setToken, setIsTokenReady, isTokenReady } = useAuth();
 
   // ✅ Use CartContext as source of truth + realtime badge updates
-  const { items, refresh, addOrIncLocal } = useCart();
+  const { items, refresh, addOrIncLocal, inc } = useCart();
 
   const checkInCart = useCallback((pid, vid) => {
     return items.some(
@@ -172,8 +120,9 @@ export default function ProductList({ hideFilters = false }) {
       const variantid = variant.vid ?? '';
       const price = Number(variant.sale_price || variant.price || 0) || 0;
 
-      // ✅ CHECK: if already in cart, don't add again
+      // ✅ Already in cart: increase quantity instead of a silent no-op
       if (checkInCart(product.id, variantid)) {
+        inc(null, product.id, variantid);
         return;
       }
 
@@ -226,7 +175,7 @@ export default function ProductList({ hideFilters = false }) {
         // alert('Error adding to cart.');
       }
     },
-    [api, token, user, addOrIncLocal, refresh, saveGuestCart, checkInCart]
+    [api, token, user, addOrIncLocal, refresh, saveGuestCart, checkInCart, inc]
   );
 
   if (isLoading) {

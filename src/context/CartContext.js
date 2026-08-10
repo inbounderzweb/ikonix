@@ -9,6 +9,7 @@ import React, {
   useRef,
 } from "react";
 import qs from "qs";
+import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext";
 import { createApiClient } from "../api/client";
 
@@ -28,9 +29,9 @@ const safeJsonParse = (val, fallback) => {
   }
 };
 
-const toKey = (id, variantid) => `${String(id)}::${String(variantid ?? "")}`;
+export const toKey = (id, variantid) => `${String(id)}::${String(variantid ?? "")}`;
 
-const readGuest = () => {
+export const readGuest = () => {
   const raw = safeJsonParse(localStorage.getItem("guestCart") || "[]", []);
   const arr = Array.isArray(raw) ? raw : [];
 
@@ -57,7 +58,7 @@ const readGuest = () => {
   return Array.from(byKey.values());
 };
 
-const writeGuest = (arr) => {
+export const writeGuest = (arr) => {
   const safe = (Array.isArray(arr) ? arr : []).map((i) => ({
     id: Number(i.id),
     variantid: String(i.variantid ?? ""),
@@ -161,6 +162,9 @@ export function CartProvider({ children }) {
   // Avoid double fetch / double sync
   const fetchingRef = useRef(false);
   const syncingRef = useRef(false);
+  // Avoid duplicate inc/dec/remove requests for the same line item
+  // (e.g. a rapid double-click) racing each other
+  const pendingItemsRef = useRef(new Set());
 
   /* ---------------- Derived: cart count ---------------- */
   const cartCount = useMemo(() => {
@@ -286,6 +290,10 @@ export function CartProvider({ children }) {
 
   const inc = useCallback(
     async (cartid, id, variantid) => {
+      const key = toKey(id, variantid);
+      if (pendingItemsRef.current.has(key)) return; // already in flight
+      pendingItemsRef.current.add(key);
+
       addOrIncLocal({ id, variantid }, 1);
       const uid = getEffectiveUserId();
 
@@ -295,15 +303,17 @@ export function CartProvider({ children }) {
           qs.stringify({ userid: uid, productid: id, variantid, qty: 1 }),
           { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
-        fetchCart();
+        // optimistic update already reflects the new qty; no refetch needed
       } catch (e) {
         console.error("inc error:", e);
-        fetchCart();
+        Swal.fire({ icon: "error", title: "Couldn't update quantity", timer: 2000, showConfirmButton: false });
+        fetchCart(); // resync/rollback to server truth
+      } finally {
+        pendingItemsRef.current.delete(key);
       }
 
       if (!user) {
         const guest = readGuest();
-        const key = toKey(id, variantid);
         const idx = guest.findIndex((x) => toKey(x.id, x.variantid) === key);
         if (idx > -1) guest[idx].qty = (Number(guest[idx].qty) || 0) + 1;
         else guest.push({ id: Number(id), variantid: String(variantid), qty: 1 });
@@ -315,9 +325,18 @@ export function CartProvider({ children }) {
 
   const dec = useCallback(
     async (cartid, id, variantid) => {
+      const key = toKey(id, variantid);
+
+      // Quantity floor: never go below 1, and never fire a decrement
+      // request when already at 1.
+      const current = items.find((x) => toKey(x.id, x.variantid) === key);
+      if (current && (Number(current.qty) || 1) <= 1) return;
+
+      if (pendingItemsRef.current.has(key)) return; // already in flight
+      pendingItemsRef.current.add(key);
+
       setItems((prev) => {
         const arr = Array.isArray(prev) ? [...prev] : [];
-        const key = toKey(id, variantid);
         const idx = arr.findIndex((x) => toKey(x.id, x.variantid) === key);
         if (idx === -1) return arr;
         const nextQty = Math.max(1, (Number(arr[idx].qty) || 1) - 1);
@@ -332,28 +351,33 @@ export function CartProvider({ children }) {
           qs.stringify({ userid: uid, productid: id, variantid, qty: -1 }),
           { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
-        fetchCart();
+        // optimistic update already reflects the new qty; no refetch needed
       } catch (e) {
         console.error("dec error:", e);
-        fetchCart();
+        Swal.fire({ icon: "error", title: "Couldn't update quantity", timer: 2000, showConfirmButton: false });
+        fetchCart(); // resync/rollback to server truth
+      } finally {
+        pendingItemsRef.current.delete(key);
       }
 
       if (!user) {
         const guest = readGuest();
-        const key = toKey(id, variantid);
         const idx = guest.findIndex((x) => toKey(x.id, x.variantid) === key);
         if (idx > -1) guest[idx].qty = Math.max(1, (Number(guest[idx].qty) || 1) - 1);
         writeGuest(guest);
       }
     },
-    [api, user, getEffectiveUserId, fetchCart]
+    [api, user, getEffectiveUserId, fetchCart, items]
   );
 
   const remove = useCallback(
     async (cartid, id, variantid) => {
+      const key = toKey(id, variantid);
+      if (pendingItemsRef.current.has(key)) return; // already in flight
+      pendingItemsRef.current.add(key);
+
       setItems((prev) => {
         const arr = Array.isArray(prev) ? prev : [];
-        const key = toKey(id, variantid);
         return arr.filter((x) => toKey(x.id, x.variantid) !== key);
       });
 
@@ -365,17 +389,20 @@ export function CartProvider({ children }) {
             qs.stringify({ userid: uid, cartid, variantid }),
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
           );
-          fetchCart();
+          // item already removed from local state; no refetch needed
         } catch (e) {
           console.error("remove error:", e);
-          fetchCart();
+          Swal.fire({ icon: "error", title: "Couldn't remove item", timer: 2000, showConfirmButton: false });
+          fetchCart(); // resync/rollback to server truth
+        } finally {
+          pendingItemsRef.current.delete(key);
         }
+      } else {
+        pendingItemsRef.current.delete(key);
       }
 
       if (!user) {
-        const guest = readGuest().filter(
-          (x) => toKey(x.id, x.variantid) !== toKey(id, variantid)
-        );
+        const guest = readGuest().filter((x) => toKey(x.id, x.variantid) !== key);
         writeGuest(guest);
       }
     },

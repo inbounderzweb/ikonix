@@ -11,61 +11,11 @@ import shopherobgmob from "../../../assets/about/aboutBannerMob.svg";
 import ValidateOnLoad from "../../../components/ValidateOnLoad";
 import { useGetProductsQuery } from "../../../features/product/productApi";
 import { useAuth } from "../../../context/AuthContext";
-import { useCart } from "../../../context/CartContext";
+import { useCart, readGuest, writeGuest, toKey } from "../../../context/CartContext";
 import { createApiClient } from "../../../api/client";
 
 const API_BASE = "http://ikonixperfumer.com/beta/api";
 const PRODUCTS_PER_PAGE = 10;
-
-/* ---------------- Guest helpers ---------------- */
-const safeJsonParse = (val, fallback) => {
-  try {
-    return JSON.parse(val);
-  } catch {
-    return fallback;
-  }
-};
-const toKey = (id, variantid) => `${String(id)}::${String(variantid ?? "")}`;
-
-const readGuest = () => {
-  const raw = safeJsonParse(localStorage.getItem("guestCart") || "[]", []);
-  const arr = Array.isArray(raw) ? raw : [];
-  const byKey = new Map();
-
-  for (const x of arr) {
-    const id = x.productid ?? x.id;
-    const variantid = x.variantid ?? x.vid ?? "";
-    const qty = Math.max(1, Number(x.qty) || 1);
-
-    const item = {
-      id: Number(id),
-      variantid: String(variantid),
-      name: x.name,
-      image: x.image,
-      price: Number(x.price) || 0,
-      qty,
-    };
-
-    const key = toKey(item.id, item.variantid);
-    const prev = byKey.get(key);
-    byKey.set(key, prev ? { ...item, qty: prev.qty + item.qty } : item);
-  }
-
-  return Array.from(byKey.values());
-};
-
-const writeGuest = (arr) => {
-  const safe = (Array.isArray(arr) ? arr : []).map((i) => ({
-    id: Number(i.id),
-    variantid: String(i.variantid ?? ""),
-    name: i.name,
-    image: i.image,
-    price: Number(i.price) || 0,
-    qty: Math.max(1, Number(i.qty) || 1),
-  }));
-  localStorage.setItem("guestCart", JSON.stringify(safe));
-};
-/* ------------------------------------------------ */
 
 const FILTER_STORAGE_KEY = "shopActiveFilter"; // sessionStorage key
 
@@ -74,7 +24,7 @@ export default function Shop() {
   const location = useLocation();
 
   const { user, token, setToken, setIsTokenReady, isTokenReady } = useAuth();
-  const { items, refresh, addOrIncLocal } = useCart();
+  const { items, refresh, addOrIncLocal, inc } = useCart();
 
   const checkInCart = useCallback((pid, vid) => {
     return items.some(
@@ -257,8 +207,9 @@ export default function Shop() {
       const variantid = variant.vid ?? "";
       const price = Number(variant.sale_price || variant.price || 0) || 0;
 
-      // ✅ CHECK: no need to increase if already in cart
+      // ✅ Already in cart: increase quantity instead of a silent no-op
       if (checkInCart(product.id, variantid)) {
+        inc(null, product.id, variantid);
         return;
       }
 
@@ -295,7 +246,7 @@ export default function Shop() {
         refresh();
       }
     },
-    [api, token, user, addOrIncLocal, refresh, saveGuestCart, checkInCart]
+    [api, token, user, addOrIncLocal, refresh, saveGuestCart, checkInCart, inc]
   );
 
   if (isLoading) {

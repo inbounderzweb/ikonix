@@ -9,61 +9,10 @@ import checkedCircle from "../../../assets/checkcircle.svg";
 
 import ValidateOnLoad from "../../../components/ValidateOnLoad";
 import { useAuth } from "../../../context/AuthContext";
-import { useCart } from "../../../context/CartContext";
+import { useCart, readGuest, writeGuest, toKey } from "../../../context/CartContext";
 import { createApiClient } from "../../../api/client";
 
 const API_BASE = "https://ikonixperfumer.com/beta/api";
-
-/* ---------------- guest helpers (same shape) ---------------- */
-const safeJsonParse = (val, fallback) => {
-  try {
-    return JSON.parse(val);
-  } catch {
-    return fallback;
-  }
-};
-
-const toKey = (id, variantid) => `${String(id)}::${String(variantid ?? "")}`;
-
-const readGuest = () => {
-  const raw = safeJsonParse(localStorage.getItem("guestCart") || "[]", []);
-  const arr = Array.isArray(raw) ? raw : [];
-  const byKey = new Map();
-
-  for (const x of arr) {
-    const id = x.productid ?? x.id;
-    const variantid = x.variantid ?? x.vid ?? "";
-    const qty = Math.max(1, Number(x.qty) || 1);
-
-    const item = {
-      id: Number(id),
-      variantid: String(variantid),
-      name: x.name,
-      image: x.image,
-      price: Number(x.price) || 0,
-      qty,
-    };
-
-    const key = toKey(item.id, item.variantid);
-    const prev = byKey.get(key);
-    byKey.set(key, prev ? { ...item, qty: prev.qty + item.qty } : item);
-  }
-
-  return Array.from(byKey.values());
-};
-
-const writeGuest = (arr) => {
-  const safe = (Array.isArray(arr) ? arr : []).map((i) => ({
-    id: Number(i.id),
-    variantid: String(i.variantid ?? ""),
-    name: i.name,
-    image: i.image,
-    price: Number(i.price) || 0,
-    qty: Math.max(1, Number(i.qty) || 1),
-  }));
-  localStorage.setItem("guestCart", JSON.stringify(safe));
-};
-/* ------------------------------------------------------------ */
 
 export default function ProductDetails() {
   const navigate = useNavigate();

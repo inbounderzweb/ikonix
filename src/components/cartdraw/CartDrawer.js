@@ -1,7 +1,7 @@
 // src/components/cartdraw/CartDrawer.js
 import React, { useEffect, useState, useRef } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 
 export default function CartDrawer({ open, onClose }) {
@@ -9,7 +9,6 @@ export default function CartDrawer({ open, onClose }) {
   const { items, inc, dec, remove, refresh, loading, syncing, cartCount } = useCart();
 
   const navigate = useNavigate();
-  const location = useLocation();
 
   const prevOpen = useRef(open);
   const ANIM_MS = 300;
@@ -28,14 +27,6 @@ export default function CartDrawer({ open, onClose }) {
       return () => clearTimeout(t);
     }
   }, [open]);
-
-  // keep checkout in sync
-  useEffect(() => {
-    if (location.pathname === '/checkout') {
-      navigate('/checkout', { state: { cartItems: items }, replace: true });
-    }
-  }, [items, location.pathname, navigate]);
-
 
   const goCheckout = () => {
     onClose();
@@ -115,7 +106,8 @@ export default function CartDrawer({ open, onClose }) {
                         <div className="flex items-center justify-between w-full">
                           <button
                             onClick={() => dec(item.cartid, item.id, item.variantid)}
-                            className="w-1/3 py-1"
+                            disabled={Number(item.qty) <= 1}
+                            className="w-1/3 py-1 disabled:opacity-30 disabled:cursor-not-allowed"
                           >
                             −
                           </button>

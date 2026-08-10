@@ -86,11 +86,15 @@ const RETRY_DELAY = 500;
 const MAX_TOKEN_AGE_MS = 22 * 60 * 60 * 1000;
 
 export default function ValidateOnLoad() {
-  const { setToken, setIsTokenReady } = useAuth();
+  const { user, token, setToken, setIsTokenReady } = useAuth();
   const retryRef = useRef(0);
   const startedRef = useRef(false);
 
   const fetchToken = useCallback(async () => {
+    // Never overwrite a real logged-in user's JWT with the anonymous
+    // app token, even from a background/interval call.
+    if (user) return true;
+
     try {
       const { data } = await axios.post(
         VALIDATE_URL,
@@ -114,10 +118,20 @@ export default function ValidateOnLoad() {
       console.error('❌ Token fetch failed:', err);
       return false;
     }
-  }, [setToken, setIsTokenReady]);
+  }, [user, setToken, setIsTokenReady]);
 
   useEffect(() => {
     if (startedRef.current) return;
+
+    // A real logged-in user already has their own JWT (set by AuthModal on
+    // login) — the anonymous app-token flow below is a guest-only concern.
+    // Fetching/overwriting here would clobber the user's token with the
+    // generic anonymous one and break authenticated API calls.
+    if (user && token) {
+      setIsTokenReady(true);
+      return;
+    }
+
     startedRef.current = true;
 
     let intervalId;
@@ -158,7 +172,7 @@ export default function ValidateOnLoad() {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [setToken, setIsTokenReady, fetchToken]);
+  }, [user, token, setToken, setIsTokenReady, fetchToken]);
 
   return null;
 }
