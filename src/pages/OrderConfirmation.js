@@ -137,6 +137,14 @@ if(addressId){
         )}
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          {orderId && orderId !== '—' && (
+            <button
+              onClick={() => navigate(`/orders?highlight=${orderId}`)}
+              className="px-5 py-2.5 rounded-md bg-[#2A3443] text-white hover:opacity-90 transition"
+            >
+              Track Order
+            </button>
+          )}
           <button
             onClick={() => navigate('/shop')}
             className="px-5 py-2.5 rounded-md border border-[#b49d91] text-[#b49d91] hover:bg-[#b49d91]/10 transition"

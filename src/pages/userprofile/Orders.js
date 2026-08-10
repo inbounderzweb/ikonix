@@ -1,44 +1,130 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import axios from "axios";
+import { createApiClient } from "../../api/client";
 import qs from "qs";
 
 const API_BASE = "https://ikonixperfumer.com/beta/api";
 const API_BASE_IMG = "https://ikonixperfumer.com/beta/";
 
+const TRACKING_STEPS = ["Placed", "Processing", "Shipped", "Delivered"];
+
+// The backend's exact status field name/values aren't confirmed yet, so this
+// normalizer is deliberately defensive: it tries common field names and
+// common status vocabularies (word-based or numeric 0-3) instead of assuming
+// one shape, and always falls back to "Order Placed" rather than rendering
+// blank. Check the console.log below against a real order and adjust the
+// keyword lists here if the backend uses different wording.
+function normalizeStatus(order) {
+  const raw =
+    order?.status ??
+    order?.order_status ??
+    order?.orderStatus ??
+    order?.delivery_status ??
+    order?.status_text ??
+    "";
+  const s = String(raw).trim().toLowerCase();
+
+  if (!s) return { label: "Order Placed", step: 0, cancelled: false, raw };
+  if (/cancel|refund|return/.test(s)) return { label: String(raw), step: -1, cancelled: true, raw };
+  if (/deliver/.test(s)) return { label: "Delivered", step: 3, cancelled: false, raw };
+  if (/transit|out for/.test(s)) return { label: "Out for Delivery", step: 2, cancelled: false, raw };
+  if (/ship|dispatch/.test(s)) return { label: "Shipped", step: 2, cancelled: false, raw };
+  if (/process|confirm|pack/.test(s)) return { label: "Processing", step: 1, cancelled: false, raw };
+  if (/pending|placed|new/.test(s)) return { label: "Order Placed", step: 0, cancelled: false, raw };
+
+  const n = Number(raw);
+  if (!Number.isNaN(n) && raw !== "") {
+    const clamped = Math.max(0, Math.min(TRACKING_STEPS.length - 1, Math.round(n)));
+    return { label: TRACKING_STEPS[clamped], step: clamped, cancelled: false, raw };
+  }
+
+  // Unrecognized non-empty string — show it as-is rather than guessing.
+  return { label: String(raw), step: 0, cancelled: false, raw };
+}
+
+function getOrderId(order) {
+  return order?.order_id ?? order?.orderid ?? order?.orderId ?? order?.id ?? null;
+}
+
+function TrackingSteps({ status }) {
+  if (status.cancelled) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
+        {status.label || "Cancelled"}
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex items-center mt-3">
+      {TRACKING_STEPS.map((label, i) => {
+        const done = i <= status.step;
+        return (
+          <React.Fragment key={label}>
+            <div className="flex flex-col items-center gap-1 w-[70px] text-center">
+              <div
+                className={`h-3 w-3 rounded-full ${
+                  done ? "bg-[#b49d91]" : "bg-gray-200"
+                }`}
+              />
+              <span className={`text-[10px] leading-tight ${done ? "text-[#6b5d52] font-medium" : "text-gray-400"}`}>
+                {label}
+              </span>
+            </div>
+            {i < TRACKING_STEPS.length - 1 && (
+              <div className={`h-0.5 flex-1 -mt-4 ${i < status.step ? "bg-[#b49d91]" : "bg-gray-200"}`} />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
 function Orders() {
-  const { user, token } = useAuth();
+  const { user, token, setToken, setIsTokenReady } = useAuth();
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get("highlight");
+
+  // Shared client that auto-refreshes the API token on 401/403 — same one
+  // checkout/addresses use, so this list doesn't silently fail on a stale
+  // token (the previous raw-axios call had no such recovery).
+  const api = useMemo(
+    () => createApiClient({ getToken: () => token, setToken, setIsTokenReady }),
+    [token, setToken, setIsTokenReady]
+  );
+
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [visibleCount, setVisibleCount] = useState(5);
   const [selectedOrder, setSelectedOrder] = useState(null); // For modal
+  const highlightRef = useRef(null);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const response = await axios.post(
+      const response = await api.post(
         `${API_BASE}/orders`,
-        qs.stringify({
-          userid: user.id,
-        }),
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-        }
+        qs.stringify({ userid: user.id }),
+        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
       );
-      setOrders(response.data.data || []);
+      const list = response.data?.data || [];
+      if (process.env.NODE_ENV !== "production" && list.length) {
+        // Diagnostic aid: check this against normalizeStatus()/getOrderId()
+        // above if status/order-id ever look wrong for a real order.
+        console.log("[Orders] raw order shape from API:", list[0]);
+      }
+      setOrders(list);
     } catch (err) {
       console.error("Error fetching orders:", err);
       setError("Failed to load your orders. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [user?.id, token]);
+  }, [api, user?.id]);
 
   useEffect(() => {
     if (user?.id) {
@@ -61,6 +147,13 @@ function Orders() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
 
+  // Jump to the order the user just placed, if we were sent here with ?highlight=
+  useEffect(() => {
+    if (highlightId && orders.length && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightId, orders]);
+
   return (
     <div className="w-[75%] mx-auto mt-2">
       {/* Breadcrumb */}
@@ -73,55 +166,66 @@ function Orders() {
       </nav>
 
       {/* Orders Section */}
-      {orders.slice(0, visibleCount).map((order, id) => (
-        <div
-          key={id}
-          className="border p-4 mb-4 rounded-lg shadow-sm bg-white hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm text-gray-500">
-                <strong>Date:</strong> {order.date}
-              </p>
-              <p className="text-lg font-semibold">{order.name}</p>
-              <p className="text-sm text-gray-600">{order.category}</p>
+      {orders.slice(0, visibleCount).map((order, id) => {
+        const orderId = getOrderId(order);
+        const status = normalizeStatus(order);
+        const isHighlighted = highlightId && orderId && String(orderId) === String(highlightId);
+
+        return (
+          <div
+            key={orderId ?? id}
+            ref={isHighlighted ? highlightRef : null}
+            className={`border p-4 mb-4 rounded-lg shadow-sm bg-white hover:shadow-md transition-shadow ${
+              isHighlighted ? "border-[#b49d91] ring-2 ring-[#b49d91]/40" : ""
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                {orderId && (
+                  <p className="text-xs text-gray-400 mb-0.5">Order #{orderId}</p>
+                )}
+                <p className="text-sm text-gray-500">
+                  <strong>Date:</strong> {order.date}
+                </p>
+                <p className="text-lg font-semibold">{order.name}</p>
+                <p className="text-sm text-gray-600">{order.category}</p>
+              </div>
+              <img
+                src={`${API_BASE_IMG}/assets/uploads/${order.image}`}
+                alt={order.name}
+                className="w-20 h-20 object-cover rounded-md"
+              />
             </div>
-            <img
-              src={`${API_BASE_IMG}/assets/uploads/${order.image}`}
-              alt={order.name}
-              className="w-20 h-20 object-cover rounded-md"
-            />
-          </div>
 
-          <div className="grid grid-cols-2 gap-2 text-sm mt-3 text-gray-700">
-            <p>
-              <strong>Price:</strong> ₹{order.price}
-            </p>
-            <p>
-              <strong>Quantity:</strong> {order.qty}
-            </p>
-            <p>
-              <strong>Status:</strong> {order.status}
-            </p>
-            <p>
-              <strong>Delivery:</strong> {order.delivery}
-            </p>
-            <p>
-              <strong>Delivery Charge:</strong> ₹{order.delivery_charge}
-            </p>
-          </div>
+            <div className="grid grid-cols-2 gap-2 text-sm mt-3 text-gray-700">
+              <p>
+                <strong>Price:</strong> ₹{order.price}
+              </p>
+              <p>
+                <strong>Quantity:</strong> {order.qty}
+              </p>
+              <p>
+                <strong>Delivery:</strong> {order.delivery}
+              </p>
+              <p>
+                <strong>Delivery Charge:</strong> ₹{order.delivery_charge}
+              </p>
+            </div>
 
-          {/* View Address button */}
-          <div className="mt-3">
-            <button
-              onClick={() => setSelectedOrder(order)}
-              className="text-sm text-blue-600 hover:underline"
-            >
-              View Address
-            </button>
+            <TrackingSteps status={status} />
+
+            {/* View Address button */}
+            <div className="mt-3">
+              <button
+                onClick={() => setSelectedOrder(order)}
+                className="text-sm text-blue-600 hover:underline"
+              >
+                View Address
+              </button>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {loading && (
         <p className="text-gray-500 text-center mt-4">Loading your orders...</p>
