@@ -14,6 +14,13 @@ import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import AuthModal from '../../../Authmodal/AuthModal';
 import Swal from 'sweetalert2';
+import {
+  trackBeginCheckout,
+  trackAddShippingInfo,
+  trackAddPaymentInfo,
+  trackPurchase,
+  trackPaymentFailed,
+} from '../../../lib/ecommerce';
 
 const API_BASE = '/beta/api';
 
@@ -200,6 +207,8 @@ export default function CheckoutPage() {
       return;
     }
 
+    trackBeginCheckout(cartItems);
+
     setLoading(true);
     try {
       const list = await fetchDefaultAddresses();
@@ -379,6 +388,10 @@ export default function CheckoutPage() {
       return;
     }
     setError('');
+    trackAddShippingInfo(cartItems, {
+      shippingTier: deliveryMethod === 1 ? 'Standard' : String(deliveryMethod),
+      value: chargeSummary.total || total,
+    });
     setStep('confirm');
   };
 
@@ -512,6 +525,7 @@ export default function CheckoutPage() {
 
         theme: { color: '#b49d91' },
         handler: async (resp) => {
+          const purchaseValue = chargeSummary.total || total;
           try {
             const formVerify = new FormData();
             formVerify.append('userid', String(user?.id || guestId));
@@ -531,14 +545,36 @@ export default function CheckoutPage() {
               throw new Error(result?.message || 'Signature verification failed');
             }
 
-            // console.log(result,'finalout')
+            // ✅ Payment verified by the backend — this is the one and only
+            // point where a purchase is confirmed. Fire `purchase` here
+            // (not from OrderConfirmation) so it's tied to a single,
+            // non-repeatable code path: refreshing/back-navigating into
+            // the confirmation page can never re-run this handler.
+            trackPurchase({
+              transactionId: order_id,
+              value: purchaseValue,
+              items: cartItems,
+              shipping: chargeSummary.delivery || 0,
+              tax: chargeSummary.tax || 0,
+            });
 
+            setLoading(false);
+            navigate('/order-confirmation', {
+              state: {
+                order: { order_id, id: order_id },
+                address_id: shippingId,
+              },
+            });
           } catch (err) {
+            // ❌ Signature verification failed — this is NOT a successful
+            // purchase. Stay on checkout and surface the error instead of
+            // navigating to the "Thank you!" page (previous behavior
+            // navigated there unconditionally, showing a fake success page
+            // after a failed payment).
             setError(err.message || 'Payment verification failed');
             Swal(err)
-          } finally {
+            trackPaymentFailed({ orderId: order_id, message: err.message });
             setLoading(false);
-            navigate('/order-confirmation')
           }
         },
         modal: {
@@ -573,6 +609,7 @@ export default function CheckoutPage() {
       rzp.on('payment.failed', async (resp) => {
         setLoading(false);
         setError(resp?.error?.description || 'Payment failed');
+        trackPaymentFailed({ orderId: order_id, message: resp?.error?.description });
         // Restore cart on payment failure too
         try {
           if (cartItems && cartItems.length > 0) {
@@ -591,6 +628,11 @@ export default function CheckoutPage() {
             await refresh();
           }
         } catch (err) { }
+      });
+
+      trackAddPaymentInfo(cartItems, {
+        paymentType: 'Razorpay',
+        value: chargeSummary.total || total,
       });
 
       rzp.open();

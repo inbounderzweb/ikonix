@@ -1,5 +1,5 @@
 // src/components/ProductList.js
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import qs from 'qs';
 import bag from '../../assets/bag.svg';
@@ -12,6 +12,10 @@ import Spinner from '../../components/loader/Spinner';
 
 import { createApiClient } from '../../api/client';
 import { toastSuccess, toastError, truncateName } from '../../utils/toast';
+import { trackViewItemList, trackSelectItem, trackAddToCart } from '../../lib/ecommerce';
+
+const LIST_ID = 'home_bestsellers';
+const LIST_NAME = 'Home - Our Bestsellers';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 const HOME_PRODUCTS_LIMIT = 8;
@@ -82,6 +86,17 @@ export default function ProductList({ hideFilters = false }) {
     [filtered]
   );
 
+  // view_item_list: fire once per distinct rendered list (product ids +
+  // category), not on every unrelated re-render.
+  const lastListKeyRef = useRef(null);
+  useEffect(() => {
+    if (!visibleProducts.length) return;
+    const key = `${selectedCategory}:${visibleProducts.map((p) => p.id).join(',')}`;
+    if (lastListKeyRef.current === key) return;
+    lastListKeyRef.current = key;
+    trackViewItemList(visibleProducts, { listId: LIST_ID, listName: LIST_NAME });
+  }, [visibleProducts, selectedCategory]);
+
   /* ---------------- Guest: add item ---------------- */
   const saveGuestCart = useCallback(
     (product) => {
@@ -111,6 +126,7 @@ export default function ProductList({ hideFilters = false }) {
       // Refresh context so header badge updates instantly in guest mode
       refresh();
       toastSuccess(`${truncateName(product.name)} added to cart`);
+      trackAddToCart(product, variant, 1);
     },
     [refresh]
   );
@@ -126,6 +142,7 @@ export default function ProductList({ hideFilters = false }) {
       if (checkInCart(product.id, variantid)) {
         inc(null, product.id, variantid);
         toastSuccess(`${truncateName(product.name)} quantity increased`);
+        trackAddToCart(product, variant, 1);
         return;
       }
 
@@ -167,6 +184,7 @@ export default function ProductList({ hideFilters = false }) {
         if (resp?.success) {
           refresh();
           toastSuccess(`${truncateName(product.name)} added to cart`);
+          trackAddToCart(product, variant, 1);
         } else {
           refresh(); // rollback by refetch
           toastError(resp?.message || 'Failed to add to cart');
@@ -257,7 +275,10 @@ export default function ProductList({ hideFilters = false }) {
 
                   {/* Product Image */}
                   <img
-                    onClick={() => navigate(`/product-details/${product.id}?vid=${vid}`)}
+                    onClick={() => {
+                      trackSelectItem(product, { listId: LIST_ID, listName: LIST_NAME });
+                      navigate(`/product-details/${product.id}?vid=${vid}`);
+                    }}
                     src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
                     alt={product.name}
                     className="h-full w-full cursor-pointer object-cover scale-105"

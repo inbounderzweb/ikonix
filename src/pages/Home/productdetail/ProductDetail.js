@@ -11,6 +11,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { useCart, readGuest, writeGuest, toKey } from "../../../context/CartContext";
 import { createApiClient } from "../../../api/client";
 import { toastSuccess, toastInfo, toastError, truncateName } from "../../../utils/toast";
+import { trackViewItem, trackAddToCart } from "../../../lib/ecommerce";
 
 const API_BASE = "https://ikonixperfumer.com/beta/api";
 
@@ -284,6 +285,16 @@ export default function ProductDetails() {
     }
   }, [variantOptions, vid, setSp, parseImageList, productImages]);
 
+  // view_item: fire once per distinct product+variant view, not on every re-render.
+  const lastViewedRef = useRef(null);
+  useEffect(() => {
+    if (!product || !selectedVar?.vid) return;
+    const key = `${product.id}:${selectedVar.vid}`;
+    if (lastViewedRef.current === key) return;
+    lastViewedRef.current = key;
+    trackViewItem(product, selectedVar);
+  }, [product, selectedVar]);
+
   const unitPrice = useMemo(() => {
     if (!selectedVar) return 0;
     const sale = Number(selectedVar.sale_price);
@@ -326,6 +337,7 @@ export default function ProductDetails() {
     writeGuest(current);
     refresh();
     toastSuccess(`${truncateName(product.name)} added to cart`);
+    trackAddToCart(product, selectedVar, qty);
   }, [pid, product, selectedVar, qty, refresh]);
 
   const addServer = useCallback(async () => {
@@ -387,6 +399,7 @@ export default function ProductDetails() {
       if (resp?.data?.success || resp?.data?.status) {
         refresh();
         toastSuccess(`${truncateName(product.name)} added to cart`);
+        trackAddToCart(product, selectedVar, qty);
       } else {
         refresh();
         toastError(resp?.data?.message || "Failed to add to cart");
@@ -446,6 +459,7 @@ export default function ProductDetails() {
             { id: Number(pid), variantid, name: product.name, image: product.image, price, qty },
             qty
           );
+          trackAddToCart(product, selectedVar, qty);
         }
 
         writeGuest(current);
@@ -472,6 +486,7 @@ export default function ProductDetails() {
       await refresh();
 
       if (isOk(data)) {
+        trackAddToCart(product, selectedVar, qty);
         navigate("/checkout");
         return;
       }

@@ -8,6 +8,14 @@ import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import WhatsAppWidget from "./components/WhatsAppWidget/WhatsAppWidget";
 import { Toaster } from "react-hot-toast";
+import usePageViewTracking from "./hooks/usePageViewTracking";
+
+// Thin wrapper so the route-change tracking hook (useLocation) runs inside
+// <BrowserRouter>, where App() itself is not.
+function PageViewTracker() {
+  usePageViewTracking();
+  return null;
+}
 
 function App() {
   return (
@@ -15,6 +23,7 @@ function App() {
       <AuthProvider>
         <CartProvider>
           <ScrollToTop />
+          <PageViewTracker />
           <div className="pt-[54px] md:pt-[82px]"> {/* Adjust based on header height */}
             <Header />
           </div>

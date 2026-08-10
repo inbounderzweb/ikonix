@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
+import { trackViewCart } from '../../lib/ecommerce';
 
 export default function CartDrawer({ open, onClose }) {
   const [show, setShow] = useState(open);
@@ -18,6 +19,19 @@ export default function CartDrawer({ open, onClose }) {
     if (!prevOpen.current && open) refresh();
     prevOpen.current = open;
   }, [open, refresh]);
+
+  // view_cart: fire once per open (not on every items change while open).
+  const trackedForOpenRef = useRef(false);
+  useEffect(() => {
+    if (open) {
+      if (!trackedForOpenRef.current && items.length) {
+        trackedForOpenRef.current = true;
+        trackViewCart(items);
+      }
+    } else {
+      trackedForOpenRef.current = false;
+    }
+  }, [open, items]);
 
   // mount/unmount for animation
   useEffect(() => {

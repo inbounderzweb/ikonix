@@ -14,9 +14,12 @@ import { useAuth } from "../../../context/AuthContext";
 import { useCart, readGuest, writeGuest, toKey } from "../../../context/CartContext";
 import { createApiClient } from "../../../api/client";
 import { toastSuccess, toastError, truncateName } from "../../../utils/toast";
+import { trackViewItemList, trackSelectItem, trackAddToCart } from "../../../lib/ecommerce";
 
 const API_BASE = "http://ikonixperfumer.com/beta/api";
 const PRODUCTS_PER_PAGE = 10;
+const LIST_ID = "shop_catalog";
+const LIST_NAME = "Shop Catalog";
 
 const FILTER_STORAGE_KEY = "shopActiveFilter"; // sessionStorage key
 
@@ -165,6 +168,16 @@ export default function Shop() {
     return filtered.slice(start, start + PRODUCTS_PER_PAGE);
   }, [filtered, currentPage]);
 
+  // view_item_list: fire once per distinct rendered page of the list.
+  const lastListKeyRef = useRef(null);
+  useEffect(() => {
+    if (!paginatedProducts.length) return;
+    const key = `${selectedCategory}:${currentPage}:${paginatedProducts.map((p) => p.id).join(',')}`;
+    if (lastListKeyRef.current === key) return;
+    lastListKeyRef.current = key;
+    trackViewItemList(paginatedProducts, { listId: LIST_ID, listName: LIST_NAME });
+  }, [paginatedProducts, selectedCategory, currentPage]);
+
   const resultsTopRef = useRef(null);
 
   const goToPage = useCallback((page) => {
@@ -199,6 +212,7 @@ export default function Shop() {
       writeGuest(current);
       refresh();
       toastSuccess(`${truncateName(product.name)} added to cart`);
+      trackAddToCart(product, variant, 1);
     },
     [refresh]
   );
@@ -213,6 +227,7 @@ export default function Shop() {
       if (checkInCart(product.id, variantid)) {
         inc(null, product.id, variantid);
         toastSuccess(`${truncateName(product.name)} quantity increased`);
+        trackAddToCart(product, variant, 1);
         return;
       }
 
@@ -242,6 +257,7 @@ export default function Shop() {
         if (resp?.success) {
           refresh();
           toastSuccess(`${truncateName(product.name)} added to cart`);
+          trackAddToCart(product, variant, 1);
         } else {
           refresh();
           toastError(resp?.message || "Failed to add to cart");
@@ -343,7 +359,10 @@ export default function Shop() {
                 </button>
 
                 <img
-                  onClick={() => navigate(`/product-details/${product.id}?vid=${vid}`)}
+                  onClick={() => {
+                    trackSelectItem(product, { listId: LIST_ID, listName: LIST_NAME });
+                    navigate(`/product-details/${product.id}?vid=${vid}`);
+                  }}
                   src={`https://ikonixperfumer.com/beta/assets/uploads/${product.image}`}
                   alt={product.name}
                   className="w-full h-40 sm:h-64 object-cover cursor-pointer"
