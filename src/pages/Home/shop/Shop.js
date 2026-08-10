@@ -16,7 +16,7 @@ import { createApiClient } from "../../../api/client";
 import { toastSuccess, toastError, truncateName } from "../../../utils/toast";
 import { trackViewItemList, trackSelectItem, trackAddToCart } from "../../../lib/ecommerce";
 
-const API_BASE = "http://ikonixperfumer.com/beta/api";
+const API_BASE = "https://ikonixperfumer.com/beta/api";
 const PRODUCTS_PER_PAGE = 10;
 const LIST_ID = "shop_catalog";
 const LIST_NAME = "Shop Catalog";
