@@ -1,53 +1,13 @@
-import { useEffect, useCallback } from 'react';
-import axios from 'axios';
-import qs from 'qs';
-import { useAuth } from '../context/AuthContext';
 import Home from '../pages/Home/Home';
 
+// Token bootstrapping (both the real user session and the anonymous guest
+// token) is handled globally by ValidateOnLoad + api/client.js, which run on
+// every route. This component used to duplicate that with its own
+// unguarded anonymous-login fetch that had no idea whether a real user was
+// logged in — it would silently overwrite a logged-in user's JWT with the
+// anonymous token. Removed rather than fixed in place, since the logic
+// already exists correctly elsewhere.
 export default function AppLayout() {
-  const { setToken } = useAuth();
-  const fetchToken = useCallback(async () => {
-    try {
-      const response = await axios.post(
-        'https://ikonixperfumer.com/beta/api/validate',
-        qs.stringify({
-          email: 'api@ikonix.com',
-          password: 'dvu1Fl]ZmiRoYlx5',
-        }),
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        }
-      );
-
-      const tokenValue = response.data?.token;
-      if (tokenValue) {
-        localStorage.setItem('authToken', tokenValue);
-        localStorage.setItem('authTokenTime', Date.now().toString());
-        setToken(tokenValue);
-        console.log('✅ Token fetched & saved globally',tokenValue);
-      }
-    } catch (err) {
-      console.error('❌ Global token fetch failed:', err?.response?.data || err.message);
-    }
-  }, [setToken]);
-
-  useEffect(() => {
-    const savedToken = localStorage.getItem('authToken');
-    const savedTime = localStorage.getItem('authTokenTime');
-    const now = Date.now();
-
-    const isExpired =
-      !savedToken || !savedTime || now - parseInt(savedTime, 10) >= 86400000;
-
-    if (isExpired) {
-      fetchToken();
-    } else {
-      setToken(savedToken);
-    }
-  }, [setToken, fetchToken]);
-
   return (
     <>
       {/* Common layout: header, nav, footer (optional) */}

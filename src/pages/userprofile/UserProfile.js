@@ -10,7 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 
 export default function UserProfile() {
-  const { user, setUser } = useAuth();
+  const { user, setUser, setToken } = useAuth();
   const navigate = useNavigate();
 
   const [showToken, setShowToken] = useState(false);
@@ -19,7 +19,7 @@ export default function UserProfile() {
   const handleLogout = () => {
     localStorage.removeItem('authUser');
     setUser(null);
-    // setToken('');
+    setToken('');
     navigate('/');
   };
 
