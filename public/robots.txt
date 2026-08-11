@@ -1,15 +1,15 @@
-# robots.txt for https://www.ayushmanayurvedic.in/
+# robots.txt for https://ikonixperfumer.com/
 # https://www.robotstxt.org/robotstxt.html
 
 User-agent: *
-Disallow: /login
-Disallow: /blog/wp-admin/
-Disallow: /blog/wp-includes/
-Disallow: /blog/wp-content/plugins/
-Disallow: /?s=
-Disallow: /blog/?s=
+Disallow: /checkout
+Disallow: /payment-landing
+Disallow: /order-confirmation
+Disallow: /profile
+Disallow: /user-profile
+Disallow: /orders
+Disallow: /addresses
 Allow: /
 
-# Sitemaps
-Sitemap: https://www.ayushmanayurvedic.in/sitemap.xml
-Sitemap: https://www.ayushmanayurvedic.in/blog/sitemap_index.xml
+# Sitemap
+Sitemap: https://ikonixperfumer.com/sitemap.xml

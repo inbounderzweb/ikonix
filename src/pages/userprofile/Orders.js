@@ -1,5 +1,11 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import {
+  ClipboardDocumentCheckIcon,
+  TruckIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from "@heroicons/react/24/solid";
 import { useAuth } from "../../context/AuthContext";
 import { createApiClient } from "../../api/client";
 import qs from "qs";
@@ -7,14 +13,28 @@ import qs from "qs";
 const API_BASE = "https://ikonixperfumer.com/beta/api";
 const API_BASE_IMG = "https://ikonixperfumer.com/beta/";
 
-const TRACKING_STEPS = ["Placed", "Processing", "Shipped", "Delivered"];
+// Confirmed backend vocabulary (from real order payloads) is just these three
+// strings: "Processing" (order just placed, being prepped), "Confirmed"
+// (order confirmed & dispatched/shipped), "Delivered" (order handed over).
+// Cancellation isn't confirmed from a real payload yet, so it's still guessed.
+const TRACKING_STEPS = [
+  {
+    label: "Order Placed",
+    message: "We've received your order and it's being prepared.",
+    icon: ClipboardDocumentCheckIcon,
+  },
+  {
+    label: "Dispatched",
+    message: "Your order has been confirmed and is on its way.",
+    icon: TruckIcon,
+  },
+  {
+    label: "Delivered",
+    message: "Your order has been delivered. Enjoy!",
+    icon: CheckCircleIcon,
+  },
+];
 
-// The backend's exact status field name/values aren't confirmed yet, so this
-// normalizer is deliberately defensive: it tries common field names and
-// common status vocabularies (word-based or numeric 0-3) instead of assuming
-// one shape, and always falls back to "Order Placed" rather than rendering
-// blank. Check the console.log below against a real order and adjust the
-// keyword lists here if the backend uses different wording.
 function normalizeStatus(order) {
   const raw =
     order?.status ??
@@ -25,22 +45,21 @@ function normalizeStatus(order) {
     "";
   const s = String(raw).trim().toLowerCase();
 
-  if (!s) return { label: "Order Placed", step: 0, cancelled: false, raw };
-  if (/cancel|refund|return/.test(s)) return { label: String(raw), step: -1, cancelled: true, raw };
-  if (/deliver/.test(s)) return { label: "Delivered", step: 3, cancelled: false, raw };
-  if (/transit|out for/.test(s)) return { label: "Out for Delivery", step: 2, cancelled: false, raw };
-  if (/ship|dispatch/.test(s)) return { label: "Shipped", step: 2, cancelled: false, raw };
-  if (/process|confirm|pack/.test(s)) return { label: "Processing", step: 1, cancelled: false, raw };
-  if (/pending|placed|new/.test(s)) return { label: "Order Placed", step: 0, cancelled: false, raw };
+  if (!s) return { step: 0, cancelled: false, raw };
+  if (/cancel|refund|return/.test(s)) return { step: -1, cancelled: true, raw };
+  if (/deliver/.test(s)) return { step: 2, cancelled: false, raw };
+  if (/confirm|dispatch|ship|transit|out for/.test(s)) return { step: 1, cancelled: false, raw };
+  if (/process|pending|placed|new|pack/.test(s)) return { step: 0, cancelled: false, raw };
 
   const n = Number(raw);
   if (!Number.isNaN(n) && raw !== "") {
     const clamped = Math.max(0, Math.min(TRACKING_STEPS.length - 1, Math.round(n)));
-    return { label: TRACKING_STEPS[clamped], step: clamped, cancelled: false, raw };
+    return { step: clamped, cancelled: false, raw };
   }
 
-  // Unrecognized non-empty string — show it as-is rather than guessing.
-  return { label: String(raw), step: 0, cancelled: false, raw };
+  // Unrecognized non-empty string — still show a stepper at step 0 rather
+  // than guessing progress, but the raw text below stays visible.
+  return { step: 0, cancelled: false, raw };
 }
 
 function getOrderId(order) {
@@ -51,33 +70,42 @@ function TrackingSteps({ status }) {
   if (status.cancelled) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
-        {status.label || "Cancelled"}
+        <XCircleIcon className="h-4 w-4" />
+        {status.raw || "Cancelled"}
       </span>
     );
   }
 
+  const current = TRACKING_STEPS[Math.max(0, status.step)];
+
   return (
-    <div className="flex items-center mt-3">
-      {TRACKING_STEPS.map((label, i) => {
-        const done = i <= status.step;
-        return (
-          <React.Fragment key={label}>
-            <div className="flex flex-col items-center gap-1 w-[70px] text-center">
-              <div
-                className={`h-3 w-3 rounded-full ${
-                  done ? "bg-[#b49d91]" : "bg-gray-200"
-                }`}
-              />
-              <span className={`text-[10px] leading-tight ${done ? "text-[#6b5d52] font-medium" : "text-gray-400"}`}>
-                {label}
-              </span>
-            </div>
-            {i < TRACKING_STEPS.length - 1 && (
-              <div className={`h-0.5 flex-1 -mt-4 ${i < status.step ? "bg-[#b49d91]" : "bg-gray-200"}`} />
-            )}
-          </React.Fragment>
-        );
-      })}
+    <div className="mt-3">
+      <div className="flex items-center">
+        {TRACKING_STEPS.map((s, i) => {
+          const done = i <= status.step;
+          const Icon = s.icon;
+          return (
+            <React.Fragment key={s.label}>
+              <div className="flex flex-col items-center gap-1 w-[70px] text-center">
+                <div
+                  className={`flex h-6 w-6 items-center justify-center rounded-full ${
+                    done ? "bg-[#b49d91] text-white" : "bg-gray-200 text-gray-400"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                </div>
+                <span className={`text-[10px] leading-tight ${done ? "text-[#6b5d52] font-medium" : "text-gray-400"}`}>
+                  {s.label}
+                </span>
+              </div>
+              {i < TRACKING_STEPS.length - 1 && (
+                <div className={`h-0.5 flex-1 -mt-4 ${i < status.step ? "bg-[#b49d91]" : "bg-gray-200"}`} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-xs text-gray-500">{current.message}</p>
     </div>
   );
 }
