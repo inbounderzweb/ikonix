@@ -6,6 +6,8 @@ import qs from 'qs';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { ensureGuestTokenReady } from '../api/client';
+import { getApiErrorMessage, getResponseMessage } from '../utils/apiError';
+import { isStrongPassword, getPasswordChecks, getPasswordScore, getPasswordStrengthLabel } from '../utils/password';
 import {
   XMarkIcon,
   LockClosedIcon,
@@ -24,6 +26,7 @@ export default function AuthModal({ open, onClose }) {
     name: '',
     mobile: '',
     password: '',
+    confirmPassword: '',
     newPassword: '',
   });
 
@@ -42,7 +45,7 @@ export default function AuthModal({ open, onClose }) {
   // clear fields whenever we leave the OTP screen
   useEffect(() => {
     if (tab !== 'otp') {
-      setForm({ name: '', mobile: '', password: '', newPassword: '' });
+      setForm({ name: '', mobile: '', password: '', confirmPassword: '', newPassword: '' });
       setOtp(Array(OTP_LENGTH).fill(''));
       setMobileError('');
     }
@@ -85,13 +88,7 @@ export default function AuthModal({ open, onClose }) {
 
   const handleField = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const extractError = (e, fallback) => {
-    const messages = e.response?.data?.message;
-    if (!messages) return fallback;
-    if (typeof messages === 'string') return messages;
-    if (typeof messages === 'object') return Object.values(messages)[0] || fallback;
-    return fallback;
-  };
+  const extractError = (e, fallback) => getApiErrorMessage(e, fallback);
 
   const validateMobile = () => {
     if (!MOBILE_REGEX.test(form.mobile)) {
@@ -106,6 +103,12 @@ export default function AuthModal({ open, onClose }) {
   const sendOtp = async (flow = tab) => {
     if (!validateMobile()) return;
     if (flow === 'register' && !form.name.trim()) return Swal('Enter your name');
+    if (flow === 'register' && !isStrongPassword(form.password)) {
+      return Swal('Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a special character.');
+    }
+    if (flow === 'register' && form.password !== form.confirmPassword) {
+      return Swal('Passwords do not match');
+    }
     if (flow === 'reset' && form.newPassword.length < 6) return Swal('New password must be at least 6 characters');
 
     setOtpFlow(flow);
@@ -126,7 +129,7 @@ export default function AuthModal({ open, onClose }) {
     try {
       const { data } = await apiPost(url, payload);
       if (data.status === false) {
-        Swal(data.message || 'Failed to send OTP');
+        Swal(getResponseMessage(data, 'Failed to send OTP'));
         return;
       }
       setVToken(data.verify_token || data.vtoken || '');
@@ -156,10 +159,10 @@ export default function AuthModal({ open, onClose }) {
         };
         const { data } = await apiPost(`${API_BASE}/forgot-password`, payload);
         if (data.status === true) {
-          Swal(data.message || 'Password reset successful');
+          Swal(getResponseMessage(data, 'Password reset successful'));
           setTab('login');
         } else {
-          Swal(data.message || 'Reset verification failed');
+          Swal(getResponseMessage(data, 'Reset verification failed'));
         }
         return;
       }
@@ -175,7 +178,7 @@ export default function AuthModal({ open, onClose }) {
       };
       const { data } = await apiPost(isLogin ? `${API_BASE}/login` : `${API_BASE}/register`, payload);
       if (!data.token || !data.user) {
-        Swal(data.message || 'Verification failed');
+        Swal(getResponseMessage(data, 'Verification failed'));
         return;
       }
       await finalizeLogin(data);
@@ -296,8 +299,25 @@ export default function AuthModal({ open, onClose }) {
           <div>
             <Input type="text" placeholder="Full name" value={form.name} onChange={e=>handleField('name',e.target.value)}/>
             <MobileInput value={form.mobile} onChange={v=>handleField('mobile', v)} error={mobileError}/>
-            <Input type="password" placeholder="Password" value={form.password} onChange={e=>handleField('password',e.target.value)}/>
-            <PrimaryBtn onClick={()=>sendOtp('register')} label="Send verification code" loading={sending} loadingLabel="Sending..." disabled={!form.name.trim() || !MOBILE_REGEX.test(form.mobile)}/>
+            <Input type="password" placeholder="Password" value={form.password} onChange={e=>handleField('password',e.target.value)} className="w-full p-3 mb-1 border border-[#eadcd5] rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#b49d91]"/>
+            <PasswordStrengthMeter password={form.password} />
+            <ConfirmPasswordInput
+              value={form.confirmPassword}
+              onChange={v=>handleField('confirmPassword', v)}
+              mismatch={form.confirmPassword && form.password !== form.confirmPassword}
+            />
+            <PrimaryBtn
+              onClick={()=>sendOtp('register')}
+              label="Send verification code"
+              loading={sending}
+              loadingLabel="Sending..."
+              disabled={
+                !form.name.trim() ||
+                !MOBILE_REGEX.test(form.mobile) ||
+                !isStrongPassword(form.password) ||
+                form.password !== form.confirmPassword
+              }
+            />
           </div>
         )}
 
@@ -356,8 +376,56 @@ export default function AuthModal({ open, onClose }) {
 }
 
 /* UI helpers */
-const Input = props => (
-  <input {...props} className="w-full p-3 mb-4 border border-[#eadcd5] rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#b49d91]" />
+const Input = ({ className, ...props }) => (
+  <input
+    {...props}
+    className={className || 'w-full p-3 mb-4 border border-[#eadcd5] rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#b49d91]'}
+  />
+);
+
+const STRENGTH_COLORS = ['bg-red-400', 'bg-red-400', 'bg-yellow-400', 'bg-yellow-400', 'bg-green-500', 'bg-green-500'];
+
+const PasswordStrengthMeter = ({ password }) => {
+  if (!password) return <div className="mb-3" />;
+  const score = getPasswordScore(password);
+  const checks = getPasswordChecks(password);
+  return (
+    <div className="mb-3">
+      <div className="flex gap-1 mb-1.5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <span
+            key={i}
+            className={`h-1.5 flex-1 rounded-full ${i < score ? STRENGTH_COLORS[score] : 'bg-gray-200'}`}
+          />
+        ))}
+      </div>
+      <p className="text-xs text-[#6d5a52] mb-1">{getPasswordStrengthLabel(score)}</p>
+      <ul className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+        {checks.map((c) => (
+          <li key={c.label} className={`text-[10.5px] leading-tight ${c.passed ? 'text-green-600' : 'text-gray-400'}`}>
+            {c.passed ? '✓' : '·'} {c.label}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+const ConfirmPasswordInput = ({ value, onChange, mismatch }) => (
+  <div>
+    <input
+      type="password"
+      placeholder="Confirm password"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`w-full p-3 mb-1 border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#b49d91] ${
+        mismatch ? 'border-red-400' : 'border-[#eadcd5]'
+      }`}
+    />
+    <p className={`text-xs mb-3 ${mismatch ? 'text-red-500' : 'invisible'}`}>
+      {mismatch ? 'Passwords do not match' : 'placeholder'}
+    </p>
+  </div>
 );
 
 const MobileInput = ({ value, onChange, error }) => (

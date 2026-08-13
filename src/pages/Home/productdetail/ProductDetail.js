@@ -11,6 +11,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { useCart, readGuest, writeGuest, toKey } from "../../../context/CartContext";
 import { createApiClient } from "../../../api/client";
 import { toastSuccess, toastInfo, toastError, truncateName } from "../../../utils/toast";
+import { getApiErrorMessage, getResponseMessage, isAuthError } from "../../../utils/apiError";
 import { trackViewItem, trackAddToCart } from "../../../lib/ecommerce";
 
 const API_BASE = "https://ikonixperfumer.com/beta/api";
@@ -402,14 +403,19 @@ export default function ProductDetails() {
         trackAddToCart(product, selectedVar, qty);
       } else {
         refresh();
-        toastError(resp?.data?.message || "Failed to add to cart");
+        toastError(getResponseMessage(resp?.data, "Failed to add to cart"));
       }
     } catch (e) {
       console.error("add to cart error:", e?.response?.data || e);
       refresh();
-      toastError("Error adding to cart");
+      if (isAuthError(e)) {
+        setToken('');
+        toastError('Your session has expired. Please log in again.');
+      } else {
+        toastError(getApiErrorMessage(e, "Error adding to cart"));
+      }
     }
-  }, [product, selectedVar, pid, qty, token, user, addGuest, addOrIncLocal, addServer, refresh, checkInCart]);
+  }, [product, selectedVar, pid, qty, token, user, setToken, addGuest, addOrIncLocal, addServer, refresh, checkInCart]);
 
 
 
@@ -490,11 +496,11 @@ export default function ProductDetails() {
         navigate("/checkout");
         return;
       }
-      toastError(data?.message || "Failed to add to cart");
+      toastError(getResponseMessage(data, "Failed to add to cart"));
     } catch (e) {
       console.error("BUY NOW error:", e?.response?.data || e);
       try { await refresh(); } catch {}
-      toastError(e?.response?.data?.message || e?.message || "Error adding product");
+      toastError(getApiErrorMessage(e, e?.message || "Error adding product"));
     }
   }, [
     product,
@@ -741,6 +747,9 @@ export default function ProductDetails() {
               </span> */}
               <span className="inline-block bg-[#EDE2DD] border border-[#B39384] py-[8px] px-[20px] rounded-[24px] font-[Lato] text-[16px] text-[#8C7367] tracking-[0.5px]">
                Enjoy Free Delivery on Orders Over ₹1,099/-
+              </span>
+              <span className="inline-block bg-[#EDE2DD] border border-[#B39384] py-[8px] px-[20px] rounded-[24px] font-[Lato] text-[16px] text-[#8C7367] tracking-[0.5px]">
+               🎁 Spend ₹3,000+ & Get a Complimentary Tester Pack
               </span>
             </div>
 

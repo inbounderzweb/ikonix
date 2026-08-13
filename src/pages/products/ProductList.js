@@ -12,6 +12,7 @@ import Spinner from '../../components/loader/Spinner';
 
 import { createApiClient } from '../../api/client';
 import { toastSuccess, toastError, truncateName } from '../../utils/toast';
+import { getApiErrorMessage, getResponseMessage, isAuthError } from '../../utils/apiError';
 import { trackViewItemList, trackSelectItem, trackAddToCart } from '../../lib/ecommerce';
 
 const LIST_ID = 'home_bestsellers';
@@ -187,16 +188,20 @@ export default function ProductList({ hideFilters = false }) {
           trackAddToCart(product, variant, 1);
         } else {
           refresh(); // rollback by refetch
-          toastError(resp?.message || 'Failed to add to cart');
+          toastError(getResponseMessage(resp, 'Failed to add to cart'));
         }
       } catch (error) {
-        // client.js should re-auth + retry automatically; if it still fails, we rollback
         console.error('❌ Error adding to cart:', error?.response?.data || error);
-        refresh();
-        toastError('Error adding to cart');
+        refresh(); // rollback the optimistic update by refetching server truth
+        if (isAuthError(error)) {
+          setToken('');
+          toastError('Your session has expired. Please log in again.');
+        } else {
+          toastError(getApiErrorMessage(error, 'Error adding to cart'));
+        }
       }
     },
-    [api, token, user, addOrIncLocal, refresh, saveGuestCart, checkInCart, inc]
+    [api, token, user, setToken, addOrIncLocal, refresh, saveGuestCart, checkInCart, inc]
   );
 
   if (isLoading) {

@@ -14,6 +14,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { useCart, readGuest, writeGuest, toKey } from "../../../context/CartContext";
 import { createApiClient } from "../../../api/client";
 import { toastSuccess, toastError, truncateName } from "../../../utils/toast";
+import { getApiErrorMessage, getResponseMessage, isAuthError } from "../../../utils/apiError";
 import { trackViewItemList, trackSelectItem, trackAddToCart } from "../../../lib/ecommerce";
 
 const API_BASE = "https://ikonixperfumer.com/beta/api";
@@ -260,15 +261,20 @@ export default function Shop() {
           trackAddToCart(product, variant, 1);
         } else {
           refresh();
-          toastError(resp?.message || "Failed to add to cart");
+          toastError(getResponseMessage(resp, "Failed to add to cart"));
         }
       } catch (e) {
         console.error("add to cart error:", e?.response?.data || e);
         refresh();
-        toastError("Error adding to cart");
+        if (isAuthError(e)) {
+          setToken('');
+          toastError('Your session has expired. Please log in again.');
+        } else {
+          toastError(getApiErrorMessage(e, 'Error adding to cart'));
+        }
       }
     },
-    [api, token, user, addOrIncLocal, refresh, saveGuestCart, checkInCart, inc]
+    [api, token, user, setToken, addOrIncLocal, refresh, saveGuestCart, checkInCart, inc]
   );
 
   if (isLoading) {

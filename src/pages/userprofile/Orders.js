@@ -8,6 +8,7 @@ import {
 } from "@heroicons/react/24/solid";
 import { useAuth } from "../../context/AuthContext";
 import { createApiClient } from "../../api/client";
+import { getCourierInfo } from "../../utils/courierTracking";
 import qs from "qs";
 
 const API_BASE = "https://ikonixperfumer.com/beta/api";
@@ -110,6 +111,44 @@ function TrackingSteps({ status }) {
   );
 }
 
+function CourierTracking({ courier }) {
+  const [copied, setCopied] = useState(false);
+
+  const copyId = async () => {
+    try {
+      await navigator.clipboard.writeText(courier.trackingId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard API unavailable — nothing to fall back to here
+    }
+  };
+
+  return (
+    <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2">
+      <div className="min-w-0">
+        <p className="text-xs text-gray-500">{courier.courierName} tracking ID</p>
+        <div className="flex items-center gap-2">
+          <p className="truncate text-sm font-medium text-gray-800">{courier.trackingId}</p>
+          <button onClick={copyId} className="shrink-0 text-xs text-blue-600 hover:underline">
+            {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+      </div>
+      {courier.trackingUrl && (
+        <a
+          href={courier.trackingUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 rounded-full bg-[#b49d91] px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+        >
+          Track Package
+        </a>
+      )}
+    </div>
+  );
+}
+
 function Orders() {
   const { user, token, setToken, setIsTokenReady } = useAuth();
   const [searchParams] = useSearchParams();
@@ -197,6 +236,7 @@ function Orders() {
       {orders.slice(0, visibleCount).map((order, id) => {
         const orderId = getOrderId(order);
         const status = normalizeStatus(order);
+        const courier = getCourierInfo(order);
         const isHighlighted = highlightId && orderId && String(orderId) === String(highlightId);
 
         return (
@@ -241,6 +281,8 @@ function Orders() {
             </div>
 
             <TrackingSteps status={status} />
+
+            {courier && <CourierTracking courier={courier} />}
 
             {/* View Address button */}
             <div className="mt-3">

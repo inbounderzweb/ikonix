@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import { useCart, readGuest, writeGuest, toKey } from '../../../context/CartContext';
 import { toastSuccess, toastError, truncateName } from '../../../utils/toast';
+import { getApiErrorMessage, getResponseMessage, isAuthError } from '../../../utils/apiError';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
@@ -14,7 +15,7 @@ function DiscoverMore() {
 
     const navigate = useNavigate()
   const [moreProducts, setMoreProducts] = useState([]);
-   const { user, token, isTokenReady } = useAuth();
+   const { user, token, setToken, isTokenReady } = useAuth();
   const { data, isLoading, isError, refetch } = useGetProductsQuery(undefined, { skip: !isTokenReady });
 
   // ✅ Use CartContext as source of truth so the header/mobile-nav badge
@@ -97,12 +98,17 @@ const handleViewDetails = (item) => {
         toastSuccess(`${truncateName(product.name)} added to cart`);
       } else {
         refresh();
-        toastError(resp?.message || 'Failed to add to cart');
+        toastError(getResponseMessage(resp, 'Failed to add to cart'));
       }
     } catch (err) {
       console.error('Error adding to cart:', err?.response?.data || err);
       refresh();
-      toastError('Error adding to cart. See console.');
+      if (isAuthError(err)) {
+        setToken('');
+        toastError('Your session has expired. Please log in again.');
+      } else {
+        toastError(getApiErrorMessage(err, 'Error adding to cart'));
+      }
     }
   };
 

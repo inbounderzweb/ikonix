@@ -12,8 +12,9 @@ import qs from "qs";
 import { useAuth } from "./AuthContext";
 import { createApiClient } from "../api/client";
 import { toastSuccess, toastError, truncateName } from "../utils/toast";
+import { getApiErrorMessage, isAuthError } from "../utils/apiError";
 
-const API_BASE = "/beta/api";
+const API_BASE = "https://ikonixperfumer.com/beta/api";
 const CartContext = createContext();
 
 /* ---------------- Guest storage helpers (ONE SHAPE) ----------------
@@ -158,6 +159,18 @@ export function CartProvider({ children }) {
       }),
     [token, setToken, setIsTokenReady]
   );
+
+  // Surfaces the backend's actual error text (it uses `error` as often as
+  // `message`) and, on an expired/invalid session, clears the dead token
+  // instead of showing a vague "couldn't update" toast forever.
+  const reportCartError = useCallback((err, fallback) => {
+    if (isAuthError(err)) {
+      setToken('');
+      toastError('Your session has expired. Please log in again.');
+    } else {
+      toastError(getApiErrorMessage(err, fallback));
+    }
+  }, [setToken]);
 
   // Avoid double fetch / double sync
   const fetchingRef = useRef(false);
@@ -310,8 +323,8 @@ export function CartProvider({ children }) {
         );
         // optimistic update already reflects the new qty; no refetch needed
       } catch (e) {
-        console.error("inc error:", e);
-        toastError("Couldn't update quantity");
+        console.error("inc error:", e?.response?.data || e);
+        reportCartError(e, "Couldn't update quantity");
         fetchCart(); // resync/rollback to server truth
       } finally {
         pendingItemsRef.current.delete(key);
@@ -325,7 +338,7 @@ export function CartProvider({ children }) {
         writeGuest(guest);
       }
     },
-    [api, user, getEffectiveUserId, addOrIncLocal, fetchCart]
+    [api, user, getEffectiveUserId, addOrIncLocal, fetchCart, reportCartError]
   );
 
   const dec = useCallback(
@@ -358,8 +371,8 @@ export function CartProvider({ children }) {
         );
         // optimistic update already reflects the new qty; no refetch needed
       } catch (e) {
-        console.error("dec error:", e);
-        toastError("Couldn't update quantity");
+        console.error("dec error:", e?.response?.data || e);
+        reportCartError(e, "Couldn't update quantity");
         fetchCart(); // resync/rollback to server truth
       } finally {
         pendingItemsRef.current.delete(key);
@@ -372,7 +385,7 @@ export function CartProvider({ children }) {
         writeGuest(guest);
       }
     },
-    [api, user, getEffectiveUserId, fetchCart, items]
+    [api, user, getEffectiveUserId, fetchCart, items, reportCartError]
   );
 
   const remove = useCallback(
@@ -404,8 +417,8 @@ export function CartProvider({ children }) {
           // item already removed from local state; no refetch needed
           toastSuccess(removedName ? `${truncateName(removedName)} removed from cart` : "Item removed from cart");
         } catch (e) {
-          console.error("remove error:", e);
-          toastError("Couldn't remove item");
+          console.error("remove error:", e?.response?.data || e);
+          reportCartError(e, "Couldn't remove item");
           fetchCart(); // resync/rollback to server truth
         } finally {
           pendingItemsRef.current.delete(key);
@@ -420,7 +433,7 @@ export function CartProvider({ children }) {
         writeGuest(guest);
       }
     },
-    [api, user, getEffectiveUserId, fetchCart, items]
+    [api, user, getEffectiveUserId, fetchCart, items, reportCartError]
   );
 
   const clear = useCallback(() => {

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { createApiClient } from "../../api/client";
+import { getResponseMessage } from "../../utils/apiError";
 import axios from "axios";
 import qs from "qs";
 
@@ -178,7 +179,7 @@ function AddresList() {
         }
       );
       setIsEditOpen(false);
-      alert(response.data.message,'address edit response')
+      alert(getResponseMessage(response.data, 'Address updated'))
       fetchAddress(); // refresh addresses
     } catch (err) {
       console.error("Error editing address:", err);
@@ -203,7 +204,7 @@ const handleDelete = async (addr) => {
       }
     );
 
-    alert(response.data.message || "Address deleted");
+    alert(getResponseMessage(response.data, "Address deleted"));
     fetchAddress(); // refresh addresses
   } catch (err) {
     console.error("Error deleting address:", err);
@@ -300,7 +301,7 @@ const handleDelete = async (addr) => {
       );
       setIsAddOpen(false);
       setAddFormData({});
-      alert(response.data.message || "Address added");
+      alert(getResponseMessage(response.data, "Address added"));
       fetchAddress(); // refresh addresses
     } catch (err) {
       console.error("Error adding address:", err);

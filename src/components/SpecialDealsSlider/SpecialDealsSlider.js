@@ -15,7 +15,7 @@ const deals = [
     blurb: "Experience our signature fragrances at special prices",
     oldPrice: "Rs.899/-",
     newPrice: "Rs.699/-",
-    dataurl: `/product-details/68?vid=1`,
+    dataurl: `/shop`,
   },
   {
     id: 2,
@@ -24,7 +24,7 @@ const deals = [
     blurb: "Experience our signature fragrances at special prices",
     oldPrice: "Rs.899/-",
     newPrice: "Rs.699/-",
-    dataurl: `product-details/68?vid=1`,
+    dataurl: `/shop`,
 
   },
 ];
@@ -75,21 +75,21 @@ function DealCard({ deal, onNavigate }) {
         className="w-full h-full object-cover"
       />
       <div className="absolute inset-0 bg-black/20 md:bg-transparent z-10" />
-      <div className="absolute inset-0 z-20 flex flex-col justify-center md:pl-[50%] p-6 text-white text-left">
-        <span className="text-[18px] md:text-[27px] font-heading">
+      <div className="absolute inset-0 z-20 flex flex-col justify-center md:pl-[50%] p-4 md:p-6 text-white text-left">
+        <span className="text-[14px] leading-snug md:text-[27px] font-heading">
           {deal.title1}
         </span>
-        <p className="text-[13px] font-fancy">{deal.blurb}</p>
-        <div className="flex flex-wrap items-center gap-4 mt-4">
+        <p className="text-[11px] leading-snug md:text-[13px] font-fancy mt-1 md:mt-0">{deal.blurb}</p>
+        <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-2 md:mt-4">
           <div className="grid">
-            <span className="line-through text-[#F9F6F4] text-[12px] font-normal font-fancy">
+            <span className="line-through text-[#F9F6F4] text-[10px] md:text-[12px] font-normal font-fancy">
               {deal.oldPrice}
             </span>
-            <span className="text-[#F9F6F4] text-[16px] font-[700] font-fancy">
+            <span className="text-[#F9F6F4] text-[13px] md:text-[16px] font-[700] font-fancy">
               {deal.newPrice}
             </span>
           </div>
-          <button onClick={() => onNavigate(deal.dataurl)} className="text-[#13181F] font-fancy text-[14px] bg-[#C5A291] py-[8px] px-[20px] rounded-[24px]">
+          <button onClick={() => onNavigate(deal.dataurl)} className="text-[#13181F] font-fancy text-[12px] md:text-[14px] bg-[#C5A291] py-[6px] md:py-[8px] px-[16px] md:px-[20px] rounded-[24px]">
             Add To Cart
           </button>
         </div>

@@ -8,10 +8,10 @@ import ToastCard from "../components/toast/ToastCard";
 
 const MOBILE_BREAKPOINT = 768;
 
-// Large screens: top-center. Small screens: bottom-right.
+// Large screens: top-center. Small screens: bottom-center.
 const getPosition = () =>
   typeof window !== "undefined" && window.innerWidth < MOBILE_BREAKPOINT
-    ? "bottom-right"
+    ? "bottom-center"
     : "top-center";
 
 export function showToast({ icon = "success", title, text, timer = 2500 } = {}) {

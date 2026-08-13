@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import qs from 'qs';
 import loadRazorpay from '../../../utils/loadRazorpay';
+import { getResponseMessage, getApiErrorMessage } from '../../../utils/apiError';
 import {
   XMarkIcon,
   PlusIcon,
@@ -22,7 +23,10 @@ import {
   trackPaymentFailed,
 } from '../../../lib/ecommerce';
 
-const API_BASE = '/beta/api';
+const API_BASE = 'https://ikonixperfumer.com/beta/api';
+// Same rule AuthModal.js uses for login/register/reset — Indian mobile
+// numbers are 10 digits starting with 6-9.
+const MOBILE_REGEX = /^[6-9]\d{9}$/;
 
 /**
  * Checkout Page
@@ -43,6 +47,7 @@ export default function CheckoutPage() {
     syncGuestToServer,
     guestId,
     api,
+    clear,
   } = useCart();
 
   /* Always refresh on mount + on auth change */
@@ -54,13 +59,6 @@ export default function CheckoutPage() {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [refresh]);
 
-  /* ✅ MANDATORY LOGIN: Show modal if not logged in */
-  useEffect(() => {
-    if (!user) {
-      setShowAuthModal(true);
-    }
-  }, [user]);
-
   /* Totals (rupees) */
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
   const total = subtotal;
@@ -68,6 +66,8 @@ export default function CheckoutPage() {
   /* Modals & steps */
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
+  /* Guest checkout (no login) — reveals the guest details form below the cart */
+  const [guestMode, setGuestMode] = useState(false);
   // 'form' | 'select' | 'confirm'
   const [step, setStep] = useState('form');
 
@@ -96,7 +96,8 @@ export default function CheckoutPage() {
   const [shippingId, setShippingId] = useState(null);
   const [billingId, setBillingId] = useState(null);
   const [sameAsShip, setSameAsShip] = useState(true);
-  const [deliveryMethod] = useState(1); // Standard only
+  const [deliveryMethods, setDeliveryMethods] = useState([]); // [{id, name, charge}]
+  const [deliveryMethod, setDeliveryMethod] = useState(1); // selected id, defaults to Standard
   const [chargeSummary, setChargeSummary] = useState({
     delivery: 0,
     tax: null,
@@ -166,6 +167,39 @@ export default function CheckoutPage() {
     const selectedAddress = addresses.find(a => String(a.id) === String(activeBillId));
     return selectedAddress?.country || form.country || 'India';
   };
+
+  /* Delivery methods — fetched once from the backend instead of being
+     hardcoded to "Standard", used by both the logged-in and guest flows. */
+  const normalizeDeliveryMethod = (d, i) => ({
+    id: d.id ?? d.method_id ?? d.delivery_method_id ?? i + 1,
+    name: d.name ?? d.method ?? d.title ?? `Method ${i + 1}`,
+    charge: Number(d.charge ?? d.price ?? d.amount ?? d.delivery_charge ?? 0) || 0,
+    eta: d.eta ?? d.duration ?? d.days ?? '',
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await api.get(`${API_BASE}/delivery-methods`);
+        const raw = data?.data ?? data ?? [];
+        const list = (Array.isArray(raw) ? raw : [raw]).filter(Boolean).map(normalizeDeliveryMethod);
+        if (!cancelled && list.length) {
+          setDeliveryMethods(list);
+          setDeliveryMethod((current) =>
+            list.some((m) => String(m.id) === String(current)) ? current : list[0].id
+          );
+        }
+      } catch (err) {
+        console.error('Failed to load delivery methods, defaulting to Standard:', err?.response?.data || err);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api]);
+
+  const selectedDeliveryMethod = deliveryMethods.find((m) => String(m.id) === String(deliveryMethod));
+  const deliveryMethodLabel = selectedDeliveryMethod?.name || (deliveryMethod === 1 ? 'Standard' : String(deliveryMethod));
 
   // helper to push the selected address to the top
   const ordered = (list, selectedId) => {
@@ -362,13 +396,13 @@ export default function CheckoutPage() {
         }));
         setStep('select');
       } else {
-        const msg = data.message || 'Failed to add address';
+        const msg = getResponseMessage(data, 'Failed to add address');
         setError(msg);
         Swal.fire('Error', msg, 'error');
       }
     } catch (err) {
       console.error("ADD ADDRESS AXIOS ERROR:", err?.response?.data || err);
-      const errMsg = err?.response?.data?.message || 'Network error, please try again';
+      const errMsg = getApiErrorMessage(err, 'Network error, please try again');
       setError(errMsg);
       Swal.fire('Error', errMsg, 'error');
     } finally {
@@ -389,7 +423,7 @@ export default function CheckoutPage() {
     }
     setError('');
     trackAddShippingInfo(cartItems, {
-      shippingTier: deliveryMethod === 1 ? 'Standard' : String(deliveryMethod),
+      shippingTier: deliveryMethodLabel,
       value: chargeSummary.total || total,
     });
     setStep('confirm');
@@ -407,7 +441,7 @@ export default function CheckoutPage() {
           `${API_BASE}/cart`,
           qs.stringify({
             userid: uid,
-            delivery_method: 1,
+            delivery_method: deliveryMethod,
             shipping_country,
           }),
           {
@@ -452,7 +486,7 @@ export default function CheckoutPage() {
     };
 
     fetchChargeSummary();
-  }, [api, guestId, shippingId, billingId, sameAsShip, subtotal, user?.id, form.country, addresses]);
+  }, [api, guestId, shippingId, billingId, sameAsShip, subtotal, user?.id, form.country, addresses, deliveryMethod]);
 
   // ---------------------------
   // Razorpay Pay Click Handler
@@ -542,7 +576,7 @@ export default function CheckoutPage() {
             const result = await verifyRes.json().catch(() => ({}));
 
             if (!verifyRes.ok || result?.status === false) {
-              throw new Error(result?.message || 'Signature verification failed');
+              throw new Error(getResponseMessage(result, 'Signature verification failed'));
             }
 
             // ✅ Payment verified by the backend — this is the one and only
@@ -730,7 +764,7 @@ export default function CheckoutPage() {
         userid: uid || '0',
         shipping_address: shippingId,
         billing_address: billId,
-        delivery_method: 1,
+        delivery_method: deliveryMethod,
         shipping_country: getShippingCountry(),
         customer_name: form.name,
         customer_email: form.email,
@@ -787,13 +821,13 @@ export default function CheckoutPage() {
           setError("Order created but no order_id was returned.");
         }
       } else {
-        const msg = data?.message || "Checkout failed, please try again";
+        const msg = getResponseMessage(data, "Checkout failed, please try again");
         setError(msg);
         Swal.fire('Checkout Issue', msg, 'warning');
       }
     } catch (err) {
       console.error("HANDLE CHECKOUT FINAL CATCH:", err?.response?.data || err);
-      let errMsg = err?.response?.data?.message || err?.message || "Checkout failed";
+      let errMsg = getApiErrorMessage(err, err?.message || "Checkout failed");
 
       const isNetworkError = err.message === "Network Error" || !err.response;
 
@@ -821,6 +855,186 @@ export default function CheckoutPage() {
     setNewAddrId(null);
   };
 
+  // ---------------------------
+  // Guest Checkout (no login) — uses the dedicated /guest-checkout +
+  // /guest-payment/create-order endpoints from the backend's Postman
+  // collection, instead of /checkout + /payment/create-order. These take a
+  // flatter payload (a single "address" string, and no userid) since there's
+  // no account/address-book behind a guest order.
+  // ---------------------------
+  const handleGuestCheckout = async () => {
+    setError('');
+    const required = ['name', 'email', 'phone', 'street', 'city', 'pincode', 'district', 'state', 'country'];
+    for (const k of required) {
+      if (!String(form[k] ?? '').trim()) {
+        setError(`Please fill in ${k === 'name' ? 'Full Name' : k === 'phone' ? 'Phone Number' : k}`);
+        return;
+      }
+    }
+    if (!MOBILE_REGEX.test(form.phone)) {
+      setError('Enter a valid 10-digit mobile number');
+      return;
+    }
+    if (!cartItems.length) {
+      setError('Your cart is empty.');
+      return;
+    }
+
+    trackBeginCheckout(cartItems);
+    trackAddShippingInfo(cartItems, { shippingTier: deliveryMethodLabel, value: chargeSummary.total || total });
+    setLoading(true);
+    try {
+      // Remember details for next time, same as the (existing) address form does.
+      localStorage.setItem('guest_address', JSON.stringify(form));
+
+      const items = cartItems.map((i) => ({ vid: Number(i.variantid), qty: i.qty }));
+      const address = [form.street, form.city, form.district, form.state, form.country, form.pincode]
+        .filter(Boolean)
+        .join(', ');
+
+      const { data } = await api.post(
+        `${API_BASE}/guest-checkout`,
+        qs.stringify({
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          address,
+          delivery_method: deliveryMethod,
+          items: JSON.stringify(items),
+        }),
+        {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          timeout: 40000,
+        }
+      );
+
+      // Mirrors /checkout's own success check above: some endpoints on this
+      // backend return order_id without an explicit status flag, so treat
+      // its presence as success either way.
+      const orderId = data?.order_id ?? data?.data?.order_id;
+      if (orderId) {
+        handleGuestPayClick(orderId);
+      } else {
+        // Inline error text below the form (rendered from `error` state) is
+        // enough here — a modal popup on top of a visible validation
+        // message the user is already looking at is redundant.
+        setError(getResponseMessage(data, 'Checkout failed, please try again'));
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('Guest checkout error:', err?.response?.data || err);
+      setError(getApiErrorMessage(err, err?.message || 'Checkout failed'));
+      setLoading(false);
+    }
+  };
+
+  const handleGuestPayClick = async (order_id) => {
+    try {
+      if (!order_id) throw new Error('Missing internal order id');
+      setError('');
+      setLoading(true);
+
+      const { data: raw } = await api.post(
+        `${API_BASE}/guest-payment/create-order`,
+        qs.stringify({
+          order_id,
+          receipt: `ikonix_${order_id}`,
+        }),
+        {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          timeout: 40000,
+        }
+      );
+
+      const res = raw?.data ?? raw ?? {};
+      const keyId = 'rzp_live_SEo0q24u3JYSFy';
+      const rzpOrderId = res.porder_id;
+
+      if (!rzpOrderId || !String(rzpOrderId).startsWith('order_')) {
+        console.error('Guest create-order response:', res);
+        throw new Error('Invalid Razorpay order id from create-order');
+      }
+
+      await loadRazorpay();
+      if (!window.Razorpay) throw new Error('Razorpay SDK not available');
+
+      const rzp = new window.Razorpay({
+        key: keyId,
+        order_id: rzpOrderId,
+        name: 'Ikonix Perfumer',
+        description: 'Order Payment',
+        image: '/favicon.ico',
+        prefill: {
+          name: res.customer?.name ?? form.name ?? '',
+          email: res.customer?.email ?? form.email ?? '',
+          contact: res.customer?.phone ?? form.phone ?? '',
+        },
+        theme: { color: '#b49d91' },
+        handler: async (resp) => {
+          const purchaseValue = chargeSummary.total || total;
+          try {
+            const formVerify = new FormData();
+            formVerify.append('order_id', String(order_id));
+            formVerify.append('porder_id', resp.razorpay_order_id);
+            formVerify.append('payment_id', resp.razorpay_payment_id);
+            formVerify.append('signature', resp.razorpay_signature);
+
+            // NOTE: the backend's Postman collection documents
+            // /guest-payment/create-order but not its callback counterpart —
+            // this path mirrors that endpoint's naming 1:1 as the most
+            // consistent assumption. Confirm with backend if guest payments
+            // don't verify.
+            const { data: result } = await api.post(`${API_BASE}/guest-payment/callback`, formVerify);
+
+            if (result?.status === false) {
+              throw new Error(getResponseMessage(result, 'Signature verification failed'));
+            }
+
+            trackPurchase({
+              transactionId: order_id,
+              value: purchaseValue,
+              items: cartItems,
+              shipping: chargeSummary.delivery || 0,
+              tax: chargeSummary.tax || 0,
+            });
+
+            clear();
+            setLoading(false);
+            navigate('/order-confirmation', {
+              state: { order: { order_id, id: order_id } },
+            });
+          } catch (err) {
+            setError(err.message || 'Payment verification failed');
+            Swal(err);
+            trackPaymentFailed({ orderId: order_id, message: err.message });
+            setLoading(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setLoading(false);
+          },
+        },
+      });
+
+      rzp.on('payment.failed', (resp) => {
+        setLoading(false);
+        setError(resp?.error?.description || 'Payment failed');
+        trackPaymentFailed({ orderId: order_id, message: resp?.error?.description });
+      });
+
+      trackAddPaymentInfo(cartItems, {
+        paymentType: 'Razorpay',
+        value: chargeSummary.total || total,
+      });
+
+      rzp.open();
+    } catch (e) {
+      setLoading(false);
+      setError(e.message || 'Unable to start payment');
+    }
+  };
+
   const QtyBox = ({ value, onDec, onInc }) => (
     <div className="flex items-center border border-[#6d5a52] rounded-[12px] px-4 py-2 text-[#6d5a52] text-sm">
       <button className="px-2 disabled:opacity-30" onClick={onDec} disabled={value <= 1}>
@@ -845,18 +1059,7 @@ export default function CheckoutPage() {
         Your Order
       </h1>
 
-      {!user ? (
-        <div className="text-center py-20 bg-[#fdf8f5] rounded-3xl border border-[#eadcd5]">
-          <h2 className="text-2xl font-bold text-[#6d5a52] mb-4">Login Required</h2>
-          <p className="text-[#b49d91] mb-8">Please log in or create an account to proceed with your order.</p>
-          <button
-            onClick={() => setShowAuthModal(true)}
-            className="bg-[#1e2633] text-white px-10 py-3 rounded-xl hover:opacity-90 transition"
-          >
-            Login / Signup
-          </button>
-        </div>
-      ) : cartItems.length === 0 ? (
+      {cartItems.length === 0 ? (
         <p className="text-center">
           Your cart is empty.&nbsp;
           <button onClick={() => navigate('/shop')} className="underline text-blue-600">
@@ -940,15 +1143,154 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Place order */}
-          <div className="flex justify-center mt-10">
-            <button
-              onClick={handlePlaceOrder}
-              className="bg-[#1e2633] text-white text-base md:text-lg px-10 md:px-16 py-3 md:py-4 rounded-xl hover:opacity-90 transition"
-            >
-              Place order
-            </button>
-          </div>
+          {/* Place order (logged in) / Login-or-Guest choice + guest form */}
+          {user ? (
+            <div className="flex justify-center mt-10">
+              <button
+                onClick={handlePlaceOrder}
+                className="bg-[#1e2633] text-white text-base md:text-lg px-10 md:px-16 py-3 md:py-4 rounded-xl hover:opacity-90 transition"
+              >
+                Place order
+              </button>
+            </div>
+          ) : !guestMode ? (
+            <div className="mt-10 text-center py-10 bg-[#fdf8f5] rounded-3xl border border-[#eadcd5]">
+              <h2 className="text-xl md:text-2xl font-bold text-[#6d5a52] mb-3">How would you like to checkout?</h2>
+              <p className="text-[#b49d91] mb-8">Log in for faster checkout next time, or continue as a guest.</p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="bg-[#1e2633] text-white px-10 py-3 rounded-xl hover:opacity-90 transition"
+                >
+                  Login / Signup
+                </button>
+                <button
+                  onClick={() => { setError(''); setGuestMode(true); }}
+                  className="border border-[#b49d91] text-[#b49d91] px-10 py-3 rounded-xl hover:bg-[#b49d91]/10 transition"
+                >
+                  Checkout as Guest
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-10 bg-[#fdf8f5] rounded-3xl border border-[#eadcd5] p-5 md:p-8">
+              <h2 className="text-xl md:text-2xl font-semibold text-[#6d5a52] mb-6">Guest Checkout Details</h2>
+
+              <button
+                onClick={handleUseLocation}
+                className="mb-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#eadcd5] text-[#6d5a52] hover:opacity-90"
+              >
+                <span className="material-icons text-base">my_location</span>
+                Use my Location
+              </button>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[#6d5a52]">
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold">Full Name</label>
+                  <input
+                    name="name"
+                    value={form.name}
+                    onChange={handleChange}
+                    className="border border-[#b49d91] rounded-xl px-4 py-2 bg-transparent placeholder:text-[#d2bfb7]"
+                    placeholder="John Doe"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold">Email Address</label>
+                  <input
+                    name="email"
+                    type="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    className="border border-[#b49d91] rounded-xl px-4 py-2 bg-transparent placeholder:text-[#d2bfb7]"
+                    placeholder="john@example.com"
+                  />
+                </div>
+                <div className="flex flex-col gap-1 md:col-span-2">
+                  <label className="text-sm font-semibold">Phone Number</label>
+                  <input
+                    name="phone"
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
+                    value={form.phone}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))
+                    }
+                    className="border border-[#b49d91] rounded-xl px-4 py-2 bg-transparent placeholder:text-[#d2bfb7]"
+                    placeholder="10-digit mobile number"
+                  />
+                  {form.phone && !MOBILE_REGEX.test(form.phone) && (
+                    <p className="text-xs text-red-500">Enter a valid 10-digit mobile number</p>
+                  )}
+                </div>
+                {[
+                  ['street', 'Street'],
+                  ['city', 'City'], ['pincode', 'Pincode'], ['district', 'District'],
+                  ['state', 'State'], ['country', 'Country'],
+                ].map(([k, l]) => (
+                  <div key={k} className="flex flex-col gap-1">
+                    <label className="text-sm">{l}</label>
+                    <input
+                      name={k}
+                      value={form[k]}
+                      onChange={handleChange}
+                      className="border border-[#b49d91] rounded-xl px-4 py-2 bg-transparent placeholder:text-[#d2bfb7]"
+                      placeholder={l}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6">
+                <h4 className="text-base font-semibold text-[#6d5a52] mb-2">Delivery Method</h4>
+                {deliveryMethods.length > 1 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {deliveryMethods.map((m) => (
+                      <label
+                        key={m.id}
+                        className={`inline-flex items-center gap-2 rounded-xl border px-5 py-2 text-sm font-medium text-[#6d5a52] cursor-pointer ${String(deliveryMethod) === String(m.id) ? 'border-[#b49d91] bg-white' : 'border-[#d7c6bfd7] bg-[#f6ebe6]'
+                          }`}
+                      >
+                        <input
+                          type="radio"
+                          name="guestDeliveryMethod"
+                          className="accent-[#1e2633]"
+                          checked={String(deliveryMethod) === String(m.id)}
+                          onChange={() => setDeliveryMethod(m.id)}
+                        />
+                        {m.name}
+                        {m.charge > 0 && <span className="text-[#b49d91]">(Rs.{m.charge.toFixed(2)})</span>}
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="inline-flex items-center rounded-xl border border-[#d7c6bfd7] bg-[#f6ebe6] px-5 py-2 text-sm font-medium text-[#6d5a52]">
+                    {deliveryMethodLabel}
+                  </p>
+                )}
+              </div>
+
+              {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
+
+              <div className="mt-8 flex flex-col sm:flex-row justify-end gap-4">
+                <button
+                  onClick={() => { setGuestMode(false); setError(''); }}
+                  className="px-10 py-3 rounded-xl border border-[#6d5a52] text-[#6d5a52]"
+                  disabled={loading}
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleGuestCheckout}
+                  className="px-10 py-3 rounded-xl bg-[#1e2633] text-white hover:opacity-90"
+                  disabled={loading}
+                >
+                  {loading ? 'Processing…' : 'Place Guest Order'}
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -1180,9 +1522,31 @@ export default function CheckoutPage() {
                     <h4 className="text-[20px] lg:text-xl font-semibold text-[#6d5a52]">
                       Delivery Method
                     </h4>
-                    <p className="mt-2 inline-flex items-center rounded-xl border border-[#d7c6bfd7] bg-[#f6ebe6] px-5 py-2 text-sm lg:text-base font-medium text-[#6d5a52]">
-                      Standard
-                    </p>
+                    {deliveryMethods.length > 1 ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {deliveryMethods.map((m) => (
+                          <label
+                            key={m.id}
+                            className={`inline-flex items-center gap-2 rounded-xl border px-5 py-2 text-sm lg:text-base font-medium text-[#6d5a52] cursor-pointer ${String(deliveryMethod) === String(m.id) ? 'border-[#b49d91] bg-white' : 'border-[#d7c6bfd7] bg-[#f6ebe6]'
+                              }`}
+                          >
+                            <input
+                              type="radio"
+                              name="deliveryMethod"
+                              className="accent-[#1e2633]"
+                              checked={String(deliveryMethod) === String(m.id)}
+                              onChange={() => setDeliveryMethod(m.id)}
+                            />
+                            {m.name}
+                            {m.charge > 0 && <span className="text-[#b49d91]">(Rs.{m.charge.toFixed(2)})</span>}
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-2 inline-flex items-center rounded-xl border border-[#d7c6bfd7] bg-[#f6ebe6] px-5 py-2 text-sm lg:text-base font-medium text-[#6d5a52]">
+                        {deliveryMethodLabel}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex gap-3 m-2">
