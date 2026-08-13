@@ -5,6 +5,7 @@ import axios from 'axios';
 import qs from 'qs';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { ensureGuestTokenReady } from '../api/client';
 import {
   XMarkIcon,
   LockClosedIcon,
@@ -35,7 +36,7 @@ export default function AuthModal({ open, onClose }) {
   const [resendIn, setResendIn]   = useState(0);
 
   const otpRefs = useRef([]);
-  const { token, setUser, setToken } = useAuth();
+  const { setUser, setToken } = useAuth();
   const { refresh } = useCart();
 
   // clear fields whenever we leave the OTP screen
@@ -69,13 +70,18 @@ export default function AuthModal({ open, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otpDigits]);
 
-  const apiPost = (url, payload) =>
-    axios.post(url, qs.stringify(payload), {
+  // These endpoints (login/register/forgot-password) are hit before the
+  // visitor has their own JWT, so they authenticate with the shared guest
+  // token rather than AuthContext's (still-empty) user token.
+  const apiPost = async (url, payload) => {
+    const guestToken = await ensureGuestTokenReady();
+    return axios.post(url, qs.stringify(payload), {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: `Bearer ${token}`,
+        ...(guestToken ? { Authorization: `Bearer ${guestToken}` } : {}),
       },
     });
+  };
 
   const handleField = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -98,7 +104,6 @@ export default function AuthModal({ open, onClose }) {
 
   /* STEP 1: LOGIN / REGISTER / RESET → request OTP */
   const sendOtp = async (flow = tab) => {
-    if (!token) return Swal('Auth token missing');
     if (!validateMobile()) return;
     if (flow === 'register' && !form.name.trim()) return Swal('Enter your name');
     if (flow === 'reset' && form.newPassword.length < 6) return Swal('New password must be at least 6 characters');
