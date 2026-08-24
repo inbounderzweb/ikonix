@@ -41,6 +41,7 @@ const COURIERS = [
 // confirmed against a real "shipped with courier" order yet.
 export function getCourierInfo(order) {
   const trackingId =
+    order?.trackno ??
     order?.tracking_id ??
     order?.trackingid ??
     order?.tracking_no ??

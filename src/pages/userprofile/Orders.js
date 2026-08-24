@@ -9,6 +9,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { createApiClient } from "../../api/client";
 import { getCourierInfo } from "../../utils/courierTracking";
+import useDocumentTitle from "../../hooks/useDocumentTitle";
 import qs from "qs";
 
 const API_BASE = "https://ikonixperfumer.com/beta/api";
@@ -150,6 +151,7 @@ function CourierTracking({ courier }) {
 }
 
 function Orders() {
+  useDocumentTitle("My Orders");
   const { user, token, setToken, setIsTokenReady } = useAuth();
   const [searchParams] = useSearchParams();
   const highlightId = searchParams.get("highlight");

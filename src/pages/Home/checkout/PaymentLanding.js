@@ -1,8 +1,10 @@
 import React from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { Link } from "react-router-dom";
+import useDocumentTitle from "../../../hooks/useDocumentTitle";
 
 function PaymentLanding() {
+  useDocumentTitle("Complete Payment");
   return (
     <div className="min-h-screen bg-[#F8F3F0] flex flex-col items-center justify-center px-4">
       {/* Exit button top-right */}

@@ -3,9 +3,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { useCart } from '../context/CartContext';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 
 export default function OrderConfirmation() {
+  useDocumentTitle("Order Confirmed");
   const { state } = useLocation();
   const navigate  = useNavigate();
   const {clear} = useCart()

@@ -57,13 +57,22 @@ export default function ProductList({ hideFilters = false }) {
 
   const products = useMemo(() => data?.data || [], [data?.data]);
 
-  // Build category filters
+  const BESTSELLERS_LABEL = 'Best Sellers';
+
+  // Build category filters, skipping any category that duplicates the
+  // built-in Best Sellers tab (e.g. a "Best Sellers" product category)
   const categoryList = useMemo(
-    () => [...new Set(products.map((p) => p.category_name).filter(Boolean))],
+    () => [
+      ...new Set(
+        products
+          .map((p) => p.category_name)
+          .filter((name) => name && name.trim().toLowerCase() !== BESTSELLERS_LABEL.toLowerCase())
+      ),
+    ],
     [products]
   );
 
-  const filters = useMemo(() => ['Our Bestsellers', ...categoryList], [categoryList]);
+  const filters = useMemo(() => [BESTSELLERS_LABEL, ...categoryList], [categoryList]);
 
   const [selectedCategory, setSelectedCategory] = useState(filters[0]);
 
@@ -76,9 +85,12 @@ export default function ProductList({ hideFilters = false }) {
   }, [filters]);
 
   const filtered = useMemo(() => {
-    return selectedCategory === 'Our Bestsellers'
-      ? products
-      : products.filter((p) => p.category_name === selectedCategory);
+    if (selectedCategory === BESTSELLERS_LABEL) {
+      return products.filter(
+        (p) => p.category_name && p.category_name.trim().toLowerCase() === BESTSELLERS_LABEL.toLowerCase()
+      );
+    }
+    return products.filter((p) => p.category_name === selectedCategory);
   }, [selectedCategory, products]);
 
   // Home page only teases a handful of products; the rest live on /shop

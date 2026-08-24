@@ -8,8 +8,10 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import useDocumentTitle from '../../hooks/useDocumentTitle';
 
 export default function UserProfile() {
+  useDocumentTitle("My Profile");
   const { user, setUser, setToken } = useAuth();
   const navigate = useNavigate();
 

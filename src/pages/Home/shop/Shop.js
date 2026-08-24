@@ -16,6 +16,7 @@ import { createApiClient } from "../../../api/client";
 import { toastSuccess, toastError, truncateName } from "../../../utils/toast";
 import { getApiErrorMessage, getResponseMessage, isAuthError } from "../../../utils/apiError";
 import { trackViewItemList, trackSelectItem, trackAddToCart } from "../../../lib/ecommerce";
+import useDocumentTitle from "../../../hooks/useDocumentTitle";
 
 const API_BASE = "https://ikonixperfumer.com/beta/api";
 const PRODUCTS_PER_PAGE = 10;
@@ -25,6 +26,7 @@ const LIST_NAME = "Shop Catalog";
 const FILTER_STORAGE_KEY = "shopActiveFilter"; // sessionStorage key
 
 export default function Shop() {
+  useDocumentTitle("Shop");
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -67,7 +69,7 @@ export default function Shop() {
   );
 
   const filters = useMemo(
-    () => ["All", "Our Bestsellers", ...categoryList],
+    () => ["All", "Featured", ...categoryList],
     [categoryList]
   );
 
@@ -77,7 +79,7 @@ export default function Shop() {
       if (!activeFilter) return "All";
 
       // exact special
-      if (activeFilter === "bestSellers") return "Our Bestsellers";
+      if (activeFilter === "bestSellers") return "Featured";
 
       // try to match category names smartly
       const lowerCats = categoryList.map((c) => String(c || "").toLowerCase());
@@ -151,7 +153,7 @@ export default function Shop() {
 
   const filtered = useMemo(() => {
     if (selectedCategory === "All") return products;
-    if (selectedCategory === "Our Bestsellers") return products; // TODO: replace with real bestseller logic
+    if (selectedCategory === "Featured") return [...products].slice(1).reverse();
     return products.filter((p) => p.category_name === selectedCategory);
   }, [selectedCategory, products]);
 
@@ -433,4 +435,3 @@ export default function Shop() {
     </>
   );
 }
-

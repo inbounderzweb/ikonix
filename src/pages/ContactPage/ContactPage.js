@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { FiPhone } from "react-icons/fi";
 import illustration from '../../assets/contact.svg'
+import useDocumentTitle from '../../hooks/useDocumentTitle';
 
 
 /**
@@ -8,6 +9,7 @@ import illustration from '../../assets/contact.svg'
  * Plug into <Route path="/contact" element={<ContactPage />} />
  */
 export default function ContactPage() {
+  useDocumentTitle("Contact Us");
   const [form, setForm] = useState({
     first: "",
     last: "",
@@ -58,7 +60,7 @@ export default function ContactPage() {
             );
 
             // This will open the user's default email client
-            window.location.href = `mailto:555jinson@gmail.com?subject=${subject}&body=${body}`;
+            window.location.href = `mailto:ikonixperfumer@gmail.com?subject=${subject}&body=${body}`;
 
             // Reset form
             setForm({ first: "", last: "", email: "", phone: "", comment: "" });

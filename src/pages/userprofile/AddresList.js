@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { createApiClient } from "../../api/client";
 import { getResponseMessage } from "../../utils/apiError";
+import useDocumentTitle from "../../hooks/useDocumentTitle";
 import axios from "axios";
 import qs from "qs";
 
@@ -46,6 +47,7 @@ function AddressField({ label, name, value, onChange, error, required, className
 }
 
 function AddresList() {
+  useDocumentTitle("My Addresses");
   const { user, token, setToken, setIsTokenReady } = useAuth();
 
   // Shared client that auto-refreshes the API token on 401/403 — same one

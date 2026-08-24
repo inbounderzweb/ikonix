@@ -8,9 +8,11 @@ import InstagramShowcase from '../../components/InstagramShowcase/InstagramShowc
 import Testimonials from '../../components/Testimonials/Testimonials'
 import ProductList from '../products/ProductList'
 import BrandShowcaseBanner from '../../components/ BrandShowcaseBanner/ BrandShowcaseBanner'
+import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 
 function Home() {
+  useDocumentTitle();
 
   return (
     <div className=''>

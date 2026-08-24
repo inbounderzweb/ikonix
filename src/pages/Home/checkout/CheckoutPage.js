@@ -22,6 +22,7 @@ import {
   trackPurchase,
   trackPaymentFailed,
 } from '../../../lib/ecommerce';
+import useDocumentTitle from '../../../hooks/useDocumentTitle';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 // Same rule AuthModal.js uses for login/register/reset — Indian mobile
@@ -35,6 +36,7 @@ const MOBILE_REGEX = /^[6-9]\d{9}$/;
  * - Opens Razorpay Checkout and verifies via /payment
  */
 export default function CheckoutPage() {
+  useDocumentTitle("Checkout");
   const { user, token } = useAuth();
   const navigate = useNavigate();
   const {
@@ -183,7 +185,12 @@ export default function CheckoutPage() {
       try {
         const { data } = await api.get(`${API_BASE}/delivery-methods`);
         const raw = data?.data ?? data ?? [];
-        const list = (Array.isArray(raw) ? raw : [raw]).filter(Boolean).map(normalizeDeliveryMethod);
+        const normalized = (Array.isArray(raw) ? raw : [raw]).filter(Boolean).map(normalizeDeliveryMethod);
+        // Only Normal Delivery is offered right now — drop Fast Delivery
+        // (and anything else) so the picker never surfaces it, while still
+        // keeping whatever id/charge the backend assigns to Normal.
+        const normalOnly = normalized.filter((m) => !/fast/i.test(m.name));
+        const list = normalOnly.length ? normalOnly : normalized;
         if (!cancelled && list.length) {
           setDeliveryMethods(list);
           setDeliveryMethod((current) =>
@@ -1242,9 +1249,9 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
-              <div className="mt-6">
-                <h4 className="text-base font-semibold text-[#6d5a52] mb-2">Delivery Method</h4>
-                {deliveryMethods.length > 1 ? (
+              {deliveryMethods.length > 1 && (
+                <div className="mt-6">
+                  <h4 className="text-base font-semibold text-[#6d5a52] mb-2">Delivery Method</h4>
                   <div className="flex flex-wrap gap-2">
                     {deliveryMethods.map((m) => (
                       <label
@@ -1264,12 +1271,8 @@ export default function CheckoutPage() {
                       </label>
                     ))}
                   </div>
-                ) : (
-                  <p className="inline-flex items-center rounded-xl border border-[#d7c6bfd7] bg-[#f6ebe6] px-5 py-2 text-sm font-medium text-[#6d5a52]">
-                    {deliveryMethodLabel}
-                  </p>
-                )}
-              </div>
+                </div>
+              )}
 
               {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
 
@@ -1518,11 +1521,11 @@ export default function CheckoutPage() {
                 <hr className="my-8 border-[#eadcd5]" />
 
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div className="m-2">
-                    <h4 className="text-[20px] lg:text-xl font-semibold text-[#6d5a52]">
-                      Delivery Method
-                    </h4>
-                    {deliveryMethods.length > 1 ? (
+                  {deliveryMethods.length > 1 && (
+                    <div className="m-2">
+                      <h4 className="text-[20px] lg:text-xl font-semibold text-[#6d5a52]">
+                        Delivery Method
+                      </h4>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {deliveryMethods.map((m) => (
                           <label
@@ -1542,12 +1545,8 @@ export default function CheckoutPage() {
                           </label>
                         ))}
                       </div>
-                    ) : (
-                      <p className="mt-2 inline-flex items-center rounded-xl border border-[#d7c6bfd7] bg-[#f6ebe6] px-5 py-2 text-sm lg:text-base font-medium text-[#6d5a52]">
-                        {deliveryMethodLabel}
-                      </p>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   <div className="flex gap-3 m-2">
                     <button

@@ -13,6 +13,7 @@ import { createApiClient } from "../../../api/client";
 import { toastSuccess, toastInfo, toastError, truncateName } from "../../../utils/toast";
 import { getApiErrorMessage, getResponseMessage, isAuthError } from "../../../utils/apiError";
 import { trackViewItem, trackAddToCart } from "../../../lib/ecommerce";
+import useDocumentTitle from "../../../hooks/useDocumentTitle";
 
 const API_BASE = "https://ikonixperfumer.com/beta/api";
 
@@ -26,6 +27,7 @@ export default function ProductDetails() {
   const { items, refresh, addOrIncLocal } = useCart();
 
   const [product, setProduct] = useState(null);
+  useDocumentTitle(product?.name);
   const [selectedVar, setSelectedVar] = useState(null);
   const [selectedVariantId, setSelectedVariantId] = useState("");
   const [selectedImage, setSelectedImage] = useState("");

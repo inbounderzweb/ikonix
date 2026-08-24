@@ -4,7 +4,7 @@ import waicon from '../../assets/whatsapp.png';
 const WhatsAppWidget = () => {
     return (
         <a
-            href="https://wa.me/919072416518"
+            href="https://wa.me/919019951335"
             target="_blank"
             rel="noopener noreferrer"
             className="hidden md:flex fixed bottom-6 right-6 z-50 items-center justify-center bg-[#25D366] rounded-full shadow-lg hover:bg-[#128C7E] transition-colors"

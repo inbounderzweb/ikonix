@@ -50,7 +50,7 @@ function DropDown({ onSelect = () => {} }) {
               className="text-lg font-semibold text-gray-600 mb-2 cursor-pointer"
               onClick={() => handleNavigate("/shop", "bestSellers")}
             >
-              Our Best Sellers
+              best sellers
             </h3>
           </div>
         </div>

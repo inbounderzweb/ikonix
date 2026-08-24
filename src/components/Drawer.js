@@ -120,7 +120,7 @@ const Drawer = ({ setSideBarOpen, onClose, width = "w-[85%]", children }) => {
                 onClick={() => handleNavigate("/shop", "bestSellers")}
                 className="text-white text-lg font-light text-left hover:text-gray-300 transition-colors"
               >
-                Our Best Sellers
+                best sellers
               </button>
             </div>
           </div>
@@ -138,4 +138,3 @@ const Drawer = ({ setSideBarOpen, onClose, width = "w-[85%]", children }) => {
 };
 
 export default Drawer;
-
