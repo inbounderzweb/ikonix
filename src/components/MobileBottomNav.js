@@ -89,7 +89,7 @@ const MobileBottomNav = ({ onSearchOpen, onCartOpen, onAuthOpen, visible = false
 
       {/* WhatsApp button */}
       <a
-        href="https://wa.me/919072416518"
+        href="https://wa.me/919019951335"
         target="_blank"
         rel="noopener noreferrer"
         className="flex-shrink-0 w-14 h-14 rounded-2xl bg-[#FFFFFF] shadow-[0_4px_20px_rgba(37,211,102,0.35)] flex items-center justify-center active:opacity-80 transition-opacity"

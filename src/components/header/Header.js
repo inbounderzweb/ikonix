@@ -40,8 +40,9 @@ function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const { isMobile, navVisible, footerVisible } = useMobileNavScroll();
-  const hideNavbar = isMobile && !navVisible;
+  // Top navbar is always sticky/visible now — only the mobile bottom
+  // quick-nav still follows the scroll-direction show/hide behavior.
+  const { footerVisible } = useMobileNavScroll();
 
   const menuRef = useRef(null);
   useEffect(() => {
@@ -67,8 +68,7 @@ function Header() {
     <>
       <div
         className={`fixed top-0 left-1/2 -translate-x-1/2 z-50 w-[90%] lg:w-[80%]
-        transition-all duration-300 ease-in-out will-change-transform font-fancy origin-top
-        ${hideNavbar ? "-translate-y-[150%] scale-75 opacity-0" : "translate-y-0 scale-100 opacity-100"}
+        translate-y-0 scale-100 opacity-100 will-change-transform font-fancy origin-top
         ${scrolled ? "bg-[#2d3545]/95 shadow-md backdrop-blur-md transition-colors duration-300" : "bg-[#2d3545] transition-colors duration-300"}
         rounded-[5px] md:rounded-[8px] mt-2 md:mt-5 ring-1 ring-white/5`}
       >
