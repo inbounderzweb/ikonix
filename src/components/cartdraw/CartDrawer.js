@@ -4,10 +4,11 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { trackViewCart } from '../../lib/ecommerce';
+import OfferCelebration from '../offer/OfferCelebration';
 
 export default function CartDrawer({ open, onClose }) {
   const [show, setShow] = useState(open);
-  const { items, inc, dec, remove, refresh, loading, syncing, cartCount } = useCart();
+  const { items, freeItems, inc, dec, remove, refresh, loading, syncing, cartCount } = useCart();
 
   const navigate = useNavigate();
 
@@ -87,6 +88,7 @@ export default function CartDrawer({ open, onClose }) {
 
         {/* Items */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <OfferCelebration freeItems={freeItems} />
           {items.length === 0 ? (
             <p className="text-center text-gray-500 mt-10">Your cart is empty.</p>
           ) : (

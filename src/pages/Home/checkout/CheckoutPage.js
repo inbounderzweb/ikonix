@@ -1,4 +1,5 @@
 // src/pages/CheckoutPage.js
+import OfferCelebration from '../../../components/offer/OfferCelebration';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -41,6 +42,8 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const {
     items: cartItems,
+    freeItems,
+    discount,
     inc,
     dec,
     remove,
@@ -63,7 +66,8 @@ export default function CheckoutPage() {
 
   /* Totals (rupees) */
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
-  const total = subtotal;
+  // Offer discount (e.g. buy 4 get 1 free) is calculated by the server
+  const total = Math.max(0, subtotal - discount);
 
   /* Modals & steps */
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -471,7 +475,7 @@ export default function CheckoutPage() {
         const taxValue = tax !== null ? Number(tax) || 0 : null;
         const packingValue = packing !== null ? Number(packing) || 0 : null;
         const totalFromApi = Number(raw.total ?? raw.total_charge ?? raw.grand_total ?? 0) || 0;
-        const totalFromParts = subtotal + delivery + (taxValue || 0) + (packingValue || 0);
+        const totalFromParts = total + delivery + (taxValue || 0) + (packingValue || 0);
 
         setChargeSummary({
           delivery,
@@ -486,14 +490,14 @@ export default function CheckoutPage() {
           delivery: 0,
           tax: null,
           packing: null,
-          total: subtotal,
+          total,
           raw: null,
         });
       }
     };
 
     fetchChargeSummary();
-  }, [api, guestId, shippingId, billingId, sameAsShip, subtotal, user?.id, form.country, addresses, deliveryMethod]);
+  }, [api, guestId, shippingId, billingId, sameAsShip, total, user?.id, form.country, addresses, deliveryMethod]);
 
   // ---------------------------
   // Razorpay Pay Click Handler
@@ -1082,6 +1086,8 @@ export default function CheckoutPage() {
             <div className="col-span-2 text-right">Total</div>
           </div>
 
+          <OfferCelebration freeItems={freeItems} className="mb-6" />
+
           {/* Items */}
           <div className="space-y-6">
             {cartItems.map((item) => (
@@ -1129,6 +1135,14 @@ export default function CheckoutPage() {
                   </button>
                 </div>
 
+                {(freeItems || [])
+                  .filter((f) => String(f.vid) === String(item.variantid))
+                  .map((f) => (
+                    <div key={`free-${f.vid}`} className="md:col-span-12 text-sm text-green-700 font-medium">
+                      + {f.free_qty} free ({f.offer_label || 'Offer'}) — save Rs.{Number(f.discount).toFixed(2)}/-
+                    </div>
+                  ))}
+
                 <div className="col-span-12 border-b mt-6" />
               </div>
             ))}
@@ -1143,6 +1157,12 @@ export default function CheckoutPage() {
                   Rs.{subtotal.toFixed(2)}/-
                 </span>
               </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-green-700">
+                  <span className="text-base">Offer discount</span>
+                  <span className="font-semibold">-Rs.{discount.toFixed(2)}/-</span>
+                </div>
+              )}
               <div className="flex justify-between text-xl font-bold text-[#2A3443]">
                 <span>Total</span>
                 <span>Rs.{total.toFixed(2)}/-</span>
@@ -1641,6 +1661,12 @@ export default function CheckoutPage() {
                             Rs.{subtotal.toFixed(2)}/-
                           </span>
                         </div>
+                        {discount > 0 && (
+                          <div className="flex justify-between text-base text-green-700">
+                            <span>Offer discount</span>
+                            <span className="font-semibold">-Rs.{discount.toFixed(2)}/-</span>
+                          </div>
+                        )}
                         <div className="flex justify-between text-base">
                           <span>Delivery Charge</span>
                           <span className="text-[#b49d91] font-semibold">

@@ -130,6 +130,8 @@ export function CartProvider({ children }) {
     const guestItems = readGuest().map(normalizeGuestItem);
     return guestItems.length > 0 ? guestItems : [];
   });
+  // Server-calculated offer lines (e.g. "Buy 4 Get 1 Free"); empty when no offer applies
+  const [freeItems, setFreeItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
@@ -184,6 +186,11 @@ export function CartProvider({ children }) {
     return (items || []).reduce((sum, i) => sum + (Number(i.qty) || 0), 0);
   }, [items]);
 
+  const discount = useMemo(
+    () => (freeItems || []).reduce((sum, f) => sum + (Number(f.discount) || 0), 0),
+    [freeItems]
+  );
+
   /* ---------------- Fetch cart ---------------- */
   const fetchCart = useCallback(async () => {
     if (fetchingRef.current) return;
@@ -201,6 +208,10 @@ export function CartProvider({ children }) {
       );
 
       const server = Array.isArray(data?.data) ? data.data : [];
+
+      // Offers are only reliable for logged-in users: a guest cart lives in
+      // localStorage, so the server's guest bucket may not match it.
+      setFreeItems(user && Array.isArray(data?.free_items) ? data.free_items : []);
 
       if (!user) {
         // Guest "add to cart" only ever writes to localStorage (it never
@@ -321,7 +332,9 @@ export function CartProvider({ children }) {
           qs.stringify({ userid: uid, productid: id, variantid, qty: 1 }),
           { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
-        // optimistic update already reflects the new qty; no refetch needed
+        // optimistic update already reflects the new qty; refetch only to
+        // recalculate the server-side offer (e.g. buy 4 get 1 free)
+        if (user) fetchCart();
       } catch (e) {
         console.error("inc error:", e?.response?.data || e);
         reportCartError(e, "Couldn't update quantity");
@@ -369,7 +382,9 @@ export function CartProvider({ children }) {
           qs.stringify({ userid: uid, productid: id, variantid, qty: -1 }),
           { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
-        // optimistic update already reflects the new qty; no refetch needed
+        // optimistic update already reflects the new qty; refetch only to
+        // recalculate the server-side offer (e.g. buy 4 get 1 free)
+        if (user) fetchCart();
       } catch (e) {
         console.error("dec error:", e?.response?.data || e);
         reportCartError(e, "Couldn't update quantity");
@@ -414,7 +429,8 @@ export function CartProvider({ children }) {
             qs.stringify({ userid: uid, cartid, variantid }),
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
           );
-          // item already removed from local state; no refetch needed
+          // item already removed from local state; refetch to recalculate the offer
+          if (user) fetchCart();
           toastSuccess(removedName ? `${truncateName(removedName)} removed from cart` : "Item removed from cart");
         } catch (e) {
           console.error("remove error:", e?.response?.data || e);
@@ -439,6 +455,7 @@ export function CartProvider({ children }) {
   const clear = useCallback(() => {
     localStorage.removeItem("guestCart");
     setItems([]);
+    setFreeItems([]);
   }, []);
 
   /* ---------------- Effects ---------------- */
@@ -455,6 +472,8 @@ export function CartProvider({ children }) {
     <CartContext.Provider
       value={{
         items,
+        freeItems,
+        discount,
         cartCount,
         inc,
         dec,
