@@ -13,8 +13,8 @@ const deals = [
   {
     id: 3,
     img: banner1,
-    title1: "Buy 5 × 30ml, Pay for only 4!",
-    blurb: "Special Day Special Offer. Limited offer, 30ml only.",
+    title1: "Buy 4 × 30ml, Get 1 FREE!",
+    blurb: "Stock up on your favourites! Buy 4 bottles of 30ml and get 1 bottle absolutely FREE.",
     dataurl: `/shop`,
     textRight: true,
     dark: true,
@@ -22,8 +22,8 @@ const deals = [
   {
     id: 4,
     img: banner2,
-    title1: "Buy 5 × 30ml, Pay for only 4!",
-    blurb: "Special Day Special Offer. Limited offer, 30ml only.",
+    title1: "Buy 3 × 50ml, Get 1 FREE!",
+    blurb: "More value, more savings! Buy 3 bottles of 50ml and get 1 bottle FREE.",
     dataurl: `/shop`,
     textRight: true,
     dark: false,
@@ -31,8 +31,8 @@ const deals = [
   {
     id: 5,
     img: banner3,
-    title1: "Buy 5 × 30ml, Pay for only 4!",
-    blurb: "Special Day Special Offer. Limited offer, 30ml only.",
+    title1: "Buy 2 × 100ml, Get 1 FREE!",
+    blurb: "Go bigger and save more! Buy 2 bottles of 100ml and get 1 bottle FREE.",
     dataurl: `/shop`,
     textRight: true,
     dark: true,
@@ -40,12 +40,12 @@ const deals = [
   {
     id: 6,
     img: banner4,
-    title1: "Buy 5 × 30ml, Pay for only 4!",
-    blurb: "Special Day Special Offer. Limited offer, 30ml only.",
+    title1: "More Bottles, More Savings!",
+    blurb: "Choose your favourite size, stock up and enjoy exclusive savings on your purchase.",
     dataurl: `/shop`,
     textRight: true,
     dark: true,
-  }
+  },
 ];
 
 // Custom arrow buttons
