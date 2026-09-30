@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 const MOBILE_BREAKPOINT = 768; // matches Tailwind's `md` breakpoint used across the app
 const SCROLL_THRESHOLD = 8;    // px of movement required before direction flips (anti-flicker)
 const TOP_OFFSET = 24;         // px from top still considered "at the top"
+const DIM_RESET_MS = 700;      // scrolling stopped this long -> restore full opacity
 
 /**
  * Drives the mobile-only auto-hide navbar/footer behaviour from a single
@@ -15,9 +16,12 @@ export default function useMobileNavScroll() {
   );
   const [navVisible, setNavVisible] = useState(true);
   const [footerVisible, setFooterVisible] = useState(false);
+  // true while the user is scrolling down: the bottom nav stays put but turns slightly transparent
+  const [navDimmed, setNavDimmed] = useState(false);
 
   const lastY = useRef(typeof window !== "undefined" ? window.scrollY : 0);
   const ticking = useRef(false);
+  const dimTimer = useRef(null);
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
@@ -30,6 +34,7 @@ export default function useMobileNavScroll() {
       // desktop/tablet: keep navbar visible, footer hidden, no listener needed
       setNavVisible(true);
       setFooterVisible(false);
+      setNavDimmed(false);
       return;
     }
 
@@ -42,15 +47,18 @@ export default function useMobileNavScroll() {
       if (currentY <= TOP_OFFSET) {
         setNavVisible(true);
         setFooterVisible(false);
+        setNavDimmed(false);
       } else if (Math.abs(delta) > SCROLL_THRESHOLD) {
         if (delta > 0) {
           // scrolling down
           setNavVisible(false);
           setFooterVisible(true);
+          setNavDimmed(true);
         } else {
           // scrolling up
           setNavVisible(true);
           setFooterVisible(false);
+          setNavDimmed(false);
         }
         lastY.current = currentY;
       }
@@ -59,14 +67,20 @@ export default function useMobileNavScroll() {
     };
 
     const onScroll = () => {
+      // restore full opacity shortly after scrolling stops
+      clearTimeout(dimTimer.current);
+      dimTimer.current = setTimeout(() => setNavDimmed(false), DIM_RESET_MS);
       if (ticking.current) return;
       ticking.current = true;
       requestAnimationFrame(update);
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      clearTimeout(dimTimer.current);
+    };
   }, [isMobile]);
 
-  return { isMobile, navVisible, footerVisible };
+  return { isMobile, navVisible, footerVisible, navDimmed };
 }

@@ -54,6 +54,7 @@ const handleViewDetails = (item) => {
         variantid,
         name: product.name,
         image: product.image,
+        weight: product.variants?.find((v) => String(v.vid) === String(variantid))?.weight,
         price,
         qty: 1,
       });
@@ -82,7 +83,7 @@ const handleViewDetails = (item) => {
     }
 
     addOrIncLocal(
-      { id: product.id, variantid, name: product.name, image: product.image, price, qty: 1 },
+      { id: product.id, variantid, name: product.name, image: product.image, weight: variant.weight, price, qty: 1 },
       1
     );
 

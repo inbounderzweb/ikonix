@@ -207,6 +207,7 @@ export default function Shop() {
           variantid,
           name: product.name,
           image: product.image,
+          weight: variant.weight,
           price,
           qty: 1,
         });
@@ -237,7 +238,7 @@ export default function Shop() {
       // guest
       if (!token || !user) {
         addOrIncLocal(
-          { id: product.id, variantid, name: product.name, image: product.image, price, qty: 1 },
+          { id: product.id, variantid, name: product.name, image: product.image, weight: variant.weight, price, qty: 1 },
           1
         );
         saveGuestCart(product);
@@ -246,7 +247,7 @@ export default function Shop() {
 
       // optimistic badge
       addOrIncLocal(
-        { id: product.id, variantid, name: product.name, image: product.image, price, qty: 1 },
+        { id: product.id, variantid, name: product.name, image: product.image, weight: variant.weight, price, qty: 1 },
         1
       );
 

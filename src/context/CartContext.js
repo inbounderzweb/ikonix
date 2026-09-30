@@ -47,6 +47,7 @@ export const readGuest = () => {
       variantid: String(variantid),
       name: x.name,
       image: x.image,
+      weight: x.weight ?? "",
       price: Number(x.price) || 0,
       qty,
     };
@@ -65,6 +66,7 @@ export const writeGuest = (arr) => {
     variantid: String(i.variantid ?? ""),
     name: i.name,
     image: i.image,
+    weight: i.weight ?? "",
     price: Number(i.price) || 0,
     qty: Math.max(1, Number(i.qty) || 1),
   }));
@@ -102,6 +104,7 @@ const normalizeServerItem = (i) => ({
   variantid: String(i.variantid ?? i.vid ?? ""),
   name: i.name,
   image: i.image,
+  weight: i.weight ?? "",
   // ✅ IMPORTANT FIX: use best price (sale/offer) if present
   price: pickBestPrice(i),
   qty: Math.max(1, Number(i.qty) || 1),
@@ -117,6 +120,7 @@ const normalizeGuestItem = (i) => ({
   variantid: String(i.variantid ?? ""),
   name: i.name,
   image: i.image,
+  weight: i.weight ?? "",
   price: Number(i.price) || 0,
   qty: Math.max(1, Number(i.qty) || 1),
 });
@@ -132,6 +136,9 @@ export function CartProvider({ children }) {
   });
   // Server-calculated offer lines (e.g. "Buy 4 Get 1 Free"); empty when no offer applies
   const [freeItems, setFreeItems] = useState([]);
+  // Bumps every time the cart newly qualifies for (more of) an offer, so the UI can
+  // open the cart and celebrate. Not bumped for the first load of an already-qualifying cart.
+  const [offerTick, setOfferTick] = useState(0);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
@@ -180,6 +187,14 @@ export function CartProvider({ children }) {
   // Avoid duplicate inc/dec/remove requests for the same line item
   // (e.g. a rapid double-click) racing each other
   const pendingItemsRef = useRef(new Set());
+  // A fetch requested while another is in flight is queued (not dropped), so the
+  // final state always reflects the latest cart
+  const queuedRef = useRef(false);
+  const lastFetchRef = useRef(0);
+  const fetchCartRef = useRef(null);
+  const refreshTimerRef = useRef(null);
+  // free-bottle count from the previous server response (null = not loaded yet)
+  const freeBaselineRef = useRef(null);
 
   /* ---------------- Derived: cart count ---------------- */
   const cartCount = useMemo(() => {
@@ -192,10 +207,29 @@ export function CartProvider({ children }) {
   );
 
   /* ---------------- Fetch cart ---------------- */
-  const fetchCart = useCallback(async () => {
-    if (fetchingRef.current) return;
+  const fetchCart = useCallback(async (opts) => {
+    // background refreshes (silent) don't flash the "Loading cart..." bar
+    const silent = opts?.silent === true;
+
+    if (fetchingRef.current) {
+      queuedRef.current = true;
+      return;
+    }
+
+    // A guest cart lives in localStorage and is always the source of truth, so
+    // there is nothing to ask the server. Skips a network call per add/refresh.
+    if (!user) {
+      const guest = readGuest().map(normalizeGuestItem);
+      if (guest.length > 0) {
+        setItems(guest);
+        setFreeItems([]);
+        lastFetchRef.current = Date.now();
+        return;
+      }
+    }
+
     fetchingRef.current = true;
-    setLoading(true);
+    if (!silent) setLoading(true);
 
     // determine uid (user id or guest id)
     const uid = getEffectiveUserId();
@@ -211,7 +245,16 @@ export function CartProvider({ children }) {
 
       // Offers are only reliable for logged-in users: a guest cart lives in
       // localStorage, so the server's guest bucket may not match it.
-      setFreeItems(user && Array.isArray(data?.free_items) ? data.free_items : []);
+      const nextFree = user && Array.isArray(data?.free_items) ? data.free_items : [];
+      setFreeItems(nextFree);
+
+      const freeQty = nextFree.reduce((sum, f) => sum + (Number(f.free_qty) || 0), 0);
+      if (user) {
+        if (freeBaselineRef.current !== null && freeQty > freeBaselineRef.current) {
+          setOfferTick((t) => t + 1);
+        }
+        freeBaselineRef.current = freeQty;
+      }
 
       if (!user) {
         // Guest "add to cart" only ever writes to localStorage (it never
@@ -234,10 +277,35 @@ export function CartProvider({ children }) {
       }
     } finally {
       fetchingRef.current = false;
+      lastFetchRef.current = Date.now();
       setLoading(false);
+      if (queuedRef.current) {
+        queuedRef.current = false;
+        fetchCartRef.current?.({ silent: true });
+      }
     }
 
   }, [api, user, getEffectiveUserId]);
+  fetchCartRef.current = fetchCart;
+
+  // Debounced background refetch used after qty changes (offer recalculation),
+  // so rapid +/- clicks produce one request instead of one per click
+  const scheduleRefresh = useCallback(() => {
+    clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(() => fetchCartRef.current?.({ silent: true }), 400);
+  }, []);
+
+  // Refetch only if the cart hasn't been loaded recently
+  const refreshIfStale = useCallback((maxAgeMs = 30000) => {
+    if (Date.now() - lastFetchRef.current > maxAgeMs) fetchCartRef.current?.();
+  }, []);
+
+  useEffect(() => () => clearTimeout(refreshTimerRef.current), []);
+
+  // New login/logout: forget the previous offer baseline
+  useEffect(() => {
+    freeBaselineRef.current = null;
+  }, [user?.id]);
 
 
   /* ---------------- Sync guest -> server ---------------- */
@@ -292,6 +360,7 @@ export function CartProvider({ children }) {
       variantid: String(item.variantid ?? ""),
       name: item.name,
       image: item.image,
+      weight: item.weight ?? "",
       price: Number(item.price) || 0,
       qty: Math.max(1, Number(item.qty) || 1),
       msrp: Number(item.msrp) || 0,
@@ -306,6 +375,7 @@ export function CartProvider({ children }) {
       if (idx > -1) {
         const prevQty = Number(arr[idx].qty) || 0;
         arr[idx] = { ...arr[idx], qty: prevQty + addN };
+        if (incoming.weight) arr[idx].weight = incoming.weight;
         const incPrice = Number(incoming.price) || 0;
         if (incPrice > 0) arr[idx].price = incPrice;
         return arr;
@@ -334,7 +404,7 @@ export function CartProvider({ children }) {
         );
         // optimistic update already reflects the new qty; refetch only to
         // recalculate the server-side offer (e.g. buy 4 get 1 free)
-        if (user) fetchCart();
+        if (user) scheduleRefresh();
       } catch (e) {
         console.error("inc error:", e?.response?.data || e);
         reportCartError(e, "Couldn't update quantity");
@@ -351,7 +421,7 @@ export function CartProvider({ children }) {
         writeGuest(guest);
       }
     },
-    [api, user, getEffectiveUserId, addOrIncLocal, fetchCart, reportCartError]
+    [api, user, getEffectiveUserId, addOrIncLocal, fetchCart, scheduleRefresh, reportCartError]
   );
 
   const dec = useCallback(
@@ -384,7 +454,7 @@ export function CartProvider({ children }) {
         );
         // optimistic update already reflects the new qty; refetch only to
         // recalculate the server-side offer (e.g. buy 4 get 1 free)
-        if (user) fetchCart();
+        if (user) scheduleRefresh();
       } catch (e) {
         console.error("dec error:", e?.response?.data || e);
         reportCartError(e, "Couldn't update quantity");
@@ -400,7 +470,7 @@ export function CartProvider({ children }) {
         writeGuest(guest);
       }
     },
-    [api, user, getEffectiveUserId, fetchCart, items, reportCartError]
+    [api, user, getEffectiveUserId, fetchCart, scheduleRefresh, items, reportCartError]
   );
 
   const remove = useCallback(
@@ -430,7 +500,7 @@ export function CartProvider({ children }) {
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
           );
           // item already removed from local state; refetch to recalculate the offer
-          if (user) fetchCart();
+          if (user) scheduleRefresh();
           toastSuccess(removedName ? `${truncateName(removedName)} removed from cart` : "Item removed from cart");
         } catch (e) {
           console.error("remove error:", e?.response?.data || e);
@@ -449,13 +519,14 @@ export function CartProvider({ children }) {
         writeGuest(guest);
       }
     },
-    [api, user, getEffectiveUserId, fetchCart, items, reportCartError]
+    [api, user, getEffectiveUserId, fetchCart, scheduleRefresh, items, reportCartError]
   );
 
   const clear = useCallback(() => {
     localStorage.removeItem("guestCart");
     setItems([]);
     setFreeItems([]);
+    freeBaselineRef.current = 0;
   }, []);
 
   /* ---------------- Effects ---------------- */
@@ -474,6 +545,8 @@ export function CartProvider({ children }) {
         items,
         freeItems,
         discount,
+        offerTick,
+        refreshIfStale,
         cartCount,
         inc,
         dec,

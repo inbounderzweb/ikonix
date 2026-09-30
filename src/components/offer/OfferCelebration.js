@@ -1,34 +1,38 @@
 // src/components/offer/OfferCelebration.js
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useCart } from "../../context/CartContext";
 
 const COLORS = ["#C5A291", "#8C7367", "#F2C94C", "#E76F51", "#2A9D8F", "#4C6EF5", "#F783AC"];
 const PIECES = 36;
 const BURST_MS = 2600;
 
-// Small confetti burst + banner shown when the cart qualifies for an offer
-// (e.g. "Buy 4 Get 1 Free"). The burst fires each time the free quantity goes up,
-// not on every re-render, and is skipped for users who prefer reduced motion.
-export default function OfferCelebration({ freeItems = [], className = "" }) {
-  const freeQty = freeItems.reduce((s, f) => s + (Number(f.free_qty) || 0), 0);
-  const saved = freeItems.reduce((s, f) => s + (Number(f.discount) || 0), 0);
-
-  const prevQty = useRef(freeQty);
-  const [burst, setBurst] = useState(0); // 0 = no burst running
+// True for a couple of seconds each time the cart newly unlocks (more of) an offer.
+// Skipped for users who prefer reduced motion.
+export function useOfferBurst() {
+  const { offerTick } = useCart();
+  const seen = useRef(offerTick);
+  const [burst, setBurst] = useState(false);
 
   useEffect(() => {
-    if (freeQty > prevQty.current) {
-      const reduce =
-        typeof window !== "undefined" &&
-        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-      if (!reduce) {
-        setBurst((b) => b + 1);
-        const t = setTimeout(() => setBurst(0), BURST_MS);
-        prevQty.current = freeQty;
-        return () => clearTimeout(t);
-      }
-    }
-    prevQty.current = freeQty;
-  }, [freeQty]);
+    if (offerTick === seen.current) return;
+    seen.current = offerTick;
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) return;
+    setBurst(true);
+    const t = setTimeout(() => setBurst(false), BURST_MS);
+    return () => clearTimeout(t);
+  }, [offerTick]);
+
+  return burst;
+}
+
+// Banner shown while the cart qualifies for an offer (e.g. "Buy 4 Get 1 Free"), plus a
+// small confetti burst when `burst` is true (see useOfferBurst).
+export default function OfferCelebration({ freeItems = [], burst = false, className = "" }) {
+  const freeQty = freeItems.reduce((s, f) => s + (Number(f.free_qty) || 0), 0);
+  const saved = freeItems.reduce((s, f) => s + (Number(f.discount) || 0), 0);
 
   const pieces = useMemo(
     () =>
@@ -42,7 +46,7 @@ export default function OfferCelebration({ freeItems = [], className = "" }) {
         round: i % 3 === 0,
         color: COLORS[i % COLORS.length],
       })),
-    // new random layout per burst
+    // new random layout each time a burst starts
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [burst]
   );
@@ -66,9 +70,8 @@ export default function OfferCelebration({ freeItems = [], className = "" }) {
         }
       `}</style>
 
-      {burst > 0 && (
+      {burst && (
         <div
-          key={burst}
           aria-hidden="true"
           className="pointer-events-none fixed inset-0 z-[200] overflow-hidden"
         >

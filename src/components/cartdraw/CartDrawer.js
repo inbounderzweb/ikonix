@@ -4,22 +4,23 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { trackViewCart } from '../../lib/ecommerce';
-import OfferCelebration from '../offer/OfferCelebration';
+import OfferCelebration, { useOfferBurst } from '../offer/OfferCelebration';
 
 export default function CartDrawer({ open, onClose }) {
   const [show, setShow] = useState(open);
-  const { items, freeItems, inc, dec, remove, refresh, loading, syncing, cartCount } = useCart();
+  const { items, freeItems, inc, dec, remove, refreshIfStale, loading, syncing, cartCount } = useCart();
 
   const navigate = useNavigate();
+  const offerBurst = useOfferBurst();
 
   const prevOpen = useRef(open);
   const ANIM_MS = 300;
 
-  // refresh on open (only when opening)
+  // refresh on open only if the cart data is stale
   useEffect(() => {
-    if (!prevOpen.current && open) refresh();
+    if (!prevOpen.current && open) refreshIfStale();
     prevOpen.current = open;
-  }, [open, refresh]);
+  }, [open, refreshIfStale]);
 
   // view_cart: fire once per open (not on every items change while open).
   const trackedForOpenRef = useRef(false);
@@ -43,6 +44,12 @@ export default function CartDrawer({ open, onClose }) {
     }
   }, [open]);
 
+  // Close the drawer and open the product page for this cart line (same URL shape as the shop)
+  const goProduct = (item) => {
+    onClose();
+    navigate(`/product-details/${item.id}?vid=${item.variantid}`);
+  };
+
   const goCheckout = () => {
     onClose();
     navigate('/checkout', { state: { cartItems: items } });
@@ -62,7 +69,7 @@ export default function CartDrawer({ open, onClose }) {
 
       {/* Drawer */}
       <div
-        className={`relative ml-auto h-[90%] rounded-bl-[40px] w-full max-w-md bg-white shadow-xl flex flex-col overflow-hidden transform transition-transform duration-300 ${
+        className={`relative ml-auto h-[100dvh] sm:h-[90%] sm:rounded-bl-[40px] w-full max-w-md bg-white shadow-xl flex flex-col overflow-hidden transform transition-transform duration-300 ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -88,7 +95,7 @@ export default function CartDrawer({ open, onClose }) {
 
         {/* Items */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          <OfferCelebration freeItems={freeItems} />
+          <OfferCelebration freeItems={freeItems} burst={offerBurst} />
           {items.length === 0 ? (
             <p className="text-center text-gray-500 mt-10">Your cart is empty.</p>
           ) : (
@@ -101,24 +108,36 @@ export default function CartDrawer({ open, onClose }) {
                   <img
                     src={`https://ikonixperfumer.com/beta/assets/uploads/${item.image}`}
                     alt={item.name}
-                    className="w-40 object-cover rounded"
+                    onClick={() => goProduct(item)}
+                    className="w-24 sm:w-40 object-cover rounded cursor-pointer"
                   />
 
                   <div className="flex flex-col gap-3 flex-1">
-                    <p className="text-[#8C7367] font-[lato] text-[21px] font-[700] tracking-[0.5px] leading-[150%]">
-                      {item.name}
-                    </p>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => goProduct(item)}
+                        className="text-left text-[#8C7367] font-[lato] text-[16px] sm:text-[21px] font-[700] tracking-[0.5px] leading-[150%] hover:underline"
+                      >
+                        {item.name}
+                      </button>
+                      {item.weight ? (
+                        <span className="mt-1 block w-fit rounded-full border border-[#B39384] px-2 py-0.5 text-xs text-[#53443D]">
+                          {item.weight} ml
+                        </span>
+                      ) : null}
+                    </div>
 
-                    <span className="text-[#2A3443] font-[lato] text-[21px] font-[700] tracking-[0.5px] leading-[150%]">
+                    <span className="text-[#2A3443] font-[lato] text-[16px] sm:text-[21px] font-[700] tracking-[0.5px] leading-[150%]">
                       Rs.{item.price}
                     </span>
 
-                    <div className="flex gap-2 items-center">
+                    <div className="flex flex-wrap gap-2 items-center">
                       <span className="text-[#53443D] font-[lato] text-[16px] tracking-[0.5px] leading-[150%]">
                         Qty
                       </span>
 
-                      <div className="border rounded-[24px] border-[#53443D] w-full text-center">
+                      <div className="border rounded-[24px] border-[#53443D] flex-1 min-w-[96px] text-center">
                         <div className="flex items-center justify-between w-full">
                           <button
                             onClick={() => dec(item.cartid, item.id, item.variantid)}
@@ -155,7 +174,7 @@ export default function CartDrawer({ open, onClose }) {
         </div>
 
         {/* Footer */}
-        <div className="border-t px-6 py-6">
+        <div className="border-t px-4 sm:px-6 py-4 sm:py-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <button
             onClick={goCheckout}
             disabled={items.length === 0}

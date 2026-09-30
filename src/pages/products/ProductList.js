@@ -129,6 +129,7 @@ export default function ProductList({ hideFilters = false }) {
           variantid,
           name: product.name,
           image: product.image,
+          weight: variant.weight,
           price,
           qty: 1,
         });
@@ -172,6 +173,7 @@ export default function ProductList({ hideFilters = false }) {
           variantid,
           name: product.name,
           image: product.image,
+          weight: variant.weight,
           price,
           qty: 1,
         },

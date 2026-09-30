@@ -1,7 +1,7 @@
 // src/pages/CheckoutPage.js
-import OfferCelebration from '../../../components/offer/OfferCelebration';
+import OfferCelebration, { useOfferBurst } from '../../../components/offer/OfferCelebration';
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import qs from 'qs';
 import loadRazorpay from '../../../utils/loadRazorpay';
@@ -48,6 +48,7 @@ export default function CheckoutPage() {
     dec,
     remove,
     refresh,
+    refreshIfStale,
     ensureServerCartNotEmpty,
     syncGuestToServer,
     guestId,
@@ -55,14 +56,15 @@ export default function CheckoutPage() {
     clear,
   } = useCart();
 
-  /* Always refresh on mount + on auth change */
-  useEffect(() => { refresh(); }, [refresh]);
-  useEffect(() => { if (user && token) refresh(); }, [user, token, refresh]);
+  /* Refresh on mount / auth change only if the cart data is stale (the cart context
+     already loads it), and when the tab becomes visible again after a while */
+  useEffect(() => { refreshIfStale(15000); }, [user?.id, token, refreshIfStale]);
   useEffect(() => {
-    const onVis = () => document.visibilityState === 'visible' && refresh();
+    const onVis = () => document.visibilityState === 'visible' && refreshIfStale(60000);
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [refresh]);
+  }, [refreshIfStale]);
+  const offerBurst = useOfferBurst();
 
   /* Totals (rupees) */
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
@@ -108,9 +110,15 @@ export default function CheckoutPage() {
     delivery: 0,
     tax: null,
     packing: null,
-    total: 0,
+    apiTotal: 0,
     raw: null,
   });
+  // Derived at render time so it always uses the latest offer discount, and the
+  // charge summary request doesn't need to re-run when the discount changes
+  const payableTotal =
+    chargeSummary.apiTotal > 0
+      ? chargeSummary.apiTotal
+      : total + chargeSummary.delivery + (chargeSummary.tax || 0) + (chargeSummary.packing || 0);
 
   /* Status */
   const [loading, setLoading] = useState(false);
@@ -435,7 +443,7 @@ export default function CheckoutPage() {
     setError('');
     trackAddShippingInfo(cartItems, {
       shippingTier: deliveryMethodLabel,
-      value: chargeSummary.total || total,
+      value: payableTotal,
     });
     setStep('confirm');
   };
@@ -475,13 +483,12 @@ export default function CheckoutPage() {
         const taxValue = tax !== null ? Number(tax) || 0 : null;
         const packingValue = packing !== null ? Number(packing) || 0 : null;
         const totalFromApi = Number(raw.total ?? raw.total_charge ?? raw.grand_total ?? 0) || 0;
-        const totalFromParts = total + delivery + (taxValue || 0) + (packingValue || 0);
-
+        
         setChargeSummary({
           delivery,
           tax: taxValue,
           packing: packingValue,
-          total: totalFromApi || totalFromParts,
+          apiTotal: totalFromApi,
           raw,
         });
       } catch (err) {
@@ -490,14 +497,14 @@ export default function CheckoutPage() {
           delivery: 0,
           tax: null,
           packing: null,
-          total,
+          apiTotal: 0,
           raw: null,
         });
       }
     };
 
     fetchChargeSummary();
-  }, [api, guestId, shippingId, billingId, sameAsShip, total, user?.id, form.country, addresses, deliveryMethod]);
+  }, [api, guestId, shippingId, billingId, sameAsShip, subtotal, user?.id, form.country, addresses, deliveryMethod]);
 
   // ---------------------------
   // Razorpay Pay Click Handler
@@ -570,7 +577,7 @@ export default function CheckoutPage() {
 
         theme: { color: '#b49d91' },
         handler: async (resp) => {
-          const purchaseValue = chargeSummary.total || total;
+          const purchaseValue = payableTotal;
           try {
             const formVerify = new FormData();
             formVerify.append('userid', String(user?.id || guestId));
@@ -677,7 +684,7 @@ export default function CheckoutPage() {
 
       trackAddPaymentInfo(cartItems, {
         paymentType: 'Razorpay',
-        value: chargeSummary.total || total,
+        value: payableTotal,
       });
 
       rzp.open();
@@ -892,7 +899,7 @@ export default function CheckoutPage() {
     }
 
     trackBeginCheckout(cartItems);
-    trackAddShippingInfo(cartItems, { shippingTier: deliveryMethodLabel, value: chargeSummary.total || total });
+    trackAddShippingInfo(cartItems, { shippingTier: deliveryMethodLabel, value: payableTotal });
     setLoading(true);
     try {
       // Remember details for next time, same as the (existing) address form does.
@@ -982,7 +989,7 @@ export default function CheckoutPage() {
         },
         theme: { color: '#b49d91' },
         handler: async (resp) => {
-          const purchaseValue = chargeSummary.total || total;
+          const purchaseValue = payableTotal;
           try {
             const formVerify = new FormData();
             formVerify.append('order_id', String(order_id));
@@ -1036,7 +1043,7 @@ export default function CheckoutPage() {
 
       trackAddPaymentInfo(cartItems, {
         paymentType: 'Razorpay',
-        value: chargeSummary.total || total,
+        value: payableTotal,
       });
 
       rzp.open();
@@ -1086,7 +1093,7 @@ export default function CheckoutPage() {
             <div className="col-span-2 text-right">Total</div>
           </div>
 
-          <OfferCelebration freeItems={freeItems} className="mb-6" />
+          <OfferCelebration freeItems={freeItems} burst={offerBurst} className="mb-6" />
 
           {/* Items */}
           <div className="space-y-6">
@@ -1097,10 +1104,17 @@ export default function CheckoutPage() {
                   <img
                     src={`https://ikonixperfumer.com/beta/assets/uploads/${item.image}`}
                     alt={item.name}
-                    className="w-20 h-20 md:w-24 md:h-24 rounded-xl object-cover bg-[#f6ebe6]"
+                    onClick={() => navigate(`/product-details/${item.id}?vid=${item.variantid}`)}
+                    className="w-20 h-20 md:w-24 md:h-24 rounded-xl object-cover bg-[#f6ebe6] cursor-pointer"
                   />
                   <div>
-                    <p className="text-base md:text-xl text-[#6d5a52] font-medium">{item.name}</p>
+                    <Link
+                      to={`/product-details/${item.id}?vid=${item.variantid}`}
+                      className="block text-base md:text-xl text-[#6d5a52] font-medium hover:underline"
+                    >
+                      {item.name}
+                    </Link>
+                    {item.weight ? <p className="text-sm text-[#8C7367]">{item.weight} ml</p> : null}
                     <p className="text-[#2A3443] text-sm md:text-lg font-semibold">
                       Rs.{item.price.toFixed(2)}/-
                     </p>
@@ -1613,6 +1627,7 @@ export default function CheckoutPage() {
                             />
                             <div className="flex-1">
                               <p className="text-[#6d5a52] font-medium">{item.name}</p>
+                              {item.weight ? <p className="text-xs text-[#8C7367]">{item.weight} ml</p> : null}
                               <p className="text-[#2A3443] font-semibold text-sm">
                                 Rs.{item.price.toFixed(2)}/-
                               </p>
@@ -1691,7 +1706,7 @@ export default function CheckoutPage() {
                         )}
                         <div className="flex justify-between text-2xl font-bold text-[#2A3443]">
                           <span>Total</span>
-                          <span>Rs.{(chargeSummary.total || total).toFixed(2)}/-</span>
+                          <span>Rs.{(payableTotal).toFixed(2)}/-</span>
                         </div>
                       </div>
                     </div>

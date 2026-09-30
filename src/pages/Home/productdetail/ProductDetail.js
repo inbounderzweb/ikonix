@@ -332,6 +332,7 @@ export default function ProductDetails() {
         variantid,
         name: product.name,
         image: product.image,
+        weight: selectedVar.weight,
         price,
         qty,
       });
@@ -375,6 +376,7 @@ export default function ProductDetails() {
           variantid,
           name: product.name,
           image: product.image,
+          weight: selectedVar.weight,
           price,
           qty,
         },
@@ -391,6 +393,7 @@ export default function ProductDetails() {
         variantid,
         name: product.name,
         image: product.image,
+        weight: selectedVar.weight,
         price,
         qty: 1,
       },
@@ -460,11 +463,12 @@ export default function ProductDetails() {
             variantid,
             name: product.name,
             image: product.image,
+            weight: selectedVar.weight,
             price,
             qty,
           });
           addOrIncLocal(
-            { id: Number(pid), variantid, name: product.name, image: product.image, price, qty },
+            { id: Number(pid), variantid, name: product.name, image: product.image, weight: selectedVar.weight, price, qty },
             qty
           );
           trackAddToCart(product, selectedVar, qty);
@@ -483,6 +487,7 @@ export default function ProductDetails() {
           variantid,
           name: product.name,
           image: product.image,
+          weight: selectedVar.weight,
           price,
           qty: 1,
         },

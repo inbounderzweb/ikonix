@@ -23,13 +23,22 @@ function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { cartCount } = useCart();
+  const { cartCount, offerTick } = useCart();
 
   const [open, setOpen] = useState(false);
   const [sidebar, setSidebar] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Open the cart automatically when adding an item newly unlocks an offer, so the
+  // customer sees the "Offer unlocked" message. Not on checkout, where the cart is already shown.
+  const seenOfferTick = useRef(offerTick);
+  useEffect(() => {
+    if (offerTick === seenOfferTick.current) return;
+    seenOfferTick.current = offerTick;
+    if (!location.pathname.startsWith("/checkout")) setCartOpen(true);
+  }, [offerTick, location.pathname]);
 
   const closeSidebar = useCallback(() => setSidebar(false), []);
 
@@ -41,8 +50,8 @@ function Header() {
   }, []);
 
   // Top navbar is always sticky/visible now — only the mobile bottom
-  // quick-nav still follows the scroll-direction show/hide behavior.
-  const { footerVisible } = useMobileNavScroll();
+  // quick-nav is always visible too, and just turns slightly transparent while scrolling down.
+  const { navDimmed } = useMobileNavScroll();
 
   const menuRef = useRef(null);
   useEffect(() => {
@@ -154,7 +163,7 @@ function Header() {
         onSearchOpen={() => setSearchOpen(true)}
         onCartOpen={() => setCartOpen(true)}
         onAuthOpen={() => setAuthOpen(true)}
-        visible={footerVisible}
+        dimmed={navDimmed}
       />
 
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
