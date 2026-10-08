@@ -80,8 +80,17 @@ fields; it continues to reserve `total`, `total_charge`, and `grand_total` for
 an explicitly quoted payable total. Delivery and other charges are added
 separately when no payable total is supplied.
 
-Cart and checkout share the pricing calculation. Offers match both product and
-variant IDs, and an explicit offer discount is an aggregate amount applied once.
+Cart and checkout share the pricing calculation. Product and variant IDs identify
+the free bottle, and an explicit offer discount is an aggregate amount applied
+once to that line. An active offer also switches the other products of the same
+bottle size to their own backend original prices. The size comes from the
+offer's `variant_value`, falling back to the matching free bottle's `weight`.
+Other sizes keep their sale prices. Missing or conflicting size information
+does not extend pricing to other products, and unmatched or inactive offer rows
+do not activate a size group. The backend remains responsible for qualification
+and selecting the free bottle; the frontend does not invent offers from quantity.
+Priced rows preserve their normal unit price so repeated calculations and offer
+removal remain consistent, including prices supplied through `discount_price`.
 Checkout uses the items and offers from the latest successful delivery quote
 and updates the shared cart from that snapshot, so its quantity controls,
 product rows, confirmation, and payment amount use the same cart state.

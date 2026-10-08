@@ -71,10 +71,10 @@ test('multiple free bottles do not multiply an explicit aggregate discount again
   expect(result.items[0]).toMatchObject({ freeQty: 2, offers: [expect.objectContaining({ free_qty: 2, discount: 1198 })] });
 });
 
-test.each([undefined, null, '', 'invalid', -1, Infinity, 0])('invalid original price %s falls back to the normal unit price', (originalPrice) => {
+test.each([undefined, null, '', 'invalid', -1, Infinity, 0])('invalid offer original price %s falls back to the product original price', (originalPrice) => {
   const result = getCartPricing(cartItems({ qty: '5' }), [{ ...offer, original_price: originalPrice }]);
-  expect(result).toMatchObject({ subtotal: 2845, discount: 599, total: 2246 });
-  expect(result.items[0].price).toBe(569);
+  expect(result).toMatchObject({ subtotal: 2995, discount: 599, total: 2396 });
+  expect(result.items[0].price).toBe(599);
 });
 
 test('missing discount falls back to the free quantity and preserves final price zero', () => {
@@ -98,4 +98,99 @@ test('money is rounded to paise while invalid prices and quantities stay finite'
     .toMatchObject({ subtotal: 0.3, discount: 0, total: 0.3 });
   expect(getCartPricing([{ id: 87, variantid: '42', price: Infinity, qty: 'invalid' }]))
     .toMatchObject({ subtotal: 0, discount: 0, total: 0 });
+});
+
+const mixedItems = (size = '30') => [
+  { ...serverItem, qty: '2', weight: size },
+  { ...serverItem, id: '88', vid: '43', qty: '2', weight: size, price: '699', sale_price: '629' },
+  { ...serverItem, id: '89', vid: '44', qty: '1', weight: size, price: '499', sale_price: '449' },
+  { ...serverItem, id: '90', vid: '45', qty: '1', weight: '10', price: '299', sale_price: '269' },
+].map(normalizeServerCartItem);
+const mixedOffer = {
+  ...offer, pid: '89', vid: '44', variant_value: '30', original_price: 499, discount: 499,
+};
+
+test.each(['30', '50', '100'])('an active %s ml offer uses each mixed product original price and discounts only the free bottle', (size) => {
+  const result = getCartPricing(mixedItems(size), [{ ...mixedOffer, variant_value: size }]);
+  expect(result).toMatchObject({ subtotal: 3364, discount: 499, total: 2865 });
+  expect(result.items.map(({ price, freeQty, discount }) => ({ price, freeQty, discount }))).toEqual([
+    { price: 599, freeQty: 0, discount: 0 },
+    { price: 699, freeQty: 0, discount: 0 },
+    { price: 499, freeQty: 1, discount: 499 },
+    { price: 269, freeQty: 0, discount: 0 },
+  ]);
+});
+
+test.each([undefined, '', 'invalid'])('the matching free bottle supplies the offer size when variant_value is %s', (variantValue) => {
+  const result = getCartPricing(mixedItems(), [{ ...mixedOffer, variant_value: variantValue }]);
+  expect(result.items.map((item) => item.price)).toEqual([599, 699, 499, 269]);
+});
+
+test('size matching accepts numeric sizes and ml labels without confusing product variant IDs', () => {
+  const items = mixedItems();
+  items[0].weight = 30;
+  items[1].weight = '30 ML';
+  const result = getCartPricing(items, [{ ...mixedOffer, variant_value: '30.0 ml' }]);
+  expect(result.items.map((item) => item.price)).toEqual([599, 699, 499, 269]);
+});
+
+test.each([
+  { ...mixedOffer, pid: '999' },
+  { ...mixedOffer, vid: '999' },
+  { ...mixedOffer, pid: '' },
+  { ...mixedOffer, free_qty: 0 },
+])('an invalid or absent free bottle does not activate group original pricing (%j)', (invalidOffer) => {
+  const result = getCartPricing(mixedItems(), [invalidOffer]);
+  expect(result).toMatchObject({ subtotal: 3114, discount: 0, total: 3114 });
+  expect(result.items.map((item) => item.price)).toEqual([569, 629, 449, 269]);
+});
+
+test('conflicting offer and free-bottle sizes do not reprice other size groups', () => {
+  const result = getCartPricing(mixedItems(), [{ ...mixedOffer, variant_value: '10' }]);
+  expect(result.items.map((item) => item.price)).toEqual([569, 629, 499, 269]);
+  expect(result.discount).toBe(499);
+});
+
+test('missing size information only reprices the identified free product', () => {
+  const items = mixedItems().map((item) => ({ ...item, weight: '' }));
+  const result = getCartPricing(items, [{ ...mixedOffer, variant_value: '' }]);
+  expect(result.items.map((item) => item.price)).toEqual([569, 629, 499, 269]);
+});
+
+test('simultaneous size offers use separate original prices and apply each discount once', () => {
+  const items = mixedItems();
+  items[3] = { ...items[3], weight: '50', qty: 4 };
+  const secondOffer = { ...offer, pid: '90', vid: '45', variant_value: '50', original_price: 299, discount: 299 };
+  const result = getCartPricing(items, [mixedOffer, secondOffer]);
+  expect(result).toMatchObject({ subtotal: 4291, discount: 798, total: 3493 });
+  expect(result.items.map((item) => item.freeQty)).toEqual([0, 0, 1, 1]);
+});
+
+test('repeated pricing is stable and removing the offer restores every normal price, including discount_price', () => {
+  const items = mixedItems();
+  items[1] = normalizeServerCartItem({
+    ...serverItem, id: '88', vid: '43', qty: '2', weight: '30',
+    price: '699', sale_price: undefined, discount_price: '629',
+  });
+  const result = getCartPricing(items, [mixedOffer]);
+  expect(getCartPricing(result.items, [mixedOffer])).toEqual(result);
+  expect(getCartPricing(result.items, [])).toMatchObject({
+    subtotal: 3114, discount: 0, total: 3114,
+    items: [
+      expect.objectContaining({ price: 569, freeQty: 0 }),
+      expect.objectContaining({ price: 629, freeQty: 0 }),
+      expect.objectContaining({ price: 449, freeQty: 0 }),
+      expect.objectContaining({ price: 269, freeQty: 0 }),
+    ],
+  });
+  expect(items[0].price).toBe(569);
+});
+
+test('missing original prices fall back to the product normal price without borrowing another fragrance price', () => {
+  const items = mixedItems();
+  items[0].msrp = 0;
+  items[2].msrp = undefined;
+  const result = getCartPricing(items, [{ ...mixedOffer, original_price: undefined, discount: undefined }]);
+  expect(result.items.map((item) => item.price)).toEqual([569, 699, 449, 269]);
+  expect(result.discount).toBe(449);
 });

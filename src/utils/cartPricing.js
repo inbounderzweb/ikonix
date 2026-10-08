@@ -40,7 +40,7 @@ export const normalizeServerCartItem = (item) => ({
   variantid: String(item.variantid ?? item.vid ?? ''),
   name: item.name,
   image: item.image,
-  weight: item.weight ?? '',
+  weight: item.weight ?? item.variant_value ?? '',
   price: pickBestPrice(item),
   qty: Math.max(1, positiveAmount(item.qty) ?? 1),
   msrp: money(amount(item.msrp ?? item.mrp ?? item.regular_price ?? item.price) ?? 0),
@@ -61,17 +61,44 @@ const matchesItem = (offer, item) => {
     String(variantId) === String(item.variantid);
 };
 
+const bottleSize = (value) => {
+  if (typeof value !== 'number' && typeof value !== 'string') return null;
+  const match = String(value).trim().match(/^(\d+(?:\.\d+)?)\s*(?:ml)?$/i);
+  return match ? positiveAmount(match[1]) : null;
+};
+
 export const getCartPricing = (normalizedItems, freeItems = []) => {
   const sourceItems = Array.isArray(normalizedItems) ? normalizedItems : [];
   const sourceOffers = Array.isArray(freeItems) ? freeItems : [];
+  const qualifyingSizes = new Set();
+  const activeOffers = sourceOffers.filter((offer) => {
+    if (!offer || positiveAmount(offer.free_qty) === null) return false;
+    const freeItem = sourceItems.find((item) => (
+      positiveAmount(item.qty) !== null && matchesItem(offer, item)
+    ));
+    if (!freeItem) return false;
+
+    // Offers cover bottles of one size across fragrances. The IDs identify
+    // the free bottle, not every paid product contributing to the offer.
+    const offerSize = bottleSize(offer.variant_value);
+    const itemSize = bottleSize(freeItem.weight);
+    const size = offerSize ?? itemSize;
+    if (size !== null && (offerSize === null || itemSize === null || offerSize === itemSize)) {
+      qualifyingSizes.add(size);
+    }
+    return true;
+  });
   const items = sourceItems.map((item) => {
     const qty = amount(item.qty) ?? 0;
-    const matchingOffers = sourceOffers.filter((offer) => (
-      offer && positiveAmount(offer.free_qty) !== null && matchesItem(offer, item)
-    ));
+    const matchingOffers = activeOffers.filter((offer) => matchesItem(offer, item));
     const offerPrice = matchingOffers.map((offer) => positiveAmount(offer.original_price))
       .find((price) => price !== null);
-    const price = money(offerPrice ?? amount(item.price) ?? 0);
+    // Checkout may price the provider's already-priced rows again. Preserve
+    // the normal price so removing an offer restores it on every product.
+    const normalPrice = money(amount(item.normalPrice) ?? amount(item.price) ?? 0);
+    const qualifies = matchingOffers.length > 0 || qualifyingSizes.has(bottleSize(item.weight));
+    const originalPrice = qualifies ? positiveAmount(item.msrp) : null;
+    const price = money(offerPrice ?? originalPrice ?? normalPrice);
     const subtotal = money(price * qty);
     const offers = matchingOffers.map((offer) => {
       const freeQty = positiveAmount(offer.free_qty);
@@ -83,7 +110,7 @@ export const getCartPricing = (normalizedItems, freeItems = []) => {
     });
     const discount = Math.min(subtotal, money(offers.reduce((sum, offer) => sum + offer.discount, 0)));
     const freeQty = Math.min(qty, offers.reduce((sum, offer) => sum + offer.free_qty, 0));
-    return { ...item, price, subtotal, discount, total: money(subtotal - discount), freeQty, offers };
+    return { ...item, normalPrice, price, subtotal, discount, total: money(subtotal - discount), freeQty, offers };
   });
   const subtotal = money(items.reduce((sum, item) => sum + item.subtotal, 0));
   const discount = money(items.reduce((sum, item) => sum + item.discount, 0));

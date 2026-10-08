@@ -79,6 +79,22 @@ const oudOfferQuote = {
   free_items: [oudOffer],
   data: [{ ...oudCartItem, qty: '5' }],
 };
+const mixedOfferQuote = {
+  status: true,
+  delivery_charge: '70',
+  total_qty: '6',
+  total_amount: 0,
+  free_items: [{
+    pid: '89', vid: '44', variant_value: '30', free_qty: 1,
+    original_price: 499, discount: 499, final_price: 0, offer_label: 'Buy 4 Get 1 Free',
+  }],
+  data: [
+    { cartid: '1193', id: '87', vid: '42', qty: '2', name: 'Oud perfume', price: '599', sale_price: '569', weight: '30' },
+    { cartid: '1194', id: '88', vid: '43', qty: '2', name: 'Rose perfume', price: '699', sale_price: '629', weight: '30' },
+    { cartid: '1195', id: '89', vid: '44', qty: '1', name: 'Free perfume', price: '499', sale_price: '449', weight: '30' },
+    { cartid: '1196', id: '92', vid: '58', qty: '1', name: 'Large perfume', price: '899', sale_price: '809', weight: '50' },
+  ],
+};
 const deliveryMethodsWithoutFees = {
   status: true,
   data: [
@@ -347,6 +363,78 @@ test('the supplied offer charges four original-price bottles consistently in the
   expect(new URLSearchParams(createOrder[1]).get('client_hint_amount')).toBe('239600');
   await act(async () => { await paymentOptions.handler(paymentResponse); });
   expect(trackPurchase).toHaveBeenCalledWith(expect.objectContaining({ value: 2396, shipping: 0 }));
+});
+
+test('mixed-product offers use each eligible bottle original price in both summaries and payment while other sizes keep sale pricing', async () => {
+  deliveryMethodsResponse = deliveryMethodsWithoutFees;
+  setOudCart(mixedOfferQuote);
+  mountCheckout();
+
+  await waitFor(() => expect(chargeRow('Delivery Charge')).toHaveTextContent('Rs.70.00/-'));
+  for (const price of [599, 699, 499]) {
+    expect(screen.getByText(`Rs.${price}.00/-`, { exact: true })).toBeInTheDocument();
+  }
+  for (const price of [569, 629, 449, 899]) {
+    expect(screen.queryByText(`Rs.${price}.00/-`, { exact: true })).not.toBeInTheDocument();
+  }
+  expect(screen.getAllByText('Rs.809.00/-', { exact: true })).toHaveLength(2);
+  expect(chargeRow('Subtotal')).toHaveTextContent('Rs.3904.00/-');
+  expect(chargeRow('Offer discount')).toHaveTextContent('-Rs.499.00/-');
+  expect(chargeRow('Total')).toHaveTextContent('Rs.3475.00/-');
+  expect(screen.getAllByText(/1 free \(Buy 4 Get 1 Free/)).toHaveLength(1);
+  expect(screen.getByText(/1 free \(Buy 4 Get 1 Free/)).toHaveTextContent('save Rs.499.00/-');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Place order' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+  expect(await screen.findByRole('heading', { name: 'Confirm your Order' })).toBeInTheDocument();
+  for (const price of [599, 699, 499]) {
+    expect(screen.getAllByText(`Rs.${price}.00/-`, { exact: true })).toHaveLength(2);
+  }
+  expect(screen.getAllByText('Rs.809.00/-', { exact: true })).toHaveLength(3);
+  expect(screen.getAllByText(/including 1 free/)).toHaveLength(1);
+  expect(chargeRow('Subtotal', 1)).toHaveTextContent('Rs.3904.00/-');
+  expect(chargeRow('Offer discount', 1)).toHaveTextContent('-Rs.499.00/-');
+  expect(chargeRow('Delivery Charge', 1)).toHaveTextContent('Rs.70.00/-');
+  expect(chargeRow('Total', 1)).toHaveTextContent('Rs.3475.00/-');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Proceed to Checkout' }));
+  await waitFor(() => expect(paymentOptions).not.toBeNull());
+  const createOrder = api.post.mock.calls.find(([url]) => url.endsWith('/payment/create-order'));
+  expect(new URLSearchParams(createOrder[1]).get('client_hint_amount')).toBe('347500');
+  await act(async () => { await paymentOptions.handler(paymentResponse); });
+  expect(trackPurchase).toHaveBeenCalledWith(expect.objectContaining({ value: 3475, shipping: 70 }));
+});
+
+test('an updated mixed-product quote restores all sale prices when the offer ends despite stale context offer data', async () => {
+  setOudCart(mixedOfferQuote);
+  const view = mountCheckout();
+  await waitFor(() => expect(chargeRow('Total')).toHaveTextContent('Rs.3475.00/-'));
+
+  cartQuote = {
+    ...mixedOfferQuote,
+    total_qty: '5',
+    total_amount: 3085,
+    free_items: [],
+    data: mixedOfferQuote.data.map((item, index) => index === 0 ? { ...item, qty: '1' } : item),
+  };
+  useCart.mockReturnValue({
+    ...cartState,
+    items: cartState.items.map((item, index) => index === 0 ? { ...item, qty: 1 } : item),
+  });
+  view.rerender(checkoutTree());
+
+  await waitFor(() => expect(chargeRow('Total')).toHaveTextContent('Rs.3155.00/-'));
+  for (const [price, occurrences] of [[569, 2], [629, 1], [449, 2]]) {
+    expect(screen.getAllByText(`Rs.${price}.00/-`, { exact: true })).toHaveLength(occurrences);
+  }
+  for (const price of [599, 699, 499]) {
+    expect(screen.queryByText(`Rs.${price}.00/-`, { exact: true })).not.toBeInTheDocument();
+  }
+  expect(screen.getAllByText('Rs.809.00/-', { exact: true })).toHaveLength(2);
+  expect(chargeRow('Subtotal')).toHaveTextContent('Rs.3085.00/-');
+  expect(chargeRow('Delivery Charge')).toHaveTextContent('Rs.70.00/-');
+  expect(screen.queryByText('Offer discount', { exact: true })).not.toBeInTheDocument();
+  expect(screen.queryByText(/1 free \(Buy 4 Get 1 Free/)).not.toBeInTheDocument();
 });
 
 test('a newer backend quote replaces the stale offer original price in both order summaries', async () => {

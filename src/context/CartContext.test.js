@@ -106,6 +106,48 @@ test('server offer pricing changes dynamically and returns to sale pricing when 
   expect(cart.cartCount).toBe(4);
 });
 
+test.each([
+  ['the offer size', { variant_value: '30' }],
+  ['the free product size when the offer omits it', {}],
+])('mixed-product offers use each eligible product original price from %s and restore sale prices', async (_name, offerSize) => {
+  auth = { ...auth, user: { id: 7 }, token: 'customer-token' };
+  const data = [
+    { cartid: '1193', id: '87', vid: '42', qty: '2', name: 'Oud perfume', price: '599', sale_price: '569', weight: '30' },
+    { cartid: '1194', id: '88', vid: '43', qty: '2', name: 'Rose perfume', price: '699', sale_price: '629', weight: '30' },
+    { cartid: '1195', id: '89', vid: '44', qty: '1', name: 'Free perfume', price: '499', sale_price: '449', weight: '30' },
+    { cartid: '1196', id: '92', vid: '58', qty: '1', name: 'Large perfume', price: '899', sale_price: '809', weight: '50' },
+  ];
+  const offer = {
+    pid: '89', vid: '44', free_qty: 1, original_price: 499, discount: 499, final_price: 0,
+    offer_label: 'Buy 4 Get 1 Free', ...offerSize,
+  };
+  api.post.mockResolvedValue({ data: { status: true, free_items: [offer], data } });
+  mountCart();
+
+  await waitFor(() => expect(cart.items).toHaveLength(4));
+  expect(cart.items).toEqual([
+    expect.objectContaining({ id: 87, price: 599, qty: 2, subtotal: 1198, discount: 0, total: 1198, freeQty: 0, offers: [] }),
+    expect.objectContaining({ id: 88, price: 699, qty: 2, subtotal: 1398, discount: 0, total: 1398, freeQty: 0, offers: [] }),
+    expect.objectContaining({ id: 89, price: 499, qty: 1, subtotal: 499, discount: 499, total: 0, freeQty: 1, offers: [expect.objectContaining(offer)] }),
+    expect.objectContaining({ id: 92, price: 809, qty: 1, subtotal: 809, discount: 0, total: 809, freeQty: 0, offers: [] }),
+  ]);
+  expect(cart.discount).toBe(499);
+  expect(cart.cartCount).toBe(6);
+  expect(cart.items.reduce((sum, item) => sum + item.subtotal, 0)).toBe(3904);
+  expect(cart.items.reduce((sum, item) => sum + item.total, 0)).toBe(3405);
+
+  api.post.mockResolvedValue({ data: { status: true, free_items: [], data } });
+  await act(async () => { await cart.refresh(); });
+  expect(cart.items.map(({ price, discount, freeQty, offers }) => ({ price, discount, freeQty, offers }))).toEqual([
+    { price: 569, discount: 0, freeQty: 0, offers: [] },
+    { price: 629, discount: 0, freeQty: 0, offers: [] },
+    { price: 449, discount: 0, freeQty: 0, offers: [] },
+    { price: 809, discount: 0, freeQty: 0, offers: [] },
+  ]);
+  expect(cart.discount).toBe(0);
+  expect(cart.items.reduce((sum, item) => sum + item.total, 0)).toBe(3654);
+});
+
 test('checkout cart snapshots update shared quantities before a decrement and preserve empty carts', async () => {
   auth = { ...auth, user: { id: 7 }, token: 'customer-token' };
   const item = { cartid: '1193', id: '87', vid: '42', qty: '1', price: '599', sale_price: '569' };
