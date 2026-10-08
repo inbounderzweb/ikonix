@@ -30,7 +30,7 @@ export default function Shop() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { user, token, setToken, setIsTokenReady, isTokenReady } = useAuth();
+  const { user, token, isTokenReady } = useAuth();
   const { items, refresh, addOrIncLocal, inc } = useCart();
 
   const checkInCart = useCallback((pid, vid) => {
@@ -41,15 +41,7 @@ export default function Shop() {
     );
   }, [items]);
 
-  const api = useMemo(
-    () =>
-      createApiClient({
-        getToken: () => token,
-        setToken,
-        setIsTokenReady,
-      }),
-    [token, setToken, setIsTokenReady]
-  );
+  const api = useMemo(() => createApiClient({}), []);
 
   // RTK products (token-ready)
   const { data, isLoading, isError, refetch } = useGetProductsQuery(undefined, {
@@ -255,7 +247,7 @@ export default function Shop() {
         const { data: resp } = await api.post(
           `${API_BASE}/cart`,
           qs.stringify({ userid: user.id, productid: product.id, variantid, qty: 1 }),
-          { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+          { requireUser: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
 
         if (resp?.success) {
@@ -270,14 +262,13 @@ export default function Shop() {
         console.error("add to cart error:", e?.response?.data || e);
         refresh();
         if (isAuthError(e)) {
-          setToken('');
           toastError('Your session has expired. Please log in again.');
         } else {
           toastError(getApiErrorMessage(e, 'Error adding to cart'));
         }
       }
     },
-    [api, token, user, setToken, addOrIncLocal, refresh, saveGuestCart, checkInCart, inc]
+    [api, token, user, addOrIncLocal, refresh, saveGuestCart, checkInCart, inc]
   );
 
   if (isLoading) {

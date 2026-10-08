@@ -15,7 +15,7 @@ function DiscoverMore() {
 
     const navigate = useNavigate()
   const [moreProducts, setMoreProducts] = useState([]);
-   const { user, token, setToken, isTokenReady } = useAuth();
+   const { user, token, isTokenReady } = useAuth();
   const { data, isLoading, isError, refetch } = useGetProductsQuery(undefined, { skip: !isTokenReady });
 
   // ✅ Use CartContext as source of truth so the header/mobile-nav badge
@@ -91,7 +91,7 @@ const handleViewDetails = (item) => {
       const { data: resp } = await api.post(
         `${API_BASE}/cart`,
         qs.stringify({ userid: user.id, productid: product.id, variantid, qty: 1 }),
-        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        { requireUser: true, expectedUserToken: token, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
 
       if (resp?.success) {
@@ -105,7 +105,6 @@ const handleViewDetails = (item) => {
       console.error('Error adding to cart:', err?.response?.data || err);
       refresh();
       if (isAuthError(err)) {
-        setToken('');
         toastError('Your session has expired. Please log in again.');
       } else {
         toastError(getApiErrorMessage(err, 'Error adding to cart'));

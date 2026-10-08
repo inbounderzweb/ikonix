@@ -12,7 +12,8 @@ import qs from "qs";
 import { useAuth } from "./AuthContext";
 import { createApiClient } from "../api/client";
 import { toastSuccess, toastError, truncateName } from "../utils/toast";
-import { getApiErrorMessage, isAuthError } from "../utils/apiError";
+import { getApiErrorMessage, getResponseMessage, isAuthError } from "../utils/apiError";
+import { getCartPricing, normalizeServerCartItem } from "../utils/cartPricing";
 
 const API_BASE = "https://ikonixperfumer.com/beta/api";
 const CartContext = createContext();
@@ -73,46 +74,7 @@ export const writeGuest = (arr) => {
   localStorage.setItem("guestCart", JSON.stringify(safe));
 };
 
-/* ---------------- Price picker (SERVER MAY SEND DIFFERENT KEYS) ----------------
-   Prefer sale/offer price when available; fallback to regular price.
-   Adjust keys here if your API uses different names.
-------------------------------------------------------------------- */
-const pickBestPrice = (i) => {
-  const candidates = [
-    i.sale_price,
-    i.selling_price,
-    i.offer_price,
-    i.discount_price,
-    i.final_price,
-    i.unit_price,
-    i.price, // fallback
-  ];
-
-  for (const v of candidates) {
-    if (v === undefined || v === null || v === "") continue;
-    const n = Number(v);
-    if (Number.isFinite(n) && n > 0) return n;
-  }
-  return 0;
-};
-
 /* ---------------- Normalizers ---------------- */
-
-const normalizeServerItem = (i) => ({
-  cartid: i.cartid ?? i.id,
-  id: Number(i.productid ?? i.id),
-  variantid: String(i.variantid ?? i.vid ?? ""),
-  name: i.name,
-  image: i.image,
-  weight: i.weight ?? "",
-  // ✅ IMPORTANT FIX: use best price (sale/offer) if present
-  price: pickBestPrice(i),
-  qty: Math.max(1, Number(i.qty) || 1),
-
-  // optional: keep msrp if your API sends it (harmless if undefined)
-  msrp: Number(i.msrp ?? i.mrp ?? i.regular_price ?? i.price) || 0,
-  sale_price: Number(i.sale_price ?? i.selling_price ?? i.offer_price ?? "") || 0,
-});
 
 const normalizeGuestItem = (i) => ({
   cartid: null,
@@ -128,7 +90,7 @@ const normalizeGuestItem = (i) => ({
 /* ------------------------------------------------------------- */
 
 export function CartProvider({ children }) {
-  const { user, token, setToken, setIsTokenReady } = useAuth();
+  const { user, token } = useAuth();
   const [items, setItems] = useState(() => {
     // 1) read guest items from local storage immediately to avoid 0 badge count
     const guestItems = readGuest().map(normalizeGuestItem);
@@ -157,29 +119,25 @@ export function CartProvider({ children }) {
     return user?.id || guestId;
   }, [user, guestId]);
 
-  // single API client with auto refresh + retry on 401/403
+  // The client reads the current stored session for every request, including
+  // delayed payment callbacks and requests after a login/logout.
   const api = useMemo(
-    () =>
-      createApiClient({
-        getToken: () => token,
-        setToken,
-        setIsTokenReady,
-        baseUrl: '', // relative
-      }),
-    [token, setToken, setIsTokenReady]
+    () => createApiClient({ baseUrl: '' }),
+    []
   );
 
-  // Surfaces the backend's actual error text (it uses `error` as often as
-  // `message`) and, on an expired/invalid session, clears the dead token
-  // instead of showing a vague "couldn't update" toast forever.
+  // Session invalidation belongs to the API client; permission failures
+  // should show the backend message without logging the customer out.
   const reportCartError = useCallback((err, fallback) => {
     if (isAuthError(err)) {
-      setToken('');
       toastError('Your session has expired. Please log in again.');
     } else {
       toastError(getApiErrorMessage(err, fallback));
     }
-  }, [setToken]);
+  }, []);
+
+  const authRef = useRef({ userId: user?.id, token });
+  authRef.current = { userId: user?.id, token };
 
   // Avoid double fetch / double sync
   const fetchingRef = useRef(false);
@@ -201,80 +159,66 @@ export function CartProvider({ children }) {
     return (items || []).reduce((sum, i) => sum + (Number(i.qty) || 0), 0);
   }, [items]);
 
-  const discount = useMemo(
-    () => (freeItems || []).reduce((sum, f) => sum + (Number(f.discount) || 0), 0),
-    [freeItems]
+  const pricing = useMemo(
+    () => getCartPricing(items, freeItems),
+    [items, freeItems]
   );
+  const discount = pricing.discount;
+
+  // Checkout's delivery quote is also a cart snapshot. Keep the shared cart in
+  // sync so quantity controls act on the same quantities that checkout shows.
+  const applyServerCart = useCallback((response) => {
+    if (response?.status === false || response?.success === false || !Array.isArray(response?.data)) return;
+    const nextFree = Array.isArray(response.free_items) ? response.free_items : [];
+    setFreeItems(nextFree);
+
+    const freeQty = nextFree.reduce((sum, f) => sum + (Number(f.free_qty) || 0), 0);
+    if (freeBaselineRef.current !== null && freeQty > freeBaselineRef.current) {
+      setOfferTick((t) => t + 1);
+    }
+    freeBaselineRef.current = freeQty;
+    setItems(response.data.map(normalizeServerCartItem));
+    lastFetchRef.current = Date.now();
+  }, []);
 
   /* ---------------- Fetch cart ---------------- */
   const fetchCart = useCallback(async (opts) => {
     // background refreshes (silent) don't flash the "Loading cart..." bar
     const silent = opts?.silent === true;
 
+    // A guest cart lives in localStorage and is always the source of truth, so
+    // even an empty guest cart never reads the shared server guest bucket.
+    if (!user) {
+      setItems(readGuest().map(normalizeGuestItem));
+      setFreeItems([]);
+      setLoading(false);
+      lastFetchRef.current = Date.now();
+      return;
+    }
+
     if (fetchingRef.current) {
       queuedRef.current = true;
       return;
     }
 
-    // A guest cart lives in localStorage and is always the source of truth, so
-    // there is nothing to ask the server. Skips a network call per add/refresh.
-    if (!user) {
-      const guest = readGuest().map(normalizeGuestItem);
-      if (guest.length > 0) {
-        setItems(guest);
-        setFreeItems([]);
-        lastFetchRef.current = Date.now();
-        return;
-      }
-    }
-
     fetchingRef.current = true;
     if (!silent) setLoading(true);
 
-    // determine uid (user id or guest id)
+    // Only logged-in carts are stored on the server.
     const uid = getEffectiveUserId();
 
     try {
       const { data } = await api.post(
         `${API_BASE}/cart`,
         qs.stringify({ userid: uid }),
-        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+        { requireUser: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
       );
 
-      const server = Array.isArray(data?.data) ? data.data : [];
+      if (authRef.current.userId !== user.id || authRef.current.token !== token) return;
 
-      // Offers are only reliable for logged-in users: a guest cart lives in
-      // localStorage, so the server's guest bucket may not match it.
-      const nextFree = user && Array.isArray(data?.free_items) ? data.free_items : [];
-      setFreeItems(nextFree);
-
-      const freeQty = nextFree.reduce((sum, f) => sum + (Number(f.free_qty) || 0), 0);
-      if (user) {
-        if (freeBaselineRef.current !== null && freeQty > freeBaselineRef.current) {
-          setOfferTick((t) => t + 1);
-        }
-        freeBaselineRef.current = freeQty;
-      }
-
-      if (!user) {
-        // Guest "add to cart" only ever writes to localStorage (it never
-        // calls the server), so the local guestCart is always at least as
-        // current as — usually more current than — whatever the server
-        // returns for the shared guest bucket. Treat it as authoritative
-        // whenever it has anything, and only fall back to the server
-        // response if there's truly nothing local yet.
-        const guest = readGuest().map(normalizeGuestItem);
-        setItems(guest.length > 0 ? guest : server.map(normalizeServerItem));
-      } else {
-        setItems(server.map(normalizeServerItem));
-      }
+      applyServerCart(data);
     } catch (err) {
-      console.error("Cart fetch error (500 likely):", err?.response?.data || err);
-      // Fallback to local items if guest
-      if (!user) {
-        const guest = readGuest().map(normalizeGuestItem);
-        if (guest.length) setItems(guest);
-      }
+      console.error("Cart fetch error:", err?.response?.data || err);
     } finally {
       fetchingRef.current = false;
       lastFetchRef.current = Date.now();
@@ -285,7 +229,7 @@ export function CartProvider({ children }) {
       }
     }
 
-  }, [api, user, getEffectiveUserId]);
+  }, [api, user, token, getEffectiveUserId, applyServerCart]);
   fetchCartRef.current = fetchCart;
 
   // Debounced background refetch used after qty changes (offer recalculation),
@@ -310,7 +254,8 @@ export function CartProvider({ children }) {
 
   /* ---------------- Sync guest -> server ---------------- */
   const syncGuestToServer = useCallback(async () => {
-    const uid = getEffectiveUserId();
+    if (!user?.id || !token) return;
+    const uid = user.id;
     const guest = readGuest();
     if (!guest.length || syncingRef.current) return;
 
@@ -321,8 +266,9 @@ export function CartProvider({ children }) {
     try {
       // Use for..of instead of Promise.all to isolate failures and avoid overwhelming the server
       for (const it of guest) {
+        if (authRef.current.userId !== uid || authRef.current.token !== token) break;
         try {
-          await api.post(
+          const { data } = await api.post(
             `${API_BASE}/cart`,
             qs.stringify({
               userid: uid,
@@ -330,25 +276,37 @@ export function CartProvider({ children }) {
               variantid: it.variantid || "",
               qty: Number(it.qty) || 1,
             }),
-            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+            { requireUser: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
           );
+          if ([false, "false", 0, "0"].includes(data?.success) ||
+              [false, "false", 0, "0"].includes(data?.status)) {
+            throw new Error(getResponseMessage(data, "Cart transfer was rejected"));
+          }
+
+          // Remove only the quantity confirmed by the server. Failed lines,
+          // and anything added while this request was running, stay local.
+          const key = toKey(it.id, it.variantid);
+          const remaining = readGuest().flatMap((item) => {
+            if (toKey(item.id, item.variantid) !== key) return [item];
+            const qty = item.qty - it.qty;
+            return qty > 0 ? [{ ...item, qty }] : [];
+          });
+          if (remaining.length) writeGuest(remaining);
+          else localStorage.removeItem("guestCart");
         } catch (itemErr) {
           console.error(`Failed to sync item ${it.id}:`, itemErr?.response?.data || itemErr.message);
+          if (isAuthError(itemErr) || itemErr.__sessionChanged) break;
         }
       }
-
-      if (user) {
-        localStorage.removeItem("guestCart");
-      }
       
-      await fetchCart();
+      if (authRef.current.userId === uid && authRef.current.token === token) await fetchCart();
     } catch (err) {
       console.error("Critical error in syncGuestToServer:", err);
     } finally {
       syncingRef.current = false;
       setSyncing(false);
     }
-  }, [api, user, getEffectiveUserId, fetchCart]);
+  }, [api, user, token, fetchCart]);
 
 
   /* ---------------- Optimistic local add/inc (for realtime badge) ---------------- */
@@ -390,6 +348,18 @@ export function CartProvider({ children }) {
   const inc = useCallback(
     async (cartid, id, variantid) => {
       const key = toKey(id, variantid);
+      if (!user) {
+        const guest = readGuest();
+        const idx = guest.findIndex((x) => toKey(x.id, x.variantid) === key);
+        if (idx > -1) guest[idx].qty += 1;
+        else {
+          const existing = items.find((x) => toKey(x.id, x.variantid) === key);
+          guest.push({ ...existing, id: Number(id), variantid: String(variantid ?? ""), qty: 1 });
+        }
+        writeGuest(guest);
+        setItems(guest.map(normalizeGuestItem));
+        return;
+      }
       if (pendingItemsRef.current.has(key)) return; // already in flight
       pendingItemsRef.current.add(key);
 
@@ -400,7 +370,7 @@ export function CartProvider({ children }) {
         await api.post(
           `${API_BASE}/cart`,
           qs.stringify({ userid: uid, productid: id, variantid, qty: 1 }),
-          { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+          { requireUser: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
         // optimistic update already reflects the new qty; refetch only to
         // recalculate the server-side offer (e.g. buy 4 get 1 free)
@@ -412,21 +382,22 @@ export function CartProvider({ children }) {
       } finally {
         pendingItemsRef.current.delete(key);
       }
-
-      if (!user) {
-        const guest = readGuest();
-        const idx = guest.findIndex((x) => toKey(x.id, x.variantid) === key);
-        if (idx > -1) guest[idx].qty = (Number(guest[idx].qty) || 0) + 1;
-        else guest.push({ id: Number(id), variantid: String(variantid), qty: 1 });
-        writeGuest(guest);
-      }
     },
-    [api, user, getEffectiveUserId, addOrIncLocal, fetchCart, scheduleRefresh, reportCartError]
+    [api, user, token, items, getEffectiveUserId, addOrIncLocal, fetchCart, scheduleRefresh, reportCartError]
   );
 
   const dec = useCallback(
     async (cartid, id, variantid) => {
       const key = toKey(id, variantid);
+
+      if (!user) {
+        const guest = readGuest();
+        const idx = guest.findIndex((x) => toKey(x.id, x.variantid) === key);
+        if (idx > -1) guest[idx].qty = Math.max(1, guest[idx].qty - 1);
+        writeGuest(guest);
+        setItems(guest.map(normalizeGuestItem));
+        return;
+      }
 
       // Quantity floor: never go below 1, and never fire a decrement
       // request when already at 1.
@@ -450,7 +421,7 @@ export function CartProvider({ children }) {
         await api.post(
           `${API_BASE}/cart`,
           qs.stringify({ userid: uid, productid: id, variantid, qty: -1 }),
-          { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+          { requireUser: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
         // optimistic update already reflects the new qty; refetch only to
         // recalculate the server-side offer (e.g. buy 4 get 1 free)
@@ -462,20 +433,21 @@ export function CartProvider({ children }) {
       } finally {
         pendingItemsRef.current.delete(key);
       }
-
-      if (!user) {
-        const guest = readGuest();
-        const idx = guest.findIndex((x) => toKey(x.id, x.variantid) === key);
-        if (idx > -1) guest[idx].qty = Math.max(1, (Number(guest[idx].qty) || 1) - 1);
-        writeGuest(guest);
-      }
     },
-    [api, user, getEffectiveUserId, fetchCart, scheduleRefresh, items, reportCartError]
+    [api, user, token, getEffectiveUserId, fetchCart, scheduleRefresh, items, reportCartError]
   );
 
   const remove = useCallback(
     async (cartid, id, variantid) => {
       const key = toKey(id, variantid);
+      if (!user) {
+        const removedName = items.find((x) => toKey(x.id, x.variantid) === key)?.name;
+        const guest = readGuest().filter((x) => toKey(x.id, x.variantid) !== key);
+        writeGuest(guest);
+        setItems(guest.map(normalizeGuestItem));
+        toastSuccess(removedName ? `${truncateName(removedName)} removed from cart` : "Item removed from cart");
+        return;
+      }
       if (pendingItemsRef.current.has(key)) return; // already in flight
       pendingItemsRef.current.add(key);
 
@@ -487,17 +459,14 @@ export function CartProvider({ children }) {
       });
 
       const uid = getEffectiveUserId();
-      // Only call the server if this item actually has a real cartid.
-      // Guest items that were never synced to the server (added locally
-      // and never inc/dec'd) have cartid === null — there's nothing to
-      // delete server-side, and posting cartid=null 400s on the backend
-      // ("The cart id field is required.").
+      // The backend requires a server cart ID; an optimistic new line may
+      // not have received one yet.
       if (cartid) {
         try {
           await api.post(
             `${API_BASE}/delete-cart`,
             qs.stringify({ userid: uid, cartid, variantid }),
-            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+            { requireUser: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
           );
           // item already removed from local state; refetch to recalculate the offer
           if (user) scheduleRefresh();
@@ -513,13 +482,8 @@ export function CartProvider({ children }) {
         toastSuccess(removedName ? `${truncateName(removedName)} removed from cart` : "Item removed from cart");
         pendingItemsRef.current.delete(key);
       }
-
-      if (!user) {
-        const guest = readGuest().filter((x) => toKey(x.id, x.variantid) !== key);
-        writeGuest(guest);
-      }
     },
-    [api, user, getEffectiveUserId, fetchCart, scheduleRefresh, items, reportCartError]
+    [api, user, token, getEffectiveUserId, fetchCart, scheduleRefresh, items, reportCartError]
   );
 
   const clear = useCallback(() => {
@@ -542,9 +506,10 @@ export function CartProvider({ children }) {
   return (
     <CartContext.Provider
       value={{
-        items,
+        items: pricing.items,
         freeItems,
         discount,
+        applyServerCart,
         offerTick,
         refreshIfStale,
         cartCount,

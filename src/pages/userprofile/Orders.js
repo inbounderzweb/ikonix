@@ -152,16 +152,14 @@ function CourierTracking({ courier }) {
 
 function Orders() {
   useDocumentTitle("My Orders");
-  const { user, token, setToken, setIsTokenReady } = useAuth();
+  const { user, token } = useAuth();
   const [searchParams] = useSearchParams();
   const highlightId = searchParams.get("highlight");
 
-  // Shared client that auto-refreshes the API token on 401/403 — same one
-  // checkout/addresses use, so this list doesn't silently fail on a stale
-  // token (the previous raw-axios call had no such recovery).
+  // Read the current account token for every request and handle expiry centrally.
   const api = useMemo(
-    () => createApiClient({ getToken: () => token, setToken, setIsTokenReady }),
-    [token, setToken, setIsTokenReady]
+    () => createApiClient(),
+    []
   );
 
   const [orders, setOrders] = useState([]);
@@ -178,7 +176,7 @@ function Orders() {
       const response = await api.post(
         `${API_BASE}/orders`,
         qs.stringify({ userid: user.id }),
-        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+        { expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
       );
       const list = response.data?.data || [];
       if (process.env.NODE_ENV !== "production" && list.length) {
@@ -193,7 +191,7 @@ function Orders() {
     } finally {
       setLoading(false);
     }
-  }, [api, user?.id]);
+  }, [api, user?.id, token]);
 
   useEffect(() => {
     if (user?.id) {

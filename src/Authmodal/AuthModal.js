@@ -1,11 +1,9 @@
 // src/components/AuthModal.js
 import React, { useState, useRef, useEffect } from 'react';
 import Swal from 'sweetalert';
-import axios from 'axios';
 import qs from 'qs';
 import { useAuth } from '../context/AuthContext';
-import { useCart } from '../context/CartContext';
-import { ensureGuestTokenReady } from '../api/client';
+import { createApiClient } from '../api/client';
 import { getApiErrorMessage, getResponseMessage } from '../utils/apiError';
 import { isStrongPassword, getPasswordChecks, getPasswordScore, getPasswordStrengthLabel } from '../utils/password';
 import {
@@ -15,6 +13,10 @@ import {
 } from '@heroicons/react/24/outline';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
+// Login endpoints always use the guest credential, including when a rejected
+// user session is being replaced. They share guest recovery with all other API
+// calls rather than bypassing it with a separate axios request.
+const authApi = createApiClient({ getToken: () => null });
 const RESEND_SECONDS = 30;
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
 const OTP_LENGTH = 4;
@@ -39,8 +41,7 @@ export default function AuthModal({ open, onClose }) {
   const [resendIn, setResendIn]   = useState(0);
 
   const otpRefs = useRef([]);
-  const { setUser, setToken } = useAuth();
-  const { refresh } = useCart();
+  const { setSession } = useAuth();
 
   // clear fields whenever we leave the OTP screen
   useEffect(() => {
@@ -76,12 +77,10 @@ export default function AuthModal({ open, onClose }) {
   // These endpoints (login/register/forgot-password) are hit before the
   // visitor has their own JWT, so they authenticate with the shared guest
   // token rather than AuthContext's (still-empty) user token.
-  const apiPost = async (url, payload) => {
-    const guestToken = await ensureGuestTokenReady();
-    return axios.post(url, qs.stringify(payload), {
+  const apiPost = (url, payload) => {
+    return authApi.post(url, qs.stringify(payload), {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        ...(guestToken ? { Authorization: `Bearer ${guestToken}` } : {}),
       },
     });
   };
@@ -201,16 +200,15 @@ export default function AuthModal({ open, onClose }) {
 
     setOtp(Array(OTP_LENGTH).fill(''));
     setTab('login');
-    setUser(userInfo);
-    setToken(data.token);
-    localStorage.setItem('authUser',  JSON.stringify(userInfo));
-    localStorage.setItem('authToken', data.token);
-    localStorage.setItem('authTokenTime', Date.now().toString());
+    if (!setSession(data.token, userInfo)) {
+      Swal('Your session could not be established. Please sign in again.');
+      return;
+    }
 
     // Guest cart -> server sync is handled centrally by CartContext's
     // syncGuestToServer(), which fires automatically once user/token are
-    // set above. Just refresh so the UI picks up the merged cart.
-    await refresh();
+    // set above. Its auth-change effects also fetch the merged cart using the
+    // new user; calling the previous render's refresh here can send guest IDs.
     onClose?.();
   };
 

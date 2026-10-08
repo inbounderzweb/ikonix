@@ -1,85 +1,102 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { AUTH_EXPIRED_EVENT, isJwtExpired, clearStoredSession } from '../api/client';
 
 const AuthContext = createContext();
+const emptySession = () => ({ token: '', user: null });
+const SESSION_KEYS = new Set(['authToken', 'authUser', 'authTokenTime']);
+
+function readStoredSession() {
+  const token = localStorage.getItem('authToken') || '';
+  const rawUser = localStorage.getItem('authUser');
+
+  if (!token || isJwtExpired(token)) {
+    clearStoredSession();
+    return emptySession();
+  }
+
+  try {
+    const user = JSON.parse(rawUser);
+    if (!user || typeof user !== 'object' || Array.isArray(user)) {
+      clearStoredSession();
+      return emptySession();
+    }
+    return { token, user };
+  } catch {
+    // Broken or incomplete browser storage must not leave a token attached to
+    // requests while the UI treats the visitor as a guest.
+    clearStoredSession();
+    return emptySession();
+  }
+}
 
 export function AuthProvider({ children }) {
-  const [token, setTokenState] = useState(
-    () => localStorage.getItem('authToken') || ''
-  );
-  const [user, setUserState] = useState(() => {
-    const u = localStorage.getItem('authUser');
-    return u ? JSON.parse(u) : null;
-  });
-
-  // flag for when token has been restored/fetched
+  const [session, setSessionState] = useState(readStoredSession);
   const [isTokenReady, setIsTokenReady] = useState(false);
 
-  // Mark token as ready after initial state is loaded from localStorage
   useEffect(() => {
+    const onExpired = () => setSessionState(emptySession());
+    const onStorage = (event) => {
+      if (event.storageArea && event.storageArea !== localStorage) return;
+      if (event.key === null || SESSION_KEYS.has(event.key)) {
+        setSessionState(readStoredSession());
+      }
+    };
+
+    window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
+    window.addEventListener('storage', onStorage);
     setIsTokenReady(true);
+    return () => {
+      window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
+      window.removeEventListener('storage', onStorage);
+    };
   }, []);
 
-  const setToken = (t) => {
-    if (t) localStorage.setItem('authToken', t);
-    else localStorage.removeItem('authToken');
-    setTokenState(t);
-  };
+  const setSession = useCallback((token, user) => {
+    if (!token || isJwtExpired(token) || !user || typeof user !== 'object' || Array.isArray(user)) {
+      clearStoredSession();
+      setSessionState(emptySession());
+      return false;
+    }
 
-  const setUser = (u) => {
-    if (u) localStorage.setItem('authUser', JSON.stringify(u));
-    else localStorage.removeItem('authUser');
-    setUserState(u);
-  };
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('authUser', JSON.stringify(user));
+    localStorage.setItem('authTokenTime', Date.now().toString());
+    setSessionState({ token, user });
+    return true;
+  }, []);
 
-  const refreshToken = async () => {
-    console.log('Attempting to refresh token...');
-    // In a real application, this would involve an API call to your backend
-    // For example:
-    // try {
-    //   const response = await fetch('/api/refresh-token', {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       // You might send a refresh token here, or rely on a session cookie
-    //       'Authorization': `Bearer ${ localStorage.getItem('refreshToken') } `
-    //     },
-    //   });
-    //   const data = await response.json();
-    //   if (response.ok && data.accessToken) {
-    //     setToken(data.accessToken);
-    //     // Optionally update user if new user data comes with refresh
-    //     // setUser(data.user);
-    //     console.log('Token refreshed successfully!');
-    //     return true;
-    //   } else {
-    //     console.error('Failed to refresh token:', data.message || response.statusText);
-    //     setToken(''); // Clear token on refresh failure
-    //     setUser(null); // Clear user on refresh failure
-    //     return false;
-    //   }
-    // } catch (error) {
-    //   console.error('Error during token refresh:', error);
-    //   setToken('');
-    //   setUser(null);
-    //   return false;
-    // }
+  const setToken = useCallback((token) => {
+    if (!token || isJwtExpired(token)) {
+      clearStoredSession();
+      setSessionState(emptySession());
+      return;
+    }
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('authTokenTime', Date.now().toString());
+    setSessionState((previous) => ({ ...previous, token }));
+  }, []);
 
-    // Placeholder for demonstration:
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
-    console.log('Token refresh simulated.');
-    // If refresh was successful, you would call setToken and potentially setUser
-    // setToken('new_refreshed_token');
-    return true; // Indicate success
-  };
+  const setUser = useCallback((user) => {
+    if (!user) {
+      clearStoredSession();
+      setSessionState(emptySession());
+      return;
+    }
+    localStorage.setItem('authUser', JSON.stringify(user));
+    setSessionState((previous) => ({ ...previous, user }));
+  }, []);
+
+  // No refresh-token endpoint is configured here. Do not report a successful
+  // refresh when no replacement credential has actually been issued.
+  const refreshToken = useCallback(async () => false, []);
 
   return (
     <AuthContext.Provider
       value={{
-        token,
-        user,
+        ...session,
         setToken,
         setUser,
+        setSession,
         isTokenReady,
         setIsTokenReady,
         refreshToken,
@@ -91,4 +108,3 @@ export function AuthProvider({ children }) {
 }
 
 export const useAuth = () => useContext(AuthContext);
-

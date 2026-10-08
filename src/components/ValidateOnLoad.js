@@ -22,8 +22,11 @@ export default function ValidateOnLoad() {
   useEffect(() => {
     if (user) return; // real session already established, nothing to warm
 
-    ensureGuestTokenReady();
-    const intervalId = setInterval(ensureGuestTokenReady, REFRESH_INTERVAL_MS);
+    // Acquisition failures are logged by the shared client. Warming must not
+    // create an unhandled rejection; actual requests still receive the error.
+    const warmGuestToken = () => ensureGuestTokenReady().catch(() => {});
+    warmGuestToken();
+    const intervalId = setInterval(warmGuestToken, REFRESH_INTERVAL_MS);
     return () => clearInterval(intervalId);
   }, [user]);
 

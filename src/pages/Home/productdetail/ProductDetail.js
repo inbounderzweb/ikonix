@@ -23,7 +23,7 @@ export default function ProductDetails() {
   const [sp, setSp] = useSearchParams();
   const vid = sp.get("vid");
 
-  const { user, token, setToken, setIsTokenReady, isTokenReady } = useAuth();
+  const { user, token, isTokenReady } = useAuth();
   const { items, refresh, addOrIncLocal } = useCart();
 
   const [product, setProduct] = useState(null);
@@ -38,15 +38,7 @@ export default function ProductDetails() {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   // ✅ shared client that auto-refreshes token if needed
-  const api = useMemo(
-    () =>
-      createApiClient({
-        getToken: () => token,
-        setToken,
-        setIsTokenReady,
-      }),
-    [token, setToken, setIsTokenReady]
-  );
+  const api = useMemo(() => createApiClient({}), []);
 
   const checkInCart = useCallback(() => {
     if (!selectedVar?.vid) return false;
@@ -353,9 +345,9 @@ export default function ProductDetails() {
         variantid: selectedVar.vid,
         qty,
       }),
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+      { requireUser: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
-  }, [api, user, pid, selectedVar, qty]);
+  }, [api, user, token, pid, selectedVar, qty]);
 
   const handleAddToCart = useCallback(async () => {
     if (!product || !selectedVar?.vid) return;
@@ -414,13 +406,12 @@ export default function ProductDetails() {
       console.error("add to cart error:", e?.response?.data || e);
       refresh();
       if (isAuthError(e)) {
-        setToken('');
         toastError('Your session has expired. Please log in again.');
       } else {
         toastError(getApiErrorMessage(e, "Error adding to cart"));
       }
     }
-  }, [product, selectedVar, pid, qty, token, user, setToken, addGuest, addOrIncLocal, addServer, refresh, checkInCart]);
+  }, [product, selectedVar, pid, qty, token, user, addGuest, addOrIncLocal, addServer, refresh, checkInCart]);
 
 
 

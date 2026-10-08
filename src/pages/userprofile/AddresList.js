@@ -48,13 +48,12 @@ function AddressField({ label, name, value, onChange, error, required, className
 
 function AddresList() {
   useDocumentTitle("My Addresses");
-  const { user, token, setToken, setIsTokenReady } = useAuth();
+  const { user, token } = useAuth();
 
-  // Shared client that auto-refreshes the API token on 401/403 — same one
-  // the checkout page uses, so address requests don't fail on a stale token.
+  // Read the current account token for every request and handle expiry centrally.
   const api = useMemo(
-    () => createApiClient({ getToken: () => token, setToken, setIsTokenReady }),
-    [token, setToken, setIsTokenReady]
+    () => createApiClient(),
+    []
   );
 
   const [address, setAddress] = useState([]);
@@ -83,6 +82,7 @@ function AddresList() {
         `${API_BASE}/address`,
         qs.stringify({ userid: user.id }),
         {
+          expectedUserToken: token,
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
           },
@@ -101,7 +101,7 @@ function AddresList() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, api]);
+  }, [user?.id, token, api]);
 
   // Auto fetch on mount and whenever the logged-in user changes
   useEffect(() => {
@@ -175,6 +175,7 @@ function AddresList() {
           type: formData.type,
         }),
         {
+          expectedUserToken: token,
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
           },
@@ -200,6 +201,7 @@ const handleDelete = async (addr) => {
         address_id: addr.aid,   // use actual id here
       }),
       {
+        expectedUserToken: token,
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
@@ -296,6 +298,7 @@ const handleDelete = async (addr) => {
           type: addFormData.type,
         }),
         {
+          expectedUserToken: token,
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
           },

@@ -21,6 +21,7 @@ export function toMessageString(value) {
 // Extracts a safe, renderable message from a response body
 // (e.g. {status:false, message:...} or {error:...}).
 export function getResponseMessage(data, fallback) {
+  if (typeof data === 'string') return data || fallback;
   return toMessageString(data?.message) || toMessageString(data?.error) || fallback;
 }
 
@@ -29,10 +30,21 @@ export function getApiErrorMessage(err, fallback) {
   return getResponseMessage(err?.response?.data, fallback);
 }
 
-// A 401/403 on a request made with the user's own JWT means their session
-// is invalid/expired — there's no backend refresh-token endpoint for user
-// sessions yet, so this can't be silently recovered from.
+// A 403 may be a permission or firewall denial. Only explicit token failures
+// should trigger token renewal or invalidate the current account session.
+export function isTokenErrorResponse(data) {
+  const code = data && typeof data === 'object' ? data.code || data.error_code : '';
+  const tokenCode = /^(?:(?:AUTH_|ACCESS_)?(?:TOKEN|JWT)_(?:EXPIRED|INVALID|MISSING|REVOKED|MALFORMED)|(?:EXPIRED|INVALID|MISSING|REVOKED|MALFORMED)_(?:TOKEN|JWT)|SESSION_EXPIRED)$/i;
+  const tokenMessage = /\b(?:invalid|expired|missing|bad|malformed|revoked)\b.{0,40}\b(?:token|jwt)\b|\b(?:token|jwt)\b.{0,40}\b(?:invalid|expired|missing|malformed|revoked|not valid|required)\b|\bsession\s+(?:has\s+)?expired\b|\bjwt\b.{0,30}\bsignature\b.{0,20}\b(?:invalid|failed)\b/i;
+  const messages = typeof data === 'string' ? [data] : [data?.message, data?.error];
+  return tokenCode.test(String(code)) || messages.some((value) => {
+    const message = toMessageString(value);
+    return tokenCode.test(message) || tokenMessage.test(message);
+  });
+}
+
+// The shared API client sets this after confirming the account session failed.
+// Guest authentication and genuine permission errors must not log out users.
 export function isAuthError(err) {
-  const status = err?.response?.status;
-  return status === 401 || status === 403;
+  return err?.__sessionExpired === true;
 }

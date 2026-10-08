@@ -1,22 +1,34 @@
 // src/services/productApi.js
-import { createApi, fetchBaseQuery, retry } from '@reduxjs/toolkit/query/react';
-import { ensureGuestTokenReady } from '../../api/client';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { createApiClient } from '../../api/client';
 
-// 1️⃣ Create your raw baseQuery
-const rawBaseQuery = fetchBaseQuery({
+const productClient = createApiClient({
   baseUrl: 'https://ikonixperfumer.com/beta/api/',
-  prepareHeaders: async (headers) => {
-    const token = await ensureGuestTokenReady();
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
-    headers.set('Content-Type', 'application/json');
-    return headers;
-  },
+  getToken: () => null,
 });
 
-// 2️⃣ Wrap it in a retry layer with maxRetries: 1 (so each call runs twice)
-const baseQuery = retry(rawBaseQuery, { maxRetries: 1 });
+// Products and search use the same guest renewal as login and other API calls.
+// Repeating a fetch with the same rejected JWT cannot recover authentication.
+const baseQuery = async (args, queryApi) => {
+  const { url, method = 'GET', body, ...options } = typeof args === 'string' ? { url: args } : args;
+  try {
+    const response = await productClient.request({
+      ...options,
+      url,
+      method,
+      data: body,
+      signal: queryApi.signal,
+    });
+    return { data: response.data };
+  } catch (error) {
+    return {
+      error: {
+        status: error?.response?.status || 'FETCH_ERROR',
+        data: error?.response?.data || { error: error.message },
+      },
+    };
+  }
+};
 
 export const productApi = createApi({
   reducerPath: 'productApi',
@@ -24,14 +36,11 @@ export const productApi = createApi({
   endpoints: (builder) => ({
     getProducts: builder.query({
       query: () => 'products',
-      // no extra config needed – baseQuery will retry once automatically
     }),
 
     // Server-side search: page/limit/search travel as multipart/form-data
     // fields in the POST body (confirmed against the Postman collection).
-    // fetchBaseQuery detects the FormData body, drops the forced
-    // 'application/json' Content-Type, and lets fetch set the correct
-    // 'multipart/form-data; boundary=...' header itself.
+    // Axios leaves the multipart boundary to the browser for FormData bodies.
     searchProducts: builder.query({
       query: ({ search, page = 1, limit = 10 }) => {
         const formData = new FormData();

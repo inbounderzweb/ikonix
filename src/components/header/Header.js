@@ -17,12 +17,15 @@ import AuthModal from "../../Authmodal/AuthModal";
 import CartDrawer from "../cartdraw/CartDrawer";
 import SearchModal from "../search/Search";
 import MobileBottomNav from "../MobileBottomNav";
+import { AUTH_EXPIRED_EVENT } from "../../api/client";
 import useMobileNavScroll from "../../hooks/useMobileNavScroll";
+
+const ACCOUNT_PAGE = /^\/(orders|addresses|profile|user-profile)(\/|$)/;
 
 function Header() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, isTokenReady } = useAuth();
   const { cartCount, offerTick } = useCart();
 
   const [open, setOpen] = useState(false);
@@ -30,6 +33,15 @@ function Header() {
   const [authOpen, setAuthOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Handles sessions discarded during startup and logout from another tab,
+  // which do not produce an in-flight API failure for the listener below.
+  useEffect(() => {
+    if (isTokenReady && !user && ACCOUNT_PAGE.test(location.pathname)) {
+      navigate("/");
+      setAuthOpen(true);
+    }
+  }, [isTokenReady, user, location.pathname, navigate]);
 
   // Open the cart automatically when adding an item newly unlocks an offer, so the
   // customer sees the "Offer unlocked" message. Not on checkout, where the cart is already shown.
@@ -39,6 +51,19 @@ function Header() {
     seenOfferTick.current = offerTick;
     if (!location.pathname.startsWith("/checkout")) setCartOpen(true);
   }, [offerTick, location.pathname]);
+
+  // Session expired/rejected by the API: send protected pages home and
+  // prompt login. Guest browsing pages stay where they are.
+  useEffect(() => {
+    const onExpired = () => {
+      if (ACCOUNT_PAGE.test(window.location.pathname)) {
+        navigate("/");
+      }
+      setAuthOpen(true);
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
+  }, [navigate]);
 
   const closeSidebar = useCallback(() => setSidebar(false), []);
 

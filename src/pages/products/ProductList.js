@@ -23,7 +23,7 @@ const HOME_PRODUCTS_LIMIT = 8;
 
 export default function ProductList({ hideFilters = false }) {
   const navigate = useNavigate();
-  const { user, token, setToken, setIsTokenReady, isTokenReady } = useAuth();
+  const { user, token, isTokenReady } = useAuth();
 
   // ✅ Use CartContext as source of truth + realtime badge updates
   const { items, refresh, addOrIncLocal, inc } = useCart();
@@ -37,13 +37,7 @@ export default function ProductList({ hideFilters = false }) {
   }, [items]);
 
   // ✅ Use shared client with auto refresh/retry
-  const api = useMemo(() => {
-    return createApiClient({
-      getToken: () => token,
-      setToken,
-      setIsTokenReady,
-    });
-  }, [token, setToken, setIsTokenReady]);
+  const api = useMemo(() => createApiClient({}), []);
 
   // ▶︎ Fire the products request—but only after token is ready:
   const { data, isLoading, isError, refetch } = useGetProductsQuery(undefined, {
@@ -190,6 +184,7 @@ export default function ProductList({ hideFilters = false }) {
             qty: 1,
           }),
           {
+            requireUser: true, expectedUserToken: token,
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
             },
@@ -208,14 +203,13 @@ export default function ProductList({ hideFilters = false }) {
         console.error('❌ Error adding to cart:', error?.response?.data || error);
         refresh(); // rollback the optimistic update by refetching server truth
         if (isAuthError(error)) {
-          setToken('');
           toastError('Your session has expired. Please log in again.');
         } else {
           toastError(getApiErrorMessage(error, 'Error adding to cart'));
         }
       }
     },
-    [api, token, user, setToken, addOrIncLocal, refresh, saveGuestCart, checkInCart, inc]
+    [api, token, user, addOrIncLocal, refresh, saveGuestCart, checkInCart, inc]
   );
 
   if (isLoading) {

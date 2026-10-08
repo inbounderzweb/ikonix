@@ -6,6 +6,8 @@ import axios from 'axios';
 import qs from 'qs';
 import loadRazorpay from '../../../utils/loadRazorpay';
 import { getResponseMessage, getApiErrorMessage } from '../../../utils/apiError';
+import { parseCharge, normalizeCheckoutCharges } from '../../../utils/checkoutCharges';
+import { getCartPricing, normalizeServerCartItem } from '../../../utils/cartPricing';
 import {
   XMarkIcon,
   PlusIcon,
@@ -41,16 +43,16 @@ export default function CheckoutPage() {
   const { user, token } = useAuth();
   const navigate = useNavigate();
   const {
-    items: cartItems,
-    freeItems,
-    discount,
+    items: contextCartItems,
+    freeItems: contextFreeItems,
+    discount: contextDiscount,
+    applyServerCart,
     inc,
     dec,
     remove,
     refresh,
     refreshIfStale,
     ensureServerCartNotEmpty,
-    syncGuestToServer,
     guestId,
     api,
     clear,
@@ -66,10 +68,16 @@ export default function CheckoutPage() {
   }, [refreshIfStale]);
   const offerBurst = useOfferBurst();
 
-  /* Totals (rupees) */
-  const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
-  // Offer discount (e.g. buy 4 get 1 free) is calculated by the server
-  const total = Math.max(0, subtotal - discount);
+  // Price and offer changes must invalidate a quote even if quantities stay equal.
+  // Keep this signature independent of the returned quote to avoid refetch loops.
+  const cartQuoteSignature = JSON.stringify({
+    items: contextCartItems.map((item) => [
+      item.id, item.variantid, item.qty, item.weight ?? '',
+      item.price, item.msrp, item.sale_price,
+    ]),
+    freeItems: contextFreeItems,
+    discount: contextDiscount,
+  });
 
   /* Modals & steps */
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -107,18 +115,41 @@ export default function CheckoutPage() {
   const [deliveryMethods, setDeliveryMethods] = useState([]); // [{id, name, charge}]
   const [deliveryMethod, setDeliveryMethod] = useState(1); // selected id, defaults to Standard
   const [chargeSummary, setChargeSummary] = useState({
-    delivery: 0,
+    delivery: null,
     tax: null,
     packing: null,
     apiTotal: 0,
     raw: null,
   });
-  // Derived at render time so it always uses the latest offer discount, and the
-  // charge summary request doesn't need to re-run when the discount changes
+  const [chargeQuoteLoading, setChargeQuoteLoading] = useState(false);
+  // A delivery quote also returns the latest item and offer prices. Use that
+  // same snapshot throughout checkout, including confirmation and payment.
+  const quotedItems = chargeSummary.raw?.data;
+  const freeItems = Array.isArray(chargeSummary.raw?.free_items)
+    ? chargeSummary.raw.free_items
+    : contextFreeItems;
+  const pricing = getCartPricing(
+    Array.isArray(quotedItems)
+      ? quotedItems.map(normalizeServerCartItem)
+      : contextCartItems,
+    freeItems
+  );
+  const cartItems = pricing.items;
+  const { subtotal, discount, total } = pricing;
+  // Use the server's quoted total when available; otherwise display the
+  // current merchandise amount plus any confirmed charges.
   const payableTotal =
     chargeSummary.apiTotal > 0
       ? chargeSummary.apiTotal
-      : total + chargeSummary.delivery + (chargeSummary.tax || 0) + (chargeSummary.packing || 0);
+      : total + (chargeSummary.delivery || 0) + (chargeSummary.tax || 0) + (chargeSummary.packing || 0);
+  const deliveryChargeLabel = user && chargeQuoteLoading
+    ? 'Calculating…'
+    : chargeSummary.delivery === null
+      ? (user ? 'Unavailable' : 'Calculated at payment')
+      : `Rs.${chargeSummary.delivery.toFixed(2)}/-`;
+  const totalLabel = chargeSummary.apiTotal > 0 || chargeSummary.delivery !== null
+    ? 'Total'
+    : 'Estimated Total';
 
   /* Status */
   const [loading, setLoading] = useState(false);
@@ -176,18 +207,18 @@ export default function CheckoutPage() {
       .filter(Boolean)
       .join(', ');
 
-  const getShippingCountry = () => {
-    const activeBillId = sameAsShip ? shippingId : billingId;
-    const selectedAddress = addresses.find(a => String(a.id) === String(activeBillId));
+  const shippingCountry = (() => {
+    const selectedAddress = addresses.find(a => String(a.id) === String(shippingId));
     return selectedAddress?.country || form.country || 'India';
-  };
+  })();
 
   /* Delivery methods — fetched once from the backend instead of being
      hardcoded to "Standard", used by both the logged-in and guest flows. */
   const normalizeDeliveryMethod = (d, i) => ({
     id: d.id ?? d.method_id ?? d.delivery_method_id ?? i + 1,
     name: d.name ?? d.method ?? d.title ?? `Method ${i + 1}`,
-    charge: Number(d.charge ?? d.price ?? d.amount ?? d.delivery_charge ?? 0) || 0,
+    country: d.country ?? null,
+    charge: parseCharge(d.charge ?? d.price ?? d.amount ?? d.delivery_charge),
     eta: d.eta ?? d.duration ?? d.days ?? '',
   });
 
@@ -234,6 +265,8 @@ export default function CheckoutPage() {
         `${API_BASE}/address`,
         payload,
         {
+          requireUser: true,
+          expectedUserToken: token,
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
@@ -346,6 +379,8 @@ export default function CheckoutPage() {
       console.log("Adding Address with UID:", uid, "Payload:", payload);
 
       const { data } = await api.post(`${API_BASE}/address/add`, payload, {
+        requireUser: true,
+        expectedUserToken: token,
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
@@ -449,62 +484,66 @@ export default function CheckoutPage() {
   };
 
   useEffect(() => {
+    let cancelled = false;
     const fetchChargeSummary = async () => {
-      const uid = user?.id || guestId;
-      const shipping_country = getShippingCountry();
+      const uid = user?.id;
 
-      if (!uid) return;
+      // Guest items are local and are submitted with /guest-checkout;
+      // the shared server cart cannot calculate their order total.
+      if (!uid || !token) {
+        setChargeQuoteLoading(false);
+        setChargeSummary({
+          delivery: selectedDeliveryMethod?.charge ?? null,
+          tax: null,
+          packing: null,
+          apiTotal: 0,
+          raw: null,
+        });
+        return;
+      }
 
+      setChargeQuoteLoading(true);
+      setChargeSummary({ delivery: null, tax: null, packing: null, apiTotal: 0, raw: null });
       try {
         const { data } = await api.post(
           `${API_BASE}/cart`,
           qs.stringify({
             userid: uid,
             delivery_method: deliveryMethod,
-            shipping_country,
+            shipping_country: shippingCountry,
           }),
           {
+            requireUser: true, expectedUserToken: token,
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
             },
           }
         );
+        if (cancelled) return;
+        if (data?.status === false || data?.success === false) {
+          throw new Error(getResponseMessage(data, 'Delivery charges could not be calculated'));
+        }
 
-        const raw = data?.data || data || {};
-        const delivery = Number(
-          data?.delivery_charge ??
-          raw.delivery_charge ??
-          raw.delivery ??
-          raw.shipping_charge ??
-          0
-        ) || 0;
-        const tax = raw.tax ?? raw.tax_charge ?? null;
-        const packing = raw.packing ?? raw.packing_charge ?? null;
-        const taxValue = tax !== null ? Number(tax) || 0 : null;
-        const packingValue = packing !== null ? Number(packing) || 0 : null;
-        const totalFromApi = Number(raw.total ?? raw.total_charge ?? raw.grand_total ?? 0) || 0;
-        
-        setChargeSummary({
-          delivery,
-          tax: taxValue,
-          packing: packingValue,
-          apiTotal: totalFromApi,
-          raw,
-        });
+        setChargeSummary(normalizeCheckoutCharges(data));
+        applyServerCart?.(data);
       } catch (err) {
+        if (cancelled) return;
         console.error('Charge summary fetch failed:', err?.response?.data || err);
         setChargeSummary({
-          delivery: 0,
+          delivery: null,
           tax: null,
           packing: null,
           apiTotal: 0,
           raw: null,
         });
+      } finally {
+        if (!cancelled) setChargeQuoteLoading(false);
       }
     };
 
     fetchChargeSummary();
-  }, [api, guestId, shippingId, billingId, sameAsShip, subtotal, user?.id, form.country, addresses, deliveryMethod]);
+    return () => { cancelled = true; };
+  }, [api, applyServerCart, cartQuoteSignature, user?.id, token, shippingCountry, deliveryMethod, selectedDeliveryMethod?.charge]);
 
   // ---------------------------
   // Razorpay Pay Click Handler
@@ -518,7 +557,7 @@ export default function CheckoutPage() {
       const payload = qs.stringify({
         order_id,
         userid: user?.id || guestId,
-        client_hint_amount: Math.round(Number(total) * 100), // convert to paise
+        client_hint_amount: Math.round(Number(payableTotal) * 100), // convert to paise
         receipt: `ikonix_${order_id}`,
         notes: JSON.stringify({
           source: 'web',
@@ -533,6 +572,8 @@ export default function CheckoutPage() {
         `${API_BASE}/payment/create-order`,
         payload,
         {
+          requireUser: true,
+          expectedUserToken: token,
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
@@ -586,14 +627,11 @@ export default function CheckoutPage() {
             formVerify.append('payment_id', resp.razorpay_payment_id);
             formVerify.append('signature', resp.razorpay_signature);
 
-            const verifyRes = await fetch(`${API_BASE}/payment/callback`, {
-              method: 'POST',
-              headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-              body: formVerify,
-            });
-            const result = await verifyRes.json().catch(() => ({}));
+            const { data: result } = await api.post(
+              `${API_BASE}/payment/callback`, formVerify, { requireUser: true, expectedUserToken: token }
+            );
 
-            if (!verifyRes.ok || result?.status === false) {
+            if (result?.status === false) {
               throw new Error(getResponseMessage(result, 'Signature verification failed'));
             }
 
@@ -623,7 +661,7 @@ export default function CheckoutPage() {
             // navigating to the "Thank you!" page (previous behavior
             // navigated there unconditionally, showing a fake success page
             // after a failed payment).
-            setError(err.message || 'Payment verification failed');
+            setError(getApiErrorMessage(err, err.message || 'Payment verification failed'));
             Swal(err)
             trackPaymentFailed({ orderId: order_id, message: err.message });
             setLoading(false);
@@ -635,7 +673,7 @@ export default function CheckoutPage() {
             // The backend /checkout API blindly empties the cart before payment is confirmed.
             // If the user closes the modal, their cart is gone. We must dynamically restore it here.
             try {
-              if (cartItems && cartItems.length > 0) {
+              if (user?.id && cartItems && cartItems.length > 0) {
                 for (const item of cartItems) {
                   await api.post(`${API_BASE}/cart`, qs.stringify({
                     userid: user?.id || guestId,
@@ -643,6 +681,7 @@ export default function CheckoutPage() {
                     variantid: item.variantid,
                     qty: item.qty
                   }), {
+                    requireUser: true, expectedUserToken: token,
                     headers: {
                       'Content-Type': 'application/x-www-form-urlencoded'
                     }
@@ -664,7 +703,7 @@ export default function CheckoutPage() {
         trackPaymentFailed({ orderId: order_id, message: resp?.error?.description });
         // Restore cart on payment failure too
         try {
-          if (cartItems && cartItems.length > 0) {
+          if (user?.id && cartItems && cartItems.length > 0) {
             for (const item of cartItems) {
               await api.post(`${API_BASE}/cart`, qs.stringify({
                 userid: user?.id || guestId,
@@ -672,6 +711,7 @@ export default function CheckoutPage() {
                 variantid: item.variantid,
                 qty: item.qty
               }), {
+                requireUser: true, expectedUserToken: token,
                 headers: {
                   'Content-Type': 'application/x-www-form-urlencoded'
                 }
@@ -743,7 +783,16 @@ export default function CheckoutPage() {
   // };
 
   const handleCheckout = async () => {
-    const uid = user?.id || guestId;
+    if (chargeQuoteLoading) {
+      setError('Please wait for delivery charges to finish calculating.');
+      return;
+    }
+    if (!user?.id || !token) {
+      setError('Please log in again to place your order.');
+      setShowAuthModal(true);
+      return;
+    }
+    const uid = user.id;
     const billId = sameAsShip ? shippingId : billingId;
 
     // Only block if we have NO address at all. 
@@ -758,24 +807,8 @@ export default function CheckoutPage() {
       setLoading(true);
       setError('');
 
-      // ✅ SYNC BEFORE CHECKOUT IF GUEST
-      if (!user) {
-        console.log("Guest checkout: syncing cart to server first...");
-        try {
-          if (typeof syncGuestToServer === "function") {
-            await syncGuestToServer();
-          }
-          if (typeof refresh === "function") {
-            await refresh();
-          }
-        } catch (syncErr) {
-          console.error("Sync during checkout failed:", syncErr);
-        }
-      } else {
-        // Logged in: basic guard
-        if (typeof ensureServerCartNotEmpty === "function") {
-          await ensureServerCartNotEmpty();
-        }
+      if (typeof ensureServerCartNotEmpty === "function") {
+        await ensureServerCartNotEmpty();
       }
 
       const payload = {
@@ -783,7 +816,7 @@ export default function CheckoutPage() {
         shipping_address: shippingId,
         billing_address: billId,
         delivery_method: deliveryMethod,
-        shipping_country: getShippingCountry(),
+        shipping_country: shippingCountry,
         customer_name: form.name,
         customer_email: form.email,
         customer_phone: form.phone,
@@ -802,6 +835,8 @@ export default function CheckoutPage() {
 
       const doCheckout = () =>
         api.post(`${API_BASE}/checkout`, qs.stringify(payload), {
+          requireUser: true,
+          expectedUserToken: token,
           timeout: 40000,
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
@@ -921,6 +956,7 @@ export default function CheckoutPage() {
           items: JSON.stringify(items),
         }),
         {
+          authMode: 'guest',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           timeout: 40000,
         }
@@ -959,6 +995,7 @@ export default function CheckoutPage() {
           receipt: `ikonix_${order_id}`,
         }),
         {
+          authMode: 'guest',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           timeout: 40000,
         }
@@ -1002,7 +1039,9 @@ export default function CheckoutPage() {
             // this path mirrors that endpoint's naming 1:1 as the most
             // consistent assumption. Confirm with backend if guest payments
             // don't verify.
-            const { data: result } = await api.post(`${API_BASE}/guest-payment/callback`, formVerify);
+            const { data: result } = await api.post(
+              `${API_BASE}/guest-payment/callback`, formVerify, { authMode: 'guest' }
+            );
 
             if (result?.status === false) {
               throw new Error(getResponseMessage(result, 'Signature verification failed'));
@@ -1088,9 +1127,9 @@ export default function CheckoutPage() {
         <>
           {/* Header row */}
           <div className="hidden md:grid grid-cols-12 bg-[#eadcd5] text-[#6d5a52] rounded-md py-3 px-4 font-semibold mb-4 text-lg">
-            <div className="col-span-7">product</div>
+            <div className="col-span-6">product</div>
             <div className="col-span-3 text-center">QTY</div>
-            <div className="col-span-2 text-right">Total</div>
+            <div className="col-span-3 text-right">Total</div>
           </div>
 
           <OfferCelebration freeItems={freeItems} burst={offerBurst} className="mb-6" />
@@ -1098,9 +1137,9 @@ export default function CheckoutPage() {
           {/* Items */}
           <div className="space-y-6">
             {cartItems.map((item) => (
-              <div key={item.cartid} className="flex flex-col gap-4 md:grid md:grid-cols-12 md:items-center">
+              <div key={`${item.id}-${item.variantid}`} className="flex flex-col gap-4 md:grid md:grid-cols-12 md:items-center">
                 {/* Product */}
-                <div className="flex items-center gap-4 md:col-span-7">
+                <div className="flex items-center gap-4 md:col-span-6">
                   <img
                     src={`https://ikonixperfumer.com/beta/assets/uploads/${item.image}`}
                     alt={item.name}
@@ -1137,9 +1176,9 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Total & Remove on md+ */}
-                <div className="flex justify-between md:justify-end md:col-span-2 items-center">
-                  <p className="text-[#2A3443] font-semibold text-lg">
-                    Rs.{(item.price * item.qty).toFixed(2)}/-
+                <div className="flex justify-between md:flex-col lg:flex-row md:justify-end md:col-span-3 items-center md:items-end lg:items-center gap-2">
+                  <p className="text-[#2A3443] font-semibold text-lg whitespace-nowrap">
+                    Rs.{item.total.toFixed(2)}/-
                   </p>
                   <button
                     onClick={() => remove(item.cartid, item.id, item.variantid)}
@@ -1149,13 +1188,11 @@ export default function CheckoutPage() {
                   </button>
                 </div>
 
-                {(freeItems || [])
-                  .filter((f) => String(f.vid) === String(item.variantid))
-                  .map((f) => (
-                    <div key={`free-${f.vid}`} className="md:col-span-12 text-sm text-green-700 font-medium">
-                      + {f.free_qty} free ({f.offer_label || 'Offer'}) — save Rs.{Number(f.discount).toFixed(2)}/-
-                    </div>
-                  ))}
+                {item.offers.map((f, index) => (
+                  <div key={`free-${item.id}-${item.variantid}-${index}`} className="md:col-span-12 text-sm text-green-700 font-medium">
+                    Includes {f.free_qty} free ({f.offer_label || 'Offer'}) — save Rs.{f.discount.toFixed(2)}/-
+                  </div>
+                ))}
 
                 <div className="col-span-12 border-b mt-6" />
               </div>
@@ -1177,9 +1214,25 @@ export default function CheckoutPage() {
                   <span className="font-semibold">-Rs.{discount.toFixed(2)}/-</span>
                 </div>
               )}
+              <div className="flex justify-between">
+                <span className="text-base">Delivery Charge</span>
+                <span className="text-[#b49d91] font-semibold">{deliveryChargeLabel}</span>
+              </div>
+              {chargeSummary.tax !== null && (
+                <div className="flex justify-between">
+                  <span className="text-base">Tax</span>
+                  <span className="text-[#b49d91] font-semibold">Rs.{chargeSummary.tax.toFixed(2)}/-</span>
+                </div>
+              )}
+              {chargeSummary.packing !== null && (
+                <div className="flex justify-between">
+                  <span className="text-base">Packing</span>
+                  <span className="text-[#b49d91] font-semibold">Rs.{chargeSummary.packing.toFixed(2)}/-</span>
+                </div>
+              )}
               <div className="flex justify-between text-xl font-bold text-[#2A3443]">
-                <span>Total</span>
-                <span>Rs.{total.toFixed(2)}/-</span>
+                <span>{totalLabel}</span>
+                <span>Rs.{payableTotal.toFixed(2)}/-</span>
               </div>
             </div>
           </div>
@@ -1619,7 +1672,7 @@ export default function CheckoutPage() {
                       </div>
                       <div className="max-h-72 overflow-y-auto pr-2 space-y-6">
                         {cartItems.map((item) => (
-                          <div key={item.cartid} className="flex gap-4">
+                          <div key={`${item.id}-${item.variantid}`} className="flex gap-4">
                             <img
                               src={`https://ikonixperfumer.com/beta/assets/uploads/${item.image}`}
                               alt={item.name}
@@ -1630,6 +1683,12 @@ export default function CheckoutPage() {
                               {item.weight ? <p className="text-xs text-[#8C7367]">{item.weight} ml</p> : null}
                               <p className="text-[#2A3443] font-semibold text-sm">
                                 Rs.{item.price.toFixed(2)}/-
+                              </p>
+                              <p className="text-sm text-[#8C7367]">
+                                Qty: {item.qty}{item.freeQty > 0 ? ` (including ${item.freeQty} free)` : ''}
+                              </p>
+                              <p className="text-[#2A3443] font-semibold text-sm">
+                                Total: Rs.{item.total.toFixed(2)}/-
                               </p>
                             </div>
                           </div>
@@ -1685,7 +1744,7 @@ export default function CheckoutPage() {
                         <div className="flex justify-between text-base">
                           <span>Delivery Charge</span>
                           <span className="text-[#b49d91] font-semibold">
-                            Rs.{chargeSummary.delivery.toFixed(2)}/-
+                            {deliveryChargeLabel}
                           </span>
                         </div>
                         {chargeSummary.tax !== null && (
@@ -1705,7 +1764,7 @@ export default function CheckoutPage() {
                           </div>
                         )}
                         <div className="flex justify-between text-2xl font-bold text-[#2A3443]">
-                          <span>Total</span>
+                          <span>{totalLabel}</span>
                           <span>Rs.{(payableTotal).toFixed(2)}/-</span>
                         </div>
                       </div>
@@ -1724,7 +1783,7 @@ export default function CheckoutPage() {
                     <button
                       onClick={handleCheckout}
                       className="px-12 py-3 rounded-xl bg-[#1e2633] text-white hover:opacity-90"
-                      disabled={loading}
+                      disabled={loading || chargeQuoteLoading}
                     >
                       {loading ? 'Processing…' : 'Proceed to Checkout'}
                     </button>
