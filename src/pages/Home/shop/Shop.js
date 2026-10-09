@@ -1,6 +1,6 @@
 // src/pages/shop/Shop.js
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
 import PageNav from "../../../components/breadcrumb/PageNav";
 import Pagination from "../../../components/pagination/Pagination";
@@ -130,7 +130,7 @@ export default function Shop() {
     if (location.state?.activeFilter) {
       sessionStorage.setItem(FILTER_STORAGE_KEY, location.state.activeFilter);
       // clear router state so it won't re-run on re-render
-      navigate(location.pathname, { replace: true, state: {} });
+      navigate(location.pathname + location.search, { replace: true, state: {} });
     }
   }, [
     filters,
@@ -138,6 +138,7 @@ export default function Shop() {
     resolveHeaderFilterToTab,
     location.state,
     location.pathname,
+    location.search,
     navigate,
   ]);
 
@@ -153,13 +154,14 @@ export default function Shop() {
   }, [selectedCategory, products]);
 
   // Pagination (backend ignores page/limit params, so we page client-side)
-  const [currentPage, setCurrentPage] = useState(1);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedCategory]);
-
+  // Page lives in the URL (?page=5) so back/forward from a product or cart restores it.
+  const [searchParams, setSearchParams] = useSearchParams();
   const totalPages = Math.ceil(filtered.length / PRODUCTS_PER_PAGE);
+  const requestedPage = parseInt(searchParams.get("page"), 10);
+  const currentPage = Math.min(
+    Math.max(Number.isFinite(requestedPage) ? requestedPage : 1, 1),
+    Math.max(totalPages, 1)
+  );
 
   const paginatedProducts = useMemo(() => {
     const start = (currentPage - 1) * PRODUCTS_PER_PAGE;
@@ -179,9 +181,17 @@ export default function Shop() {
   const resultsTopRef = useRef(null);
 
   const goToPage = useCallback((page) => {
-    setCurrentPage(page);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (page <= 1) next.delete("page");
+        else next.set("page", String(page));
+        return next;
+      },
+      { replace: true }
+    );
     resultsTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  }, [setSearchParams]);
 
   // Guest add
   const saveGuestCart = useCallback(
@@ -324,6 +334,7 @@ export default function Shop() {
               key={cat}
               onClick={() => {
                 setSelectedCategory(cat);
+                setSearchParams({}, { replace: true }); // new category -> back to page 1
                 sessionStorage.setItem(FILTER_STORAGE_KEY, cat); // ✅ persist user choice
               }}
               className={`px-4 py-2 rounded-full flex-shrink-0 transition ${

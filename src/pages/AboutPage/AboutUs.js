@@ -11,6 +11,7 @@ import ch4 from '../../assets/ch4.png';
 import ch5 from '../../assets/ch5.svg';
 import SpecialDealsSlider from '../../components/SpecialDealsSlider/SpecialDealsSlider';
 import OwnPerfume from '../../components/ownperfume/OwnPerfume';
+import PageNav from '../../components/breadcrumb/PageNav';
 import useDocumentTitle from '../../hooks/useDocumentTitle';
 
 const whyChooseCards = [
@@ -45,7 +46,12 @@ function AboutUs() {
   useDocumentTitle("About Us");
   return (
     <div className="text-[#3b312e]">
-      <section className="relative mx-auto mt-5 md:mt-10 w-[90%] lg:w-[80%] overflow-hidden rounded-2xl">
+      <PageNav
+        className="mx-auto mt-5 md:mt-8 w-[90%] lg:w-[80%]"
+        fallback="/"
+        items={[{ label: 'Home', to: '/' }, { label: 'About us' }]}
+      />
+      <section className="relative mx-auto mt-4 md:mt-10 w-[90%] lg:w-[80%] overflow-hidden rounded-2xl">
         <img
           src={shopherobg}
           alt="Ikonix about banner"

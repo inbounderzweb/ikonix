@@ -8,6 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import PageNav from '../../components/breadcrumb/PageNav';
 import useDocumentTitle from '../../hooks/useDocumentTitle';
 
 export default function UserProfile() {
@@ -46,12 +47,11 @@ export default function UserProfile() {
   return (
     <div className="min-h-screen bg-[#fdf8f5] py-12 px-4">
       <div className="max-w-3xl mx-auto">
-        {/* Breadcrumb (optional) */}
-        <nav className="text-xs text-gray-500 mb-6">
-          <Link to="/" className="hover:underline">Home</Link>
-          <span> / </span>
-          <span className="text-gray-700">My Profile</span>
-        </nav>
+        <PageNav
+          className="mb-6"
+          fallback="/"
+          items={[{ label: 'Home', to: '/' }, { label: 'My Profile' }]}
+        />
 
         <h1 className="text-4xl font-semibold text-[#6d5a52] mb-8">My Profile</h1>
 

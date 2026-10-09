@@ -14,7 +14,7 @@ export default function PageNav({ items, fallback = "/", className = "" }) {
   };
 
   return (
-    <div className={`flex items-center gap-3 text-sm text-[#6C5950]/80 ${className}`}>
+    <div className={`flex items-center gap-3 font-fancy text-sm text-[#6C5950]/80 ${className}`}>
       <button
         type="button"
         onClick={goBack}

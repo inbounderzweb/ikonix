@@ -1,3 +1,4 @@
+import PageNav from '../../components/breadcrumb/PageNav';
 import React, { useState } from "react";
 import { FiPhone } from "react-icons/fi";
 import illustration from '../../assets/contact.svg'
@@ -23,12 +24,14 @@ export default function ContactPage() {
   return (
     <section className="w-[90%] md:w-[90%] lg:w-[80%] mx-auto text-[#3b312e] font-[\'Inter\',sans-serif] pb-20">
       {/* breadcrumb */}
-      <nav className="mx-auto pt-6 text-sm text-gray-500">
-        Home / <span className="text-black">Contact us</span>
-      </nav>
+      <PageNav
+        className="mt-[8px] pt-4"
+        fallback="/"
+        items={[{ label: 'Home', to: '/' }, { label: 'Contact us' }]}
+      />
 
       {/* heading */}
-      <h1 className="text-center text-[#8C7367] font-[luxia] text-[32px] md:text-[36px] font-[400] pt-4 pb-8">
+      <h1 className="text-center text-[#8C7367] font-[luxia] text-[32px] md:text-[36px] font-[400] pt-0 pb-6">
         Contact us
       </h1>
 
