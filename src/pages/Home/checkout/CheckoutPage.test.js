@@ -5,6 +5,7 @@ import CheckoutPage from './CheckoutPage';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import { trackPurchase } from '../../../lib/ecommerce';
+import { marjOfferResponse, sevenBottleOfferResponse } from '../../../testFixtures/cartResponses';
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -365,6 +366,140 @@ test('the supplied offer charges four original-price bottles consistently in the
   expect(trackPurchase).toHaveBeenCalledWith(expect.objectContaining({ value: 2396, shipping: 0 }));
 });
 
+test('the supplied Marj response prices only its 30ml offer group and charges 3712 through confirmation and payment', async () => {
+  setOudCart(marjOfferResponse);
+  mountCheckout();
+
+  await waitFor(() => expect(chargeRow('Total')).toHaveTextContent('Rs.3712.00/-'));
+  expect(screen.getByText('Rs.599.00/-', { exact: true })).toBeInTheDocument();
+  expect(screen.getAllByText('Rs.1316.00/-', { exact: true })).toHaveLength(2);
+  expect(screen.getByText('Rs.2396.00/-', { exact: true })).toBeInTheDocument();
+  expect(screen.queryByText('Rs.569.00/-', { exact: true })).not.toBeInTheDocument();
+  expect(screen.queryByText('Rs.1549.00/-', { exact: true })).not.toBeInTheDocument();
+  expect(chargeRow('Subtotal')).toHaveTextContent('Rs.4311.00/-');
+  expect(chargeRow('Offer discount')).toHaveTextContent('-Rs.599.00/-');
+  expect(chargeRow('Delivery Charge')).toHaveTextContent('Rs.0.00/-');
+  expect(screen.getAllByText(/1 free \(Buy 4 Get 1 Free/)).toHaveLength(1);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Place order' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+  expect(await screen.findByRole('heading', { name: 'Confirm your Order' })).toBeInTheDocument();
+  expect(screen.getAllByText('Rs.599.00/-', { exact: true })).toHaveLength(2);
+  expect(screen.getAllByText('Rs.1316.00/-', { exact: true })).toHaveLength(3);
+  expect(screen.getAllByText(/including 1 free/)).toHaveLength(1);
+  expect(chargeRow('Subtotal', 1)).toHaveTextContent('Rs.4311.00/-');
+  expect(chargeRow('Offer discount', 1)).toHaveTextContent('-Rs.599.00/-');
+  expect(chargeRow('Delivery Charge', 1)).toHaveTextContent('Rs.0.00/-');
+  expect(chargeRow('Total', 1)).toHaveTextContent('Rs.3712.00/-');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Proceed to Checkout' }));
+  await waitFor(() => expect(paymentOptions).not.toBeNull());
+  const createOrder = api.post.mock.calls.find(([url]) => url.endsWith('/payment/create-order'));
+  expect(new URLSearchParams(createOrder[1]).get('client_hint_amount')).toBe('371200');
+  await act(async () => { await paymentOptions.handler(paymentResponse); });
+  expect(trackPurchase).toHaveBeenCalledWith(expect.objectContaining({ value: 3712, shipping: 0 }));
+});
+
+test.each([
+  ['empty', []],
+  ['omitted', undefined],
+  ['null', null],
+  ['malformed', { free_qty: 1 }],
+  ['invalid free quantity', [{ ...marjOfferResponse.free_items[0], free_qty: 0 }]],
+  ['unmatched product', [{ ...marjOfferResponse.free_items[0], pid: '999' }]],
+  ['unmatched variant', [{ ...marjOfferResponse.free_items[0], vid: '999' }]],
+  ['mismatched size', [{ ...marjOfferResponse.free_items[0], variant_value: '100' }]],
+])('the latest response with %s free_items uses sale prices despite original_price and stale context offers', async (_name, freeItems) => {
+  setOudCart(marjOfferResponse);
+  cartQuote = { ...marjOfferResponse, free_items: freeItems };
+  if (freeItems === undefined) delete cartQuote.free_items;
+  mountCheckout();
+
+  await waitFor(() => expect(chargeRow('Total')).toHaveTextContent('Rs.4161.00/-'));
+  expect(screen.getByText('Rs.569.00/-', { exact: true })).toBeInTheDocument();
+  expect(screen.getAllByText('Rs.1316.00/-', { exact: true })).toHaveLength(2);
+  expect(screen.getByText('Rs.2845.00/-', { exact: true })).toBeInTheDocument();
+  expect(screen.queryByText('Rs.599.00/-', { exact: true })).not.toBeInTheDocument();
+  expect(screen.queryByText('Rs.1549.00/-', { exact: true })).not.toBeInTheDocument();
+  expect(chargeRow('Subtotal')).toHaveTextContent('Rs.4161.00/-');
+  expect(chargeRow('Delivery Charge')).toHaveTextContent('Rs.0.00/-');
+  expect(screen.queryByText('Offer discount', { exact: true })).not.toBeInTheDocument();
+  expect(screen.queryByText(/1 free \(Buy 4 Get 1 Free/)).not.toBeInTheDocument();
+});
+
+test('a newer quote omitting free_items removes the old offer from both summaries and payment', async () => {
+  setOudCart(marjOfferResponse);
+  const view = mountCheckout();
+  await waitFor(() => expect(chargeRow('Total')).toHaveTextContent('Rs.3712.00/-'));
+  cartQuote = { ...marjOfferResponse };
+  delete cartQuote.free_items;
+  useCart.mockReturnValue({ ...cartState, discount: 0 });
+  view.rerender(checkoutTree());
+
+  await waitFor(() => expect(chargeRow('Total')).toHaveTextContent('Rs.4161.00/-'));
+  expect(screen.queryByText('Offer discount', { exact: true })).not.toBeInTheDocument();
+  expect(screen.queryByText(/1 free \(Buy 4 Get 1 Free/)).not.toBeInTheDocument();
+  expect(screen.getByText('Rs.569.00/-', { exact: true })).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Place order' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+  expect(await screen.findByRole('heading', { name: 'Confirm your Order' })).toBeInTheDocument();
+  expect(chargeRow('Subtotal', 1)).toHaveTextContent('Rs.4161.00/-');
+  expect(chargeRow('Total', 1)).toHaveTextContent('Rs.4161.00/-');
+  expect(screen.queryByText(/including 1 free/)).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Proceed to Checkout' }));
+  await waitFor(() => expect(paymentOptions).not.toBeNull());
+  const createOrder = api.post.mock.calls.find(([url]) => url.endsWith('/payment/create-order'));
+  expect(new URLSearchParams(createOrder[1]).get('client_hint_amount')).toBe('416100');
+});
+
+test('changing a paid offer-group original_price invalidates the quote even when price and quantities stay fixed', async () => {
+  const paidItem = {
+    cartid: '1267', id: '88', vid: '76', name: 'Paid 30ml perfume', qty: '1',
+    weight: '30', price: '599', original_price: 599, sale_price: '569',
+  };
+  const initialQuote = { ...marjOfferResponse, data: [...marjOfferResponse.data, paidItem] };
+  setOudCart(initialQuote);
+  const view = mountCheckout();
+  await waitFor(() => expect(chargeRow('Total')).toHaveTextContent('Rs.4311.00/-'));
+  const quoteCount = api.post.mock.calls.filter(([url]) => url.endsWith('/cart')).length;
+  const pending = deferred();
+  const defaultPost = api.post.getMockImplementation();
+  api.post.mockImplementation((url, body, config) => url.endsWith('/cart')
+    ? pending.promise
+    : defaultPost(url, body, config));
+  useCart.mockReturnValue({
+    ...cartState,
+    items: cartState.items.map((item) => item.id === 88 ? { ...item, original_price: 650 } : item),
+  });
+  view.rerender(checkoutTree());
+
+  await waitFor(() => expect(api.post.mock.calls.filter(([url]) => url.endsWith('/cart')).length).toBeGreaterThan(quoteCount));
+  expect(chargeRow('Delivery Charge')).toHaveTextContent('Calculating');
+  await act(async () => {
+    pending.resolve({ data: { ...initialQuote, data: [...marjOfferResponse.data, { ...paidItem, original_price: 650 }] } });
+  });
+  await waitFor(() => expect(chargeRow('Total')).toHaveTextContent('Rs.4362.00/-'));
+  expect(screen.getAllByText('Rs.650.00/-', { exact: true })).toHaveLength(2);
+  expect(chargeRow('Subtotal')).toHaveTextContent('Rs.4961.00/-');
+  expect(chargeRow('Offer discount')).toHaveTextContent('-Rs.599.00/-');
+});
+
+test.each([
+  ['status', { status: false }],
+  ['success', { success: false }],
+])('a failed %s quote cannot apply its products or offers to checkout', async (_name, rejection) => {
+  cartQuote = { ...marjOfferResponse, ...rejection };
+  mountCheckout();
+
+  await waitFor(() => expect(chargeRow('Delivery Charge')).toHaveTextContent('Unavailable'));
+  expect(screen.getByRole('link', { name: 'Perfume' })).toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: 'Inspired By Marj' })).not.toBeInTheDocument();
+  expect(screen.queryByText('Offer discount', { exact: true })).not.toBeInTheDocument();
+  expect(cartState.applyServerCart).not.toHaveBeenCalled();
+});
+
 test('mixed-product offers use each eligible bottle original price in both summaries and payment while other sizes keep sale pricing', async () => {
   deliveryMethodsResponse = deliveryMethodsWithoutFees;
   setOudCart(mixedOfferQuote);
@@ -403,6 +538,27 @@ test('mixed-product offers use each eligible bottle original price in both summa
   expect(new URLSearchParams(createOrder[1]).get('client_hint_amount')).toBe('347500');
   await act(async () => { await paymentOptions.handler(paymentResponse); });
   expect(trackPurchase).toHaveBeenCalledWith(expect.objectContaining({ value: 3475, shipping: 70 }));
+});
+
+test('the latest seven-bottle response makes one existing Sauvage unit free through confirmation and payment', async () => {
+  setOudCart(sevenBottleOfferResponse);
+  mountCheckout();
+  await waitFor(() => expect(chargeRow('Total')).toHaveTextContent('Rs.3494.00/-'));
+  expect(screen.getAllByRole('link', { name: 'Inspired By Sauvage' })).toHaveLength(1);
+  expect(screen.getByText('1 paid + 1 free — Free bottle: Rs.0.00/-')).toBeInTheDocument();
+  expect(screen.getByText(/Includes 1 free/)).toHaveTextContent('save Rs.499.00/-');
+  expect(chargeRow('Subtotal')).toHaveTextContent('Rs.3993.00/-');
+  expect(chargeRow('Offer discount')).toHaveTextContent('-Rs.499.00/-');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Place order' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+  expect(await screen.findByRole('heading', { name: 'Confirm your Order' })).toBeInTheDocument();
+  expect(screen.getByText('Qty: 2 (including 1 free; 1 paid)')).toBeInTheDocument();
+  expect(chargeRow('Total', 1)).toHaveTextContent('Rs.3494.00/-');
+  fireEvent.click(screen.getByRole('button', { name: 'Proceed to Checkout' }));
+  await waitFor(() => expect(paymentOptions).not.toBeNull());
+  const createOrder = api.post.mock.calls.find(([url]) => url.endsWith('/payment/create-order'));
+  expect(new URLSearchParams(createOrder[1]).get('client_hint_amount')).toBe('349400');
 });
 
 test('an updated mixed-product quote restores all sale prices when the offer ends despite stale context offer data', async () => {

@@ -5,7 +5,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import qs from 'qs';
 import loadRazorpay from '../../../utils/loadRazorpay';
-import { getResponseMessage, getApiErrorMessage } from '../../../utils/apiError';
+import { getResponseMessage, getApiErrorMessage, isFailedResponse } from '../../../utils/apiError';
 import { parseCharge, normalizeCheckoutCharges } from '../../../utils/checkoutCharges';
 import { getCartPricing, normalizeServerCartItem } from '../../../utils/cartPricing';
 import {
@@ -73,7 +73,7 @@ export default function CheckoutPage() {
   const cartQuoteSignature = JSON.stringify({
     items: contextCartItems.map((item) => [
       item.id, item.variantid, item.qty, item.weight ?? '',
-      item.price, item.msrp, item.sale_price,
+      item.price, item.msrp, item.sale_price, item.original_price, item.normalPrice,
     ]),
     freeItems: contextFreeItems,
     discount: contextDiscount,
@@ -125,15 +125,19 @@ export default function CheckoutPage() {
   // A delivery quote also returns the latest item and offer prices. Use that
   // same snapshot throughout checkout, including confirmation and payment.
   const quotedItems = chargeSummary.raw?.data;
-  const freeItems = Array.isArray(chargeSummary.raw?.free_items)
-    ? chargeSummary.raw.free_items
+  const hasQuotedCart = !isFailedResponse(chargeSummary.raw) && Array.isArray(quotedItems);
+  // A complete cart response replaces earlier offers even when free_items is
+  // absent or malformed. Never combine new products with a previous offer.
+  const responseOffers = hasQuotedCart
+    ? (Array.isArray(chargeSummary.raw.free_items) ? chargeSummary.raw.free_items : [])
     : contextFreeItems;
   const pricing = getCartPricing(
-    Array.isArray(quotedItems)
+    hasQuotedCart
       ? quotedItems.map(normalizeServerCartItem)
       : contextCartItems,
-    freeItems
+    responseOffers
   );
+  const freeItems = pricing.freeItems;
   const cartItems = pricing.items;
   const { subtotal, discount, total } = pricing;
   // Use the server's quoted total when available; otherwise display the
@@ -520,7 +524,7 @@ export default function CheckoutPage() {
           }
         );
         if (cancelled) return;
-        if (data?.status === false || data?.success === false) {
+        if (isFailedResponse(data)) {
           throw new Error(getResponseMessage(data, 'Delivery charges could not be calculated'));
         }
 
@@ -1157,6 +1161,11 @@ export default function CheckoutPage() {
                     <p className="text-[#2A3443] text-sm md:text-lg font-semibold">
                       Rs.{item.price.toFixed(2)}/-
                     </p>
+                    {item.freeQty > 0 && (
+                      <p className="text-sm text-green-700">
+                        {item.paidQty} paid + {item.freeQty} free — Free bottle: Rs.0.00/-
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -1685,7 +1694,7 @@ export default function CheckoutPage() {
                                 Rs.{item.price.toFixed(2)}/-
                               </p>
                               <p className="text-sm text-[#8C7367]">
-                                Qty: {item.qty}{item.freeQty > 0 ? ` (including ${item.freeQty} free)` : ''}
+                                Qty: {item.qty}{item.freeQty > 0 ? ` (including ${item.freeQty} free; ${item.paidQty} paid)` : ''}
                               </p>
                               <p className="text-[#2A3443] font-semibold text-sm">
                                 Total: Rs.{item.total.toFixed(2)}/-

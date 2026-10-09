@@ -72,6 +72,15 @@ keep their anonymous credential even if the visitor signs in while paying.
 
 ## Local verification
 
+Browser refresh restores the saved customer token and user before rendering
+account pages. An old or absent `authTokenTime` does not expire an otherwise
+valid customer JWT; the token's actual `exp` and confirmed backend rejection
+control expiration. Product-detail reads use the same guest identity as the
+catalog and search, so guest-token recovery cannot clear a saved customer login.
+Successful boolean, string, and numeric response flags are recognized before
+classifying token-error messages. Explicitly failed OTP responses never save
+credentials or advance to the verification screen.
+
 ```sh
 CI=true npm test -- --watchAll=false --runInBand
 npm run build
@@ -80,3 +89,18 @@ npm run build
 Regression suites exercise the real Axios interceptors with controlled adapters,
 RTK product/search requests, account storage, guest cart transfer, and payment
 callback handling. They make no live login, cart, order, or payment changes.
+Login verification and full application remounts also exercise stored-session
+restoration on profile and product pages without requesting another OTP.
+They also complete OTP login and press both desktop and mobile profile buttons
+repeatedly. Login dialogs close whenever a session is established, including
+through another dialog or tab. Late OTP responses cannot replace that session
+or display a stale verification error on the profile page.
+
+Login user records are normalized before session storage and when restored.
+Compatibility handling accepts `id`, `userid`, or `user_id` from one unambiguous
+user record (including a single-record array), with a positive customer ID.
+Missing, zero, malformed, or conflicting IDs cannot establish a session. This
+prevents an apparently successful login from sending the shared `userid=0`
+in its first authenticated cart request and being rejected immediately.
+Incomplete verification responses remain on OTP and do not report the backend's
+generic "Success" message as an established login.

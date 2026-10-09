@@ -479,6 +479,42 @@ describe("API authentication and recovery", () => {
     expect(validate).not.toHaveBeenCalled();
   });
 
+  test.each([
+    { status: 'true' },
+    { status: 1 },
+    { status: '1' },
+    { success: true },
+    { success: 'true' },
+  ])('a successful response (%p) cannot expire the saved login because its message mentions a token error', async (flags) => {
+    cacheUser(userA);
+    const api = apiWithAdapter({}, (config) => Promise.resolve(response(config, {
+      ...flags, message: 'Previous invalid token has been replaced',
+    })));
+    await expect(api.post('/beta/api/cart', 'userid=7', { requireUser: true })).resolves.toMatchObject({ data: flags });
+    expect(expired).not.toHaveBeenCalled();
+    expect(localStorage.getItem('authToken')).toBe(userA);
+    expect(localStorage.getItem('authUser')).toBe(JSON.stringify({ id: 7 }));
+    expect(validate).not.toHaveBeenCalled();
+  });
+
+  test('a product-detail guest token rejection does not discard a valid saved customer session', async () => {
+    cacheUser(userA);
+    cacheGuest(guestA);
+    validate.mockResolvedValue({ data: { token: guestB } });
+    const seen = [];
+    const api = apiWithAdapter({}, (config) => {
+      seen.push(config.headers.Authorization);
+      return seen.length === 1
+        ? rejection(config, 401, { code: 'TOKEN_EXPIRED' })
+        : Promise.resolve(response(config, { status: true, data: { id: 87 } }));
+    });
+    await expect(api.get('/beta/api/products/87', { authMode: 'guest' })).resolves.toMatchObject({ data: { status: true } });
+    expect(seen).toEqual([`Bearer ${guestA}`, `Bearer ${guestB}`]);
+    expect(localStorage.getItem('authToken')).toBe(userA);
+    expect(localStorage.getItem('authUser')).toBe(JSON.stringify({ id: 7 }));
+    expect(expired).not.toHaveBeenCalled();
+  });
+
   test("auth diagnostics omit JWTs, query values, and raw response bodies", async () => {
     cacheUser(userA);
     const api = apiWithAdapter({ getToken: () => userA }, (config) =>

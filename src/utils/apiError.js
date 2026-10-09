@@ -25,6 +25,21 @@ export function getResponseMessage(data, fallback) {
   return toMessageString(data?.message) || toMessageString(data?.error) || fallback;
 }
 
+export function isFailedResponse(data) {
+  return [data?.status, data?.success].some((value) => (
+    value === false || value === 0 ||
+    (typeof value === 'string' && /^(false|0)$/i.test(value.trim()))
+  ));
+}
+
+export function isSuccessfulResponse(data) {
+  if (isFailedResponse(data)) return false;
+  return [data?.status, data?.success].some((value) => (
+    value === true || value === 1 ||
+    (typeof value === 'string' && /^(true|1)$/i.test(value.trim()))
+  ));
+}
+
 // Extracts a safe, renderable message from a caught axios error.
 export function getApiErrorMessage(err, fallback) {
   return getResponseMessage(err?.response?.data, fallback);

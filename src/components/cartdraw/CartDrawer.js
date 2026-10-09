@@ -131,6 +131,14 @@ export default function CartDrawer({ open, onClose }) {
                     <span className="text-[#2A3443] font-[lato] text-[16px] sm:text-[21px] font-[700] tracking-[0.5px] leading-[150%]">
                       Rs.{item.price}
                     </span>
+                    {item.freeQty > 0 && (
+                      <div className="text-sm text-[#8C7367] space-y-1">
+                        <p>Includes {item.freeQty} free — save Rs.{item.discount.toFixed(2)}/-</p>
+                        <p>{item.paidQty} paid + {item.freeQty} free</p>
+                        <p className="font-semibold text-green-700">Free bottle: Rs.0.00/-</p>
+                        <p className="font-semibold">Total: Rs.{item.total.toFixed(2)}/-</p>
+                      </div>
+                    )}
 
                     <div className="flex flex-wrap gap-2 items-center">
                       <span className="text-[#53443D] font-[lato] text-[16px] tracking-[0.5px] leading-[150%]">

@@ -11,7 +11,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { useCart, readGuest, writeGuest, toKey } from "../../../context/CartContext";
 import { createApiClient } from "../../../api/client";
 import { toastSuccess, toastInfo, toastError, truncateName } from "../../../utils/toast";
-import { getApiErrorMessage, getResponseMessage, isAuthError } from "../../../utils/apiError";
+import { getApiErrorMessage, getResponseMessage, isAuthError, isSuccessfulResponse } from "../../../utils/apiError";
 import { trackViewItem, trackAddToCart } from "../../../lib/ecommerce";
 import useDocumentTitle from "../../../hooks/useDocumentTitle";
 
@@ -24,7 +24,9 @@ export default function ProductDetails() {
   const vid = sp.get("vid");
 
   const { user, token, isTokenReady } = useAuth();
-  const { items, refresh, addOrIncLocal } = useCart();
+  const { items, refresh, applyServerCart, addOrIncLocal } = useCart();
+  const authRef = useRef({ userId: user?.id, token });
+  authRef.current = { userId: user?.id, token };
 
   const [product, setProduct] = useState(null);
   useDocumentTitle(product?.name);
@@ -65,6 +67,9 @@ export default function ProductDetails() {
       try {
         const url = `${API_BASE}/products/${pid}`;
         const { data } = await api.get(url, {
+          // Catalog access uses the same guest identity as listings/search.
+          // Its token recovery must not invalidate the customer's login.
+          authMode: "guest",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
         });
 
@@ -394,8 +399,11 @@ export default function ProductDetails() {
 
     try {
       const resp = await addServer();
-      if (resp?.data?.success || resp?.data?.status) {
-        refresh();
+      if (authRef.current.userId !== user.id || authRef.current.token !== token) return;
+      if (isSuccessfulResponse(resp?.data)) {
+        const applied = applyServerCart(resp.data, { celebrateOffer: true });
+        // Reconcile other product additions that may still be in flight.
+        refresh({ celebrateOffer: !applied });
         toastSuccess(`${truncateName(product.name)} added to cart`);
         trackAddToCart(product, selectedVar, qty);
       } else {
@@ -403,6 +411,7 @@ export default function ProductDetails() {
         toastError(getResponseMessage(resp?.data, "Failed to add to cart"));
       }
     } catch (e) {
+      if (e.__sessionChanged || authRef.current.userId !== user.id || authRef.current.token !== token) return;
       console.error("add to cart error:", e?.response?.data || e);
       refresh();
       if (isAuthError(e)) {
@@ -411,7 +420,7 @@ export default function ProductDetails() {
         toastError(getApiErrorMessage(e, "Error adding to cart"));
       }
     }
-  }, [product, selectedVar, pid, qty, token, user, addGuest, addOrIncLocal, addServer, refresh, checkInCart]);
+  }, [product, selectedVar, pid, qty, token, user, addGuest, addOrIncLocal, addServer, refresh, applyServerCart, checkInCart]);
 
 
 
@@ -428,16 +437,6 @@ export default function ProductDetails() {
 
     const variantid = selectedVar.vid;
     const price = Number(selectedVar.sale_price || selectedVar.price || 0) || 0;
-
-    const isOk = (d) =>
-      d?.success === true ||
-      d?.success === "true" ||
-      d?.success === 1 ||
-      d?.success === "1" ||
-      d?.status === true ||
-      d?.status === "true" ||
-      d?.status === 1 ||
-      d?.status === "1";
 
     try {
       // ---------- GUEST ----------
@@ -467,6 +466,7 @@ export default function ProductDetails() {
 
         writeGuest(current);
         await refresh();
+        if (authRef.current.userId !== user?.id || authRef.current.token !== token) return;
         navigate("/checkout");
         return;
       }
@@ -487,17 +487,25 @@ export default function ProductDetails() {
 
       const resp = await addServer();
       const data = resp?.data;
-      await refresh();
+      if (authRef.current.userId !== user.id || authRef.current.token !== token) return;
 
-      if (isOk(data)) {
+      if (isSuccessfulResponse(data)) {
+        const applied = applyServerCart(data, { celebrateOffer: true });
+        // Reconcile other product additions before opening checkout.
+        await refresh({ celebrateOffer: !applied });
+        if (authRef.current.userId !== user.id || authRef.current.token !== token) return;
         trackAddToCart(product, selectedVar, qty);
         navigate("/checkout");
         return;
       }
+      await refresh();
+      if (authRef.current.userId !== user.id || authRef.current.token !== token) return;
       toastError(getResponseMessage(data, "Failed to add to cart"));
     } catch (e) {
+      if (e.__sessionChanged || authRef.current.userId !== user?.id || authRef.current.token !== token) return;
       console.error("BUY NOW error:", e?.response?.data || e);
       try { await refresh(); } catch {}
+      if (authRef.current.userId !== user?.id || authRef.current.token !== token) return;
       toastError(getApiErrorMessage(e, e?.message || "Error adding product"));
     }
   }, [
@@ -508,6 +516,7 @@ export default function ProductDetails() {
     token,
     user,
     refresh,
+    applyServerCart,
     navigate,
     addOrIncLocal,
     addServer,

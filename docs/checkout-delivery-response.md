@@ -85,9 +85,10 @@ the free bottle, and an explicit offer discount is an aggregate amount applied
 once to that line. An active offer also switches the other products of the same
 bottle size to their own backend original prices. The size comes from the
 offer's `variant_value`, falling back to the matching free bottle's `weight`.
-Other sizes keep their sale prices. Missing or conflicting size information
-does not extend pricing to other products, and unmatched or inactive offer rows
-do not activate a size group. The backend remains responsible for qualification
+Other sizes keep their sale prices. Missing size information does not extend
+pricing to other products. Conflicting sizes, unmatched product/variant IDs,
+invalid free quantities, nonzero final prices, and malformed discounts do not
+activate an offer. The backend remains responsible for qualification
 and selecting the free bottle; the frontend does not invent offers from quantity.
 Priced rows preserve their normal unit price so repeated calculations and offer
 removal remain consistent, including prices supplied through `discount_price`.
@@ -97,3 +98,36 @@ product rows, confirmation, and payment amount use the same cart state.
 An explicitly empty quoted cart clears stale items.
 Price and offer changes invalidate the quote even when quantity stays the same.
 Removing an offer restores the sale price.
+
+The response supplied on 2026-10-08 contains five 30 ml Marj bottles and one
+100 ml Oud Maracujá bottle. Only Marj (`pid: "98"`, `vid: "75"`) has a free
+bottle: its subtotal is 2995 and its discount is 599, leaving 2396. The unrelated
+100 ml bottle uses sale price 1316 despite having `original_price: 1549`, so
+merchandise payable is 3712. With no valid `free_items`, both lines use sale
+prices and payable becomes 4161. An item-level `original_price` supplies the
+original price of an eligible product; its presence alone never activates an
+offer or makes that product free.
+
+Pricing exposes only the matched, validated offer rows with the free quantities
+and discounts actually applied. Cart banners, per-product labels, celebrations,
+and checkout share these rows. Complete product-add, quantity-change, and removal
+responses replace cart pricing immediately. A background refresh reconciles
+concurrent product changes and acknowledgment-only responses. A new cart
+snapshot with omitted, null, or malformed `free_items`
+clears prior offers. Explicitly failed responses cannot replace a successful
+cart or quote, including failure flags encoded as strings or numbers.
+
+Qualifying product-add and increment responses request the existing cart
+congratulations and confetti with `celebrateOffer: true`. Only validated free
+bottles trigger it, including when the free quantity is unchanged from an earlier
+addition. Passive cart reads and checkout quotes do not replay celebrations.
+Acknowledgment-only additions carry the same request into their following cart
+refresh; queued refreshes preserve it. Clearing the cart cancels pending
+celebration refreshes. The banner names the free product and its size.
+
+The subsequent seven-bottle response designates one 30 ml Sauvage bottle as
+free (`pid: "88"`, `vid: "45"`). Its existing cart row has quantity 2, so it
+remains one row with 1 paid bottle and 1 free bottle at zero cost, saving 499.
+The row total is 499; the six product rows contain seven bottles overall.
+Subtotal is 3993, discount is 499, and payable is 3494. Free quantities are
+already included in the backend quantities; they are never added a second time.

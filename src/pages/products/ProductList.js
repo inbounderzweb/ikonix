@@ -12,7 +12,7 @@ import Spinner from '../../components/loader/Spinner';
 
 import { createApiClient } from '../../api/client';
 import { toastSuccess, toastError, truncateName } from '../../utils/toast';
-import { getApiErrorMessage, getResponseMessage, isAuthError } from '../../utils/apiError';
+import { getApiErrorMessage, getResponseMessage, isAuthError, isSuccessfulResponse } from '../../utils/apiError';
 import { trackViewItemList, trackSelectItem, trackAddToCart } from '../../lib/ecommerce';
 
 const LIST_ID = 'home_bestsellers';
@@ -26,7 +26,9 @@ export default function ProductList({ hideFilters = false }) {
   const { user, token, isTokenReady } = useAuth();
 
   // ✅ Use CartContext as source of truth + realtime badge updates
-  const { items, refresh, addOrIncLocal, inc } = useCart();
+  const { items, refresh, applyServerCart, addOrIncLocal, inc } = useCart();
+  const authRef = useRef({ userId: user?.id, token });
+  authRef.current = { userId: user?.id, token };
 
   const checkInCart = useCallback((pid, vid) => {
     return items.some(
@@ -191,8 +193,11 @@ export default function ProductList({ hideFilters = false }) {
           }
         );
 
-        if (resp?.success) {
-          refresh();
+        if (authRef.current.userId !== user.id || authRef.current.token !== token) return;
+        if (isSuccessfulResponse(resp)) {
+          const applied = applyServerCart(resp, { celebrateOffer: true });
+          // Reconcile other product additions that may still be in flight.
+          refresh({ celebrateOffer: !applied });
           toastSuccess(`${truncateName(product.name)} added to cart`);
           trackAddToCart(product, variant, 1);
         } else {
@@ -200,6 +205,7 @@ export default function ProductList({ hideFilters = false }) {
           toastError(getResponseMessage(resp, 'Failed to add to cart'));
         }
       } catch (error) {
+        if (error.__sessionChanged || authRef.current.userId !== user.id || authRef.current.token !== token) return;
         console.error('❌ Error adding to cart:', error?.response?.data || error);
         refresh(); // rollback the optimistic update by refetching server truth
         if (isAuthError(error)) {
@@ -209,7 +215,7 @@ export default function ProductList({ hideFilters = false }) {
         }
       }
     },
-    [api, token, user, addOrIncLocal, refresh, saveGuestCart, checkInCart, inc]
+    [api, token, user, addOrIncLocal, refresh, applyServerCart, saveGuestCart, checkInCart, inc]
   );
 
   if (isLoading) {

@@ -4,8 +4,9 @@ import Swal from 'sweetalert';
 import qs from 'qs';
 import { useAuth } from '../context/AuthContext';
 import { createApiClient } from '../api/client';
-import { getApiErrorMessage, getResponseMessage } from '../utils/apiError';
+import { getApiErrorMessage, getResponseMessage, isFailedResponse, isSuccessfulResponse } from '../utils/apiError';
 import { isStrongPassword, getPasswordChecks, getPasswordScore, getPasswordStrengthLabel } from '../utils/password';
+import { normalizeAuthUser } from '../utils/authSession';
 import {
   XMarkIcon,
   LockClosedIcon,
@@ -41,7 +42,20 @@ export default function AuthModal({ open, onClose }) {
   const [resendIn, setResendIn]   = useState(0);
 
   const otpRefs = useRef([]);
-  const { setSession } = useAuth();
+  const { user, setSession } = useAuth();
+  const currentUserRef = useRef(user);
+  currentUserRef.current = user;
+
+  // Login can complete through another dialog or browser tab. An existing
+  // session must not leave this dialog waiting for another OTP.
+  useEffect(() => {
+    if (!user) return;
+    setTab('login');
+    setOtp(Array(OTP_LENGTH).fill(''));
+    setVToken('');
+    setOtpFlow(null);
+    setResendIn(0);
+  }, [user]);
 
   // clear fields whenever we leave the OTP screen
   useEffect(() => {
@@ -127,13 +141,15 @@ export default function AuthModal({ open, onClose }) {
 
     try {
       const { data } = await apiPost(url, payload);
-      if (data.status === false) {
+      if (currentUserRef.current) return;
+      if (isFailedResponse(data)) {
         Swal(getResponseMessage(data, 'Failed to send OTP'));
         return;
       }
       setVToken(data.verify_token || data.vtoken || '');
       setTab('otp');
     } catch (e) {
+      if (currentUserRef.current) return;
       console.error(e);
       Swal(extractError(e, 'Error sending OTP'));
     } finally {
@@ -157,7 +173,8 @@ export default function AuthModal({ open, onClose }) {
           verify_token: verifyToken,
         };
         const { data } = await apiPost(`${API_BASE}/forgot-password`, payload);
-        if (data.status === true) {
+        if (currentUserRef.current) return;
+        if (isSuccessfulResponse(data)) {
           Swal(getResponseMessage(data, 'Password reset successful'));
           setTab('login');
         } else {
@@ -176,12 +193,18 @@ export default function AuthModal({ open, onClose }) {
         ...(isLogin ? { otp_login: 2 } : {}),
       };
       const { data } = await apiPost(isLogin ? `${API_BASE}/login` : `${API_BASE}/register`, payload);
-      if (!data.token || !data.user) {
+      if (currentUserRef.current) return;
+      if (isFailedResponse(data)) {
         Swal(getResponseMessage(data, 'Verification failed'));
+        return;
+      }
+      if (!data?.token || !data?.user) {
+        Swal('We could not confirm your account. Please try again.');
         return;
       }
       await finalizeLogin(data);
     } catch (e) {
+      if (currentUserRef.current) return;
       console.error(e);
       Swal(extractError(e, 'Verification failed'));
     } finally {
@@ -191,19 +214,24 @@ export default function AuthModal({ open, onClose }) {
 
   /* FINALIZE login/register */
   const finalizeLogin = async (data) => {
+    const account = normalizeAuthUser(data.user);
+    if (!account) {
+      Swal('We could not confirm your account. Please try again.');
+      return;
+    }
     const userInfo = {
-      id:     data.user.id,
-      name:   data.user.name,
-      email:  data.user.email,
-      mobile: data.user.mobile,
+      id:     account.id,
+      name:   account.name,
+      email:  account.email,
+      mobile: account.mobile,
     };
 
-    setOtp(Array(OTP_LENGTH).fill(''));
-    setTab('login');
     if (!setSession(data.token, userInfo)) {
       Swal('Your session could not be established. Please sign in again.');
       return;
     }
+    setOtp(Array(OTP_LENGTH).fill(''));
+    setTab('login');
 
     // Guest cart -> server sync is handled centrally by CartContext's
     // syncGuestToServer(), which fires automatically once user/token are
@@ -244,7 +272,7 @@ export default function AuthModal({ open, onClose }) {
     setResendIn(RESEND_SECONDS);
   };
 
-  if (!open) return null;
+  if (!open || user) return null;
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"/>

@@ -6,7 +6,7 @@ const COLORS = ["#C5A291", "#8C7367", "#F2C94C", "#E76F51", "#2A9D8F", "#4C6EF5"
 const PIECES = 36;
 const BURST_MS = 2600;
 
-// True for a couple of seconds each time the cart newly unlocks (more of) an offer.
+// True for a couple of seconds after a qualifying cart addition.
 // Skipped for users who prefer reduced motion.
 export function useOfferBurst() {
   const { offerTick } = useCart();
@@ -18,8 +18,11 @@ export function useOfferBurst() {
     seen.current = offerTick;
     const reduce =
       typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) return;
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    if (reduce) {
+      setBurst(false);
+      return;
+    }
     setBurst(true);
     const t = setTimeout(() => setBurst(false), BURST_MS);
     return () => clearTimeout(t);
@@ -31,6 +34,7 @@ export function useOfferBurst() {
 // Banner shown while the cart qualifies for an offer (e.g. "Buy 4 Get 1 Free"), plus a
 // small confetti burst when `burst` is true (see useOfferBurst).
 export default function OfferCelebration({ freeItems = [], burst = false, className = "" }) {
+  const { offerTick } = useCart();
   const freeQty = freeItems.reduce((s, f) => s + (Number(f.free_qty) || 0), 0);
   const saved = freeItems.reduce((s, f) => s + (Number(f.discount) || 0), 0);
 
@@ -46,9 +50,10 @@ export default function OfferCelebration({ freeItems = [], burst = false, classN
         round: i % 3 === 0,
         color: COLORS[i % COLORS.length],
       })),
-    // new random layout each time a burst starts
+    // A new tick can arrive while the previous burst is still running.
+    // These dependencies intentionally regenerate the randomized confetti.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [burst]
+    [burst, offerTick]
   );
 
   if (freeQty <= 0) return null;
@@ -67,13 +72,15 @@ export default function OfferCelebration({ freeItems = [], burst = false, classN
         }
         @media (prefers-reduced-motion: reduce) {
           .ikx-offer-banner { animation: none !important; }
+          .ikx-offer-confetti { display: none !important; }
         }
       `}</style>
 
       {burst && (
         <div
+          key={offerTick}
           aria-hidden="true"
-          className="pointer-events-none fixed inset-0 z-[200] overflow-hidden"
+          className="ikx-offer-confetti pointer-events-none fixed inset-0 z-[200] overflow-hidden"
         >
           {pieces.map((p, i) => (
             <span
@@ -97,6 +104,7 @@ export default function OfferCelebration({ freeItems = [], burst = false, classN
       )}
 
       <div
+        key={`banner-${offerTick}`}
         role="status"
         className={`ikx-offer-banner flex items-center gap-3 rounded-xl border border-[#C5A291] bg-[#F9F1EC] px-4 py-3 text-[#53443D] ${className}`}
         style={{ animation: "ikx-offer-pop .5s ease-out" }}
@@ -104,8 +112,17 @@ export default function OfferCelebration({ freeItems = [], burst = false, classN
         <span className="text-2xl" aria-hidden="true">🎉</span>
         <div className="text-sm leading-snug">
           <p className="font-semibold">
-            Offer unlocked! {freeQty} bottle{freeQty > 1 ? "s" : ""} free
+            Congratulations! {freeQty} bottle{freeQty > 1 ? "s" : ""} free
           </p>
+          {freeItems.map((item, index) => {
+            const size = String(item.variant_value ?? "").trim();
+            const sizeLabel = size ? `${size.replace(/\s*ml$/i, "")} ml` : "";
+            return (
+              <p key={`${item.pid}-${item.vid}-${index}`} className="text-[#8C7367]">
+                {item.name || "Free bottle"}{sizeLabel ? ` — ${sizeLabel}` : ""} × {item.free_qty} free
+              </p>
+            );
+          })}
           <p className="text-[#8C7367]">You save Rs.{saved.toFixed(2)}/- on this order</p>
         </div>
       </div>

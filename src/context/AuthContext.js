@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { AUTH_EXPIRED_EVENT, isJwtExpired, clearStoredSession } from '../api/client';
+import { normalizeAuthUser } from '../utils/authSession';
 
 const AuthContext = createContext();
 const emptySession = () => ({ token: '', user: null });
@@ -15,8 +16,8 @@ function readStoredSession() {
   }
 
   try {
-    const user = JSON.parse(rawUser);
-    if (!user || typeof user !== 'object' || Array.isArray(user)) {
+    const user = normalizeAuthUser(JSON.parse(rawUser));
+    if (!user) {
       clearStoredSession();
       return emptySession();
     }
@@ -52,16 +53,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   const setSession = useCallback((token, user) => {
-    if (!token || isJwtExpired(token) || !user || typeof user !== 'object' || Array.isArray(user)) {
+    const normalizedUser = normalizeAuthUser(user);
+    if (!token || isJwtExpired(token) || !normalizedUser) {
       clearStoredSession();
       setSessionState(emptySession());
       return false;
     }
 
     localStorage.setItem('authToken', token);
-    localStorage.setItem('authUser', JSON.stringify(user));
+    localStorage.setItem('authUser', JSON.stringify(normalizedUser));
     localStorage.setItem('authTokenTime', Date.now().toString());
-    setSessionState({ token, user });
+    setSessionState({ token, user: normalizedUser });
     return true;
   }, []);
 
@@ -77,13 +79,14 @@ export function AuthProvider({ children }) {
   }, []);
 
   const setUser = useCallback((user) => {
-    if (!user) {
+    const normalizedUser = normalizeAuthUser(user);
+    if (!normalizedUser) {
       clearStoredSession();
       setSessionState(emptySession());
       return;
     }
-    localStorage.setItem('authUser', JSON.stringify(user));
-    setSessionState((previous) => ({ ...previous, user }));
+    localStorage.setItem('authUser', JSON.stringify(normalizedUser));
+    setSessionState((previous) => ({ ...previous, user: normalizedUser }));
   }, []);
 
   // No refresh-token endpoint is configured here. Do not report a successful

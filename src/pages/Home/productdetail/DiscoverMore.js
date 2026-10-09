@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useGetProductsQuery } from '../../../features/product/productApi';
 import bag from '../../../assets/bag.svg'; // adjust if needed
 import { useAuth } from '../../../context/AuthContext';
@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import { useCart, readGuest, writeGuest, toKey } from '../../../context/CartContext';
 import { toastSuccess, toastError, truncateName } from '../../../utils/toast';
-import { getApiErrorMessage, getResponseMessage, isAuthError } from '../../../utils/apiError';
+import { getApiErrorMessage, getResponseMessage, isAuthError, isSuccessfulResponse } from '../../../utils/apiError';
 
 const API_BASE = 'https://ikonixperfumer.com/beta/api';
 
@@ -20,7 +20,9 @@ function DiscoverMore() {
 
   // ✅ Use CartContext as source of truth so the header/mobile-nav badge
   // updates live (this page was previously bypassing CartContext entirely).
-  const { items, refresh, addOrIncLocal, inc, api } = useCart();
+  const { items, refresh, applyServerCart, addOrIncLocal, inc, api } = useCart();
+  const authRef = useRef({ userId: user?.id, token });
+  authRef.current = { userId: user?.id, token };
 
   const checkInCart = useCallback(
     (pid, vid) =>
@@ -94,14 +96,18 @@ const handleViewDetails = (item) => {
         { requireUser: true, expectedUserToken: token, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
 
-      if (resp?.success) {
-        refresh();
+      if (authRef.current.userId !== user.id || authRef.current.token !== token) return;
+      if (isSuccessfulResponse(resp)) {
+        const applied = applyServerCart(resp, { celebrateOffer: true });
+        // Reconcile other product additions that may still be in flight.
+        refresh({ celebrateOffer: !applied });
         toastSuccess(`${truncateName(product.name)} added to cart`);
       } else {
         refresh();
         toastError(getResponseMessage(resp, 'Failed to add to cart'));
       }
     } catch (err) {
+      if (err.__sessionChanged || authRef.current.userId !== user.id || authRef.current.token !== token) return;
       console.error('Error adding to cart:', err?.response?.data || err);
       refresh();
       if (isAuthError(err)) {

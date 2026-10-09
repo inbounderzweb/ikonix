@@ -12,7 +12,7 @@ import qs from "qs";
 import { useAuth } from "./AuthContext";
 import { createApiClient } from "../api/client";
 import { toastSuccess, toastError, truncateName } from "../utils/toast";
-import { getApiErrorMessage, getResponseMessage, isAuthError } from "../utils/apiError";
+import { getApiErrorMessage, getResponseMessage, isAuthError, isFailedResponse } from "../utils/apiError";
 import { getCartPricing, normalizeServerCartItem } from "../utils/cartPricing";
 
 const API_BASE = "https://ikonixperfumer.com/beta/api";
@@ -98,8 +98,8 @@ export function CartProvider({ children }) {
   });
   // Server-calculated offer lines (e.g. "Buy 4 Get 1 Free"); empty when no offer applies
   const [freeItems, setFreeItems] = useState([]);
-  // Bumps every time the cart newly qualifies for (more of) an offer, so the UI can
-  // open the cart and celebrate. Not bumped for the first load of an already-qualifying cart.
+  // Successful additions with a validated free bottle open the cart and
+  // celebrate. Reading an existing cart does not replay the congratulations.
   const [offerTick, setOfferTick] = useState(0);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -148,11 +148,12 @@ export function CartProvider({ children }) {
   // A fetch requested while another is in flight is queued (not dropped), so the
   // final state always reflects the latest cart
   const queuedRef = useRef(false);
+  const queuedCelebrationRef = useRef(false);
   const lastFetchRef = useRef(0);
   const fetchCartRef = useRef(null);
   const refreshTimerRef = useRef(null);
-  // free-bottle count from the previous server response (null = not loaded yet)
-  const freeBaselineRef = useRef(null);
+  const scheduledCelebrationRef = useRef(false);
+  const cartGenerationRef = useRef(0);
 
   /* ---------------- Derived: cart count ---------------- */
   const cartCount = useMemo(() => {
@@ -167,18 +168,20 @@ export function CartProvider({ children }) {
 
   // Checkout's delivery quote is also a cart snapshot. Keep the shared cart in
   // sync so quantity controls act on the same quantities that checkout shows.
-  const applyServerCart = useCallback((response) => {
-    if (response?.status === false || response?.success === false || !Array.isArray(response?.data)) return;
+  const applyServerCart = useCallback((response, opts) => {
+    if (isFailedResponse(response) || !Array.isArray(response?.data)) return false;
+    const nextItems = response.data.map(normalizeServerCartItem);
     const nextFree = Array.isArray(response.free_items) ? response.free_items : [];
     setFreeItems(nextFree);
 
-    const freeQty = nextFree.reduce((sum, f) => sum + (Number(f.free_qty) || 0), 0);
-    if (freeBaselineRef.current !== null && freeQty > freeBaselineRef.current) {
+    const nextPricing = getCartPricing(nextItems, nextFree);
+    const freeQty = nextPricing.freeItems.reduce((sum, f) => sum + f.free_qty, 0);
+    if (opts?.celebrateOffer === true && freeQty > 0) {
       setOfferTick((t) => t + 1);
     }
-    freeBaselineRef.current = freeQty;
-    setItems(response.data.map(normalizeServerCartItem));
+    setItems(nextItems);
     lastFetchRef.current = Date.now();
+    return true;
   }, []);
 
   /* ---------------- Fetch cart ---------------- */
@@ -198,6 +201,7 @@ export function CartProvider({ children }) {
 
     if (fetchingRef.current) {
       queuedRef.current = true;
+      if (opts?.celebrateOffer === true) queuedCelebrationRef.current = true;
       return;
     }
 
@@ -206,17 +210,19 @@ export function CartProvider({ children }) {
 
     // Only logged-in carts are stored on the server.
     const uid = getEffectiveUserId();
+    const cartGeneration = cartGenerationRef.current;
 
     try {
       const { data } = await api.post(
         `${API_BASE}/cart`,
         qs.stringify({ userid: uid }),
-        { requireUser: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+        { requireUser: true, keepSession: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
       );
 
       if (authRef.current.userId !== user.id || authRef.current.token !== token) return;
+      if (cartGeneration !== cartGenerationRef.current) return;
 
-      applyServerCart(data);
+      applyServerCart(data, { celebrateOffer: opts?.celebrateOffer === true });
     } catch (err) {
       console.error("Cart fetch error:", err?.response?.data || err);
     } finally {
@@ -225,7 +231,9 @@ export function CartProvider({ children }) {
       setLoading(false);
       if (queuedRef.current) {
         queuedRef.current = false;
-        fetchCartRef.current?.({ silent: true });
+        const celebrateOffer = queuedCelebrationRef.current;
+        queuedCelebrationRef.current = false;
+        fetchCartRef.current?.({ silent: true, celebrateOffer });
       }
     }
 
@@ -234,9 +242,14 @@ export function CartProvider({ children }) {
 
   // Debounced background refetch used after qty changes (offer recalculation),
   // so rapid +/- clicks produce one request instead of one per click
-  const scheduleRefresh = useCallback(() => {
+  const scheduleRefresh = useCallback((opts) => {
     clearTimeout(refreshTimerRef.current);
-    refreshTimerRef.current = setTimeout(() => fetchCartRef.current?.({ silent: true }), 400);
+    if (opts?.celebrateOffer === true) scheduledCelebrationRef.current = true;
+    refreshTimerRef.current = setTimeout(() => {
+      const celebrateOffer = scheduledCelebrationRef.current;
+      scheduledCelebrationRef.current = false;
+      fetchCartRef.current?.({ silent: true, celebrateOffer });
+    }, 400);
   }, []);
 
   // Refetch only if the cart hasn't been loaded recently
@@ -246,10 +259,11 @@ export function CartProvider({ children }) {
 
   useEffect(() => () => clearTimeout(refreshTimerRef.current), []);
 
-  // New login/logout: forget the previous offer baseline
+  // A pending addition belongs to the session that initiated it.
   useEffect(() => {
-    freeBaselineRef.current = null;
-  }, [user?.id]);
+    queuedCelebrationRef.current = false;
+    scheduledCelebrationRef.current = false;
+  }, [user?.id, token]);
 
 
   /* ---------------- Sync guest -> server ---------------- */
@@ -276,10 +290,9 @@ export function CartProvider({ children }) {
               variantid: it.variantid || "",
               qty: Number(it.qty) || 1,
             }),
-            { requireUser: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+            { requireUser: true, keepSession: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
           );
-          if ([false, "false", 0, "0"].includes(data?.success) ||
-              [false, "false", 0, "0"].includes(data?.status)) {
+          if (isFailedResponse(data)) {
             throw new Error(getResponseMessage(data, "Cart transfer was rejected"));
           }
 
@@ -367,14 +380,16 @@ export function CartProvider({ children }) {
       const uid = getEffectiveUserId();
 
       try {
-        await api.post(
+        const { data } = await api.post(
           `${API_BASE}/cart`,
           qs.stringify({ userid: uid, productid: id, variantid, qty: 1 }),
-          { requireUser: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+          { requireUser: true, keepSession: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
-        // optimistic update already reflects the new qty; refetch only to
-        // recalculate the server-side offer (e.g. buy 4 get 1 free)
-        if (user) scheduleRefresh();
+        if (isFailedResponse(data)) throw new Error(getResponseMessage(data, "Couldn't update quantity"));
+        if (authRef.current.userId !== user.id || authRef.current.token !== token) return;
+        const applied = applyServerCart(data, { celebrateOffer: true });
+        // Reconcile overlapping product changes whose responses arrive out of order.
+        scheduleRefresh({ celebrateOffer: !applied });
       } catch (e) {
         console.error("inc error:", e?.response?.data || e);
         reportCartError(e, "Couldn't update quantity");
@@ -383,7 +398,7 @@ export function CartProvider({ children }) {
         pendingItemsRef.current.delete(key);
       }
     },
-    [api, user, token, items, getEffectiveUserId, addOrIncLocal, fetchCart, scheduleRefresh, reportCartError]
+    [api, user, token, items, getEffectiveUserId, addOrIncLocal, applyServerCart, fetchCart, scheduleRefresh, reportCartError]
   );
 
   const dec = useCallback(
@@ -418,14 +433,15 @@ export function CartProvider({ children }) {
 
       const uid = getEffectiveUserId();
       try {
-        await api.post(
+        const { data } = await api.post(
           `${API_BASE}/cart`,
           qs.stringify({ userid: uid, productid: id, variantid, qty: -1 }),
-          { requireUser: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+          { requireUser: true, keepSession: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
-        // optimistic update already reflects the new qty; refetch only to
-        // recalculate the server-side offer (e.g. buy 4 get 1 free)
-        if (user) scheduleRefresh();
+        if (isFailedResponse(data)) throw new Error(getResponseMessage(data, "Couldn't update quantity"));
+        if (authRef.current.userId !== user.id || authRef.current.token !== token) return;
+        applyServerCart(data);
+        scheduleRefresh();
       } catch (e) {
         console.error("dec error:", e?.response?.data || e);
         reportCartError(e, "Couldn't update quantity");
@@ -434,7 +450,7 @@ export function CartProvider({ children }) {
         pendingItemsRef.current.delete(key);
       }
     },
-    [api, user, token, getEffectiveUserId, fetchCart, scheduleRefresh, items, reportCartError]
+    [api, user, token, getEffectiveUserId, applyServerCart, fetchCart, scheduleRefresh, items, reportCartError]
   );
 
   const remove = useCallback(
@@ -463,13 +479,15 @@ export function CartProvider({ children }) {
       // not have received one yet.
       if (cartid) {
         try {
-          await api.post(
+          const { data } = await api.post(
             `${API_BASE}/delete-cart`,
             qs.stringify({ userid: uid, cartid, variantid }),
-            { requireUser: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+            { requireUser: true, keepSession: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
           );
-          // item already removed from local state; refetch to recalculate the offer
-          if (user) scheduleRefresh();
+          if (isFailedResponse(data)) throw new Error(getResponseMessage(data, "Couldn't remove item"));
+          if (authRef.current.userId !== user.id || authRef.current.token !== token) return;
+          applyServerCart(data);
+          scheduleRefresh();
           toastSuccess(removedName ? `${truncateName(removedName)} removed from cart` : "Item removed from cart");
         } catch (e) {
           console.error("remove error:", e?.response?.data || e);
@@ -483,14 +501,18 @@ export function CartProvider({ children }) {
         pendingItemsRef.current.delete(key);
       }
     },
-    [api, user, token, getEffectiveUserId, fetchCart, scheduleRefresh, items, reportCartError]
+    [api, user, token, getEffectiveUserId, applyServerCart, fetchCart, scheduleRefresh, items, reportCartError]
   );
 
   const clear = useCallback(() => {
+    cartGenerationRef.current += 1;
+    clearTimeout(refreshTimerRef.current);
+    queuedRef.current = false;
     localStorage.removeItem("guestCart");
     setItems([]);
     setFreeItems([]);
-    freeBaselineRef.current = 0;
+    queuedCelebrationRef.current = false;
+    scheduledCelebrationRef.current = false;
   }, []);
 
   /* ---------------- Effects ---------------- */
@@ -507,7 +529,7 @@ export function CartProvider({ children }) {
     <CartContext.Provider
       value={{
         items: pricing.items,
-        freeItems,
+        freeItems: pricing.freeItems,
         discount,
         applyServerCart,
         offerTick,

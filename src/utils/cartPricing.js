@@ -33,6 +33,14 @@ const pickBestPrice = (item) => {
   return 0;
 };
 
+const pickOriginalPrice = (item) => {
+  for (const candidate of [item.original_price, item.msrp, item.mrp, item.regular_price, item.price]) {
+    const price = positiveAmount(candidate);
+    if (price !== null) return money(price);
+  }
+  return 0;
+};
+
 // Keep the normal cart price separately from any active free-item offer.
 export const normalizeServerCartItem = (item) => ({
   cartid: item.cartid ?? item.id,
@@ -43,7 +51,8 @@ export const normalizeServerCartItem = (item) => ({
   weight: item.weight ?? item.variant_value ?? '',
   price: pickBestPrice(item),
   qty: Math.max(1, positiveAmount(item.qty) ?? 1),
-  msrp: money(amount(item.msrp ?? item.mrp ?? item.regular_price ?? item.price) ?? 0),
+  msrp: pickOriginalPrice(item),
+  original_price: money(positiveAmount(item.original_price) ?? 0),
   sale_price: money(amount(item.sale_price ?? item.selling_price ?? item.offer_price) ?? 0),
 });
 
@@ -72,7 +81,12 @@ export const getCartPricing = (normalizedItems, freeItems = []) => {
   const sourceOffers = Array.isArray(freeItems) ? freeItems : [];
   const qualifyingSizes = new Set();
   const activeOffers = sourceOffers.filter((offer) => {
-    if (!offer || positiveAmount(offer.free_qty) === null) return false;
+    const freeQty = offer && positiveAmount(offer.free_qty);
+    if (!Number.isInteger(freeQty) || freeQty <= 0) return false;
+    // A free bottle has a zero final price. Omitted amounts retain support
+    // for older responses; explicitly malformed amounts are not offers.
+    if (offer.final_price != null && amount(offer.final_price) !== 0) return false;
+    if (offer.discount != null && amount(offer.discount) === null) return false;
     const freeItem = sourceItems.find((item) => (
       positiveAmount(item.qty) !== null && matchesItem(offer, item)
     ));
@@ -82,10 +96,9 @@ export const getCartPricing = (normalizedItems, freeItems = []) => {
     // the free bottle, not every paid product contributing to the offer.
     const offerSize = bottleSize(offer.variant_value);
     const itemSize = bottleSize(freeItem.weight);
+    if (offerSize !== null && itemSize !== null && offerSize !== itemSize) return false;
     const size = offerSize ?? itemSize;
-    if (size !== null && (offerSize === null || itemSize === null || offerSize === itemSize)) {
-      qualifyingSizes.add(size);
-    }
+    if (size !== null) qualifyingSizes.add(size);
     return true;
   });
   const items = sourceItems.map((item) => {
@@ -97,22 +110,36 @@ export const getCartPricing = (normalizedItems, freeItems = []) => {
     // the normal price so removing an offer restores it on every product.
     const normalPrice = money(amount(item.normalPrice) ?? amount(item.price) ?? 0);
     const qualifies = matchingOffers.length > 0 || qualifyingSizes.has(bottleSize(item.weight));
-    const originalPrice = qualifies ? positiveAmount(item.msrp) : null;
+    const originalPrice = qualifies ? positiveAmount(item.original_price) ?? positiveAmount(item.msrp) : null;
     const price = money(offerPrice ?? originalPrice ?? normalPrice);
     const subtotal = money(price * qty);
+    let remainingFreeQty = qty;
+    let remainingDiscount = subtotal;
     const offers = matchingOffers.map((offer) => {
-      const freeQty = positiveAmount(offer.free_qty);
+      const freeQty = Math.min(remainingFreeQty, positiveAmount(offer.free_qty));
+      if (freeQty <= 0) return null;
       const originalPrice = positiveAmount(offer.original_price) ?? price;
       const finalPrice = amount(offer.final_price) ?? 0;
       // The backend discount is already the sum for this offer row.
-      const discount = amount(offer.discount) ?? Math.max(0, originalPrice - finalPrice) * freeQty;
-      return { ...offer, free_qty: freeQty, discount: money(discount) };
-    });
-    const discount = Math.min(subtotal, money(offers.reduce((sum, offer) => sum + offer.discount, 0)));
-    const freeQty = Math.min(qty, offers.reduce((sum, offer) => sum + offer.free_qty, 0));
-    return { ...item, normalPrice, price, subtotal, discount, total: money(subtotal - discount), freeQty, offers };
+      const discount = money(Math.min(remainingDiscount,
+        amount(offer.discount) ?? Math.max(0, originalPrice - finalPrice) * freeQty));
+      remainingFreeQty -= freeQty;
+      remainingDiscount = money(remainingDiscount - discount);
+      return {
+        ...offer,
+        name: item.name ?? offer.name,
+        variant_value: bottleSize(offer.variant_value) !== null ? offer.variant_value : item.weight,
+        free_qty: freeQty,
+        discount,
+      };
+    }).filter(Boolean);
+    const discount = money(offers.reduce((sum, offer) => sum + offer.discount, 0));
+    const freeQty = offers.reduce((sum, offer) => sum + offer.free_qty, 0);
+    const paidQty = qty - freeQty;
+    return { ...item, normalPrice, price, subtotal, discount, total: money(subtotal - discount), paidQty, freeQty, offers };
   });
   const subtotal = money(items.reduce((sum, item) => sum + item.subtotal, 0));
   const discount = money(items.reduce((sum, item) => sum + item.discount, 0));
-  return { items, subtotal, discount, total: money(subtotal - discount) };
+  const effectiveFreeItems = items.flatMap((item) => item.offers);
+  return { items, freeItems: effectiveFreeItems, subtotal, discount, total: money(subtotal - discount) };
 };

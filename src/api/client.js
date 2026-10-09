@@ -1,7 +1,7 @@
 // Shared authentication and bounded guest-token recovery for all first-party API calls.
 import axios from "axios";
 import qs from "qs";
-import { getResponseMessage, isTokenErrorResponse } from "../utils/apiError";
+import { getResponseMessage, isTokenErrorResponse, isSuccessfulResponse } from "../utils/apiError";
 
 const VALIDATE_URL = "/beta/api/validate";
 const GUEST_TOKEN_KEY = "guestToken";
@@ -251,7 +251,10 @@ export function createApiClient({ getToken, baseUrl } = {}) {
     const tokenRejected = status === 401 || isTokenErrorResponse(err.response.data);
     logAuthFailure(err, original, tokenRejected ? "token-rejected" : "forbidden");
     if (original.__usedUserToken) {
-      if (tokenRejected) {
+      // Background cart calls (fetch/guest sync after login) opt out: a rejection
+      // there must not wipe a freshly issued login. Only an actually expired
+      // JWT ends the session on that path.
+      if (tokenRejected && (!original.keepSession || isJwtExpired(original.__userToken))) {
         err.__sessionExpired = true;
         handleSessionExpired(original.__userToken);
       }
@@ -282,7 +285,7 @@ export function createApiClient({ getToken, baseUrl } = {}) {
 
   api.interceptors.response.use((response) => {
     // The backend sometimes returns token failures in a HTTP 200 JSON body.
-    if (response.data?.status !== true && isTokenErrorResponse(response.data)) {
+    if (!isSuccessfulResponse(response.data) && isTokenErrorResponse(response.data)) {
       const err = new axios.AxiosError(
         getResponseMessage(response.data, "Access token rejected"),
         "ERR_AUTH_TOKEN",

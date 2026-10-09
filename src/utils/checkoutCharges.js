@@ -1,3 +1,5 @@
+import { isFailedResponse } from './apiError';
+
 // Missing charges must stay unknown; converting them to zero implies free delivery.
 export function parseCharge(value) {
   if (typeof value !== 'number' && typeof value !== 'string') return null;
@@ -15,7 +17,7 @@ export function normalizeCheckoutCharges(response) {
   const nested = envelope.data && typeof envelope.data === 'object' && !Array.isArray(envelope.data)
     ? envelope.data
     : {};
-  const sources = envelope.status === false || envelope.success === false ? [] : [envelope, nested];
+  const sources = isFailedResponse(envelope) ? [] : [envelope, nested];
   const readAmount = (keys) => {
     for (const source of sources) {
       for (const key of keys) {

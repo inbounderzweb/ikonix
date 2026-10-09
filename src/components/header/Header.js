@@ -34,6 +34,20 @@ function Header() {
   const [cartOpen, setCartOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
+  useEffect(() => {
+    if (user) setAuthOpen(false);
+  }, [user]);
+
+  const handleProfileClick = () => {
+    if (!isTokenReady) return;
+    if (user) {
+      setAuthOpen(false);
+      navigate("/user-profile");
+    } else {
+      setAuthOpen(true);
+    }
+  };
+
   // Handles sessions discarded during startup and logout from another tab,
   // which do not produce an in-flight API failure for the listener below.
   useEffect(() => {
@@ -43,8 +57,8 @@ function Header() {
     }
   }, [isTokenReady, user, location.pathname, navigate]);
 
-  // Open the cart automatically when adding an item newly unlocks an offer, so the
-  // customer sees the "Offer unlocked" message. Not on checkout, where the cart is already shown.
+  // Open the existing congratulations banner for a qualifying product addition.
+  // Checkout already shows the same offer in its cart summary.
   const seenOfferTick = useRef(offerTick);
   useEffect(() => {
     if (offerTick === seenOfferTick.current) return;
@@ -159,7 +173,7 @@ function Header() {
 
                 <button
                   className="cursor-pointer rounded-full grid place-items-center"
-                  onClick={() => (user ? navigate("/user-profile") : setAuthOpen(true))}
+                  onClick={handleProfileClick}
                 >
                   <img src={profile} alt="Profile" className="w-6 h-6" />
                 </button>

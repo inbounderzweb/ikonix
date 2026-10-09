@@ -35,9 +35,9 @@ test('an unquoted fee remains unknown instead of becoming free delivery', () => 
   });
 });
 
-test('a rejected quote cannot report its placeholder zero as free delivery', () => {
+test.each([false, 'false', ' FALSE ', 0, '0'])('a rejected quote (%p) cannot report its placeholder zero as free delivery', (status) => {
   expect(normalizeCheckoutCharges({
-    status: false, message: 'Unable to calculate delivery', delivery_charge: 0, total: 400,
+    status, message: 'Unable to calculate delivery', delivery_charge: 0, total: 400,
   })).toMatchObject({ delivery: null, apiTotal: 0 });
 });
 

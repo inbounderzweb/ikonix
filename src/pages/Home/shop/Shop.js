@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import Pagination from "../../../components/pagination/Pagination";
 import qs from "qs";
 import bag from "../../../assets/bag.svg";
 import Spinner from "../../../components/loader/Spinner";
@@ -14,7 +14,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { useCart, readGuest, writeGuest, toKey } from "../../../context/CartContext";
 import { createApiClient } from "../../../api/client";
 import { toastSuccess, toastError, truncateName } from "../../../utils/toast";
-import { getApiErrorMessage, getResponseMessage, isAuthError } from "../../../utils/apiError";
+import { getApiErrorMessage, getResponseMessage, isAuthError, isSuccessfulResponse } from "../../../utils/apiError";
 import { trackViewItemList, trackSelectItem, trackAddToCart } from "../../../lib/ecommerce";
 import useDocumentTitle from "../../../hooks/useDocumentTitle";
 
@@ -31,7 +31,9 @@ export default function Shop() {
   const location = useLocation();
 
   const { user, token, isTokenReady } = useAuth();
-  const { items, refresh, addOrIncLocal, inc } = useCart();
+  const { items, refresh, applyServerCart, addOrIncLocal, inc } = useCart();
+  const authRef = useRef({ userId: user?.id, token });
+  authRef.current = { userId: user?.id, token };
 
   const checkInCart = useCallback((pid, vid) => {
     return items.some(
@@ -250,8 +252,11 @@ export default function Shop() {
           { requireUser: true, expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
 
-        if (resp?.success) {
-          refresh();
+        if (authRef.current.userId !== user.id || authRef.current.token !== token) return;
+        if (isSuccessfulResponse(resp)) {
+          const applied = applyServerCart(resp, { celebrateOffer: true });
+          // Reconcile other product additions that may still be in flight.
+          refresh({ celebrateOffer: !applied });
           toastSuccess(`${truncateName(product.name)} added to cart`);
           trackAddToCart(product, variant, 1);
         } else {
@@ -259,6 +264,7 @@ export default function Shop() {
           toastError(getResponseMessage(resp, "Failed to add to cart"));
         }
       } catch (e) {
+        if (e.__sessionChanged || authRef.current.userId !== user.id || authRef.current.token !== token) return;
         console.error("add to cart error:", e?.response?.data || e);
         refresh();
         if (isAuthError(e)) {
@@ -268,7 +274,7 @@ export default function Shop() {
         }
       }
     },
-    [api, token, user, addOrIncLocal, refresh, saveGuestCart, checkInCart, inc]
+    [api, token, user, addOrIncLocal, refresh, applyServerCart, saveGuestCart, checkInCart, inc]
   );
 
   if (isLoading) {
@@ -397,32 +403,11 @@ export default function Shop() {
           })}
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-6 mt-10 pt-6 border-t border-[#e6d9d0]">
-            <button
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-              aria-label="Previous page"
-              className="text-[#b49d91] disabled:opacity-40 disabled:cursor-not-allowed transition"
-            >
-              <ChevronLeftIcon className="h-6 w-6" />
-            </button>
-
-            <span className="text-[#8C7367] font-fancy text-[15px]">
-              Page {currentPage} of {totalPages}
-            </span>
-
-            <button
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              aria-label="Next page"
-              className="text-[#b49d91] disabled:opacity-40 disabled:cursor-not-allowed transition"
-            >
-              <ChevronRightIcon className="h-6 w-6" />
-            </button>
-          </div>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={goToPage}
+        />
       </section>
     </>
   );
