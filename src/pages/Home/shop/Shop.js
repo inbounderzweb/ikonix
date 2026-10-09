@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
+import PageNav from "../../../components/breadcrumb/PageNav";
 import Pagination from "../../../components/pagination/Pagination";
 import qs from "qs";
 import bag from "../../../assets/bag.svg";
@@ -310,6 +311,11 @@ export default function Shop() {
       </div> */}
 
       <section className="mx-auto w-[95%] xl:w-[80%] py-8">
+        <PageNav
+          className="mb-6"
+          fallback="/"
+          items={[{ label: "Home", to: "/" }, { label: "Shop" }]}
+        />
         <div ref={resultsTopRef} />
         {/* Tabs */}
         <div className="flex gap-4 mb-6 overflow-x-auto scrollbar-hide no-scrollbar pb-4">

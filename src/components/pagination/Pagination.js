@@ -1,5 +1,5 @@
 import React from "react";
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 
 // Builds e.g. [1, "...", 4, 5, 6, "...", 20]. Always shows first, last and
 // current ± siblings; short lists are shown in full.
@@ -38,7 +38,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
   return (
     <nav
       aria-label="Pagination"
-      className="mt-10 pt-6 border-t border-[#e6d9d0] flex justify-center"
+      className="mt-10 pt-6 border-t border-[#e6d9d0] flex flex-col items-center gap-4"
     >
       <ul className="flex flex-nowrap items-center justify-center gap-0.5 sm:gap-2">
         <li>
@@ -89,6 +89,27 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
           </button>
         </li>
       </ul>
+
+      {totalPages > 5 && (
+        <label className="flex items-center gap-2 text-[14px] text-[#8C7367] font-fancy">
+          Go to page
+          <span className="relative inline-flex items-center">
+            <select
+              value={currentPage}
+              onChange={(e) => onPageChange(Number(e.target.value))}
+              className="h-9 appearance-none rounded-full border border-[#e6d9d0] bg-white pl-4 pr-9 text-[#8C7367] focus:outline-none focus:border-[#8C7367]"
+            >
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            <ChevronDownIcon className="pointer-events-none absolute right-3 h-4 w-4 text-[#8C7367]" />
+          </span>
+          <span>of {totalPages}</span>
+        </label>
+      )}
     </nav>
   );
 }

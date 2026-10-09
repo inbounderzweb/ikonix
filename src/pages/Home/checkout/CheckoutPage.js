@@ -16,6 +16,7 @@ import {
 
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
+import PageNav from '../../../components/breadcrumb/PageNav';
 import AuthModal from '../../../Authmodal/AuthModal';
 import Swal from 'sweetalert2';
 import {
@@ -1116,6 +1117,11 @@ export default function CheckoutPage() {
 
   return (
     <div className="w-[90%] lg:w-[80%] mx-auto py-8 md:py-10 px-0">
+      <PageNav
+        className="mb-6"
+        fallback="/shop"
+        items={[{ label: 'Home', to: '/' }, { label: 'Shop', to: '/shop' }, { label: 'Checkout' }]}
+      />
       <h1 className="text-3xl md:text-4xl font-semibold mb-8 text-[#6d5a52]">
         Your Order
       </h1>

@@ -1,5 +1,6 @@
 // src/pages/product-details/ProductDetails.js
 import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import PageNav from "../../../components/breadcrumb/PageNav";
 import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import qs from "qs";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
@@ -552,17 +553,15 @@ export default function ProductDetails() {
       <ValidateOnLoad />
 
       <div className="mx-auto w-[92%] md:w-[75%] py-6">
-        <nav className="text-sm text-[#6C5950]/70 mb-6">
-          <Link to="/" className="hover:underline">
-            Home
-          </Link>
-          <span className="mx-2">/</span>
-          <Link to="/shop" className="hover:underline">
-            Products
-          </Link>
-          <span className="mx-2">/</span>
-          <span>{product.name}</span>
-        </nav>
+        <PageNav
+          className="mb-6"
+          fallback="/shop"
+          items={[
+            { label: "Home", to: "/" },
+            { label: "Shop", to: "/shop" },
+            { label: product.name },
+          ]}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           {/* Gallery */}
