@@ -4,10 +4,19 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import mobilefirstBanner from "../../../assets/banner/bannerMob1.svg";
 import mobilesecondBanner from "../../../assets/banner/bannerMob2.svg";
+import mobilefourthBanner from "../../../assets/banner/bannerMob4.svg";
 import { Link } from "react-router-dom";
 import CollectionCards from "../../collectioncards/CollectionCards";
 
 const sliderData = [
+  {
+  title: "Stock Up on Your Favorites",
+  subtitle:
+    "Discover your signature scents and bring home the fragrances you love, every day.",
+  image: mobilefourthBanner,
+  buttonText: "Shop Now",
+  buttonLink: "/shop",
+},
   {
     title: "Define Your Signature",
     subtitle:

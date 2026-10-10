@@ -8,7 +8,6 @@ import qs from "qs";
 import bag from "../../../assets/bag.svg";
 import Spinner from "../../../components/loader/Spinner";
 import shopherobg from "../../../assets/about/aboutBannerDesk.svg";
-import shopherobgmob from "../../../assets/about/aboutBannerMob.svg";
 import ValidateOnLoad from "../../../components/ValidateOnLoad";
 import { useGetProductsQuery } from "../../../features/product/productApi";
 import { useAuth } from "../../../context/AuthContext";

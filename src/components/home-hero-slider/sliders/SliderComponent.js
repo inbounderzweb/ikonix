@@ -5,6 +5,7 @@ import Slider from 'react-slick';
 import firstBanner from '../../../assets/banner/bannerDesk1.svg';
 import secondBanner from '../../../assets/banner/bannerDesk2.svg';
 import thirdbanner from '../../../assets/banner/bannerDesk3.svg';
+import fourthbanner from '../../../assets/banner/bannerDesk4.svg';
 import arrowleft from '../../../assets/Arrow-left.svg';
 import arrowright from '../../../assets/Arrow-right.svg'
 import { Link } from 'react-router-dom';
@@ -12,6 +13,14 @@ import CollectionCards from '../../collectioncards/CollectionCards';
 
 
 const sliderData = [
+  {
+  title: "Stock Up on \n Your Favorites",
+  subtitle:
+    "Discover your signature scents and bring home the fragrances you love, every day.",
+  image: fourthbanner,
+  buttonText: "Shop Now",
+  buttonLink: "/shop",
+},
   {
     title: 'Define\n Your Signature',
     subtitle: 'Discover timeless fragrances crafted to leave a lasting impression.',
