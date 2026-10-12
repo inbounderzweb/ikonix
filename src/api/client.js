@@ -86,7 +86,7 @@ function requestUserId(data) {
 
 function requiresUser(config) {
   const path = requestPath(config);
-  if (config.requireUser || /\/(orders|address|addresses|checkout|payment|profile|account)(\/|$)/.test(path)) {
+  if (config.requireUser || /\/(orders|orders_with_items|address|addresses|checkout|payment|profile|account)(\/|$)/.test(path)) {
     return true;
   }
   const userid = requestUserId(config.data);

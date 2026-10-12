@@ -65,7 +65,32 @@ function normalizeStatus(order) {
 }
 
 function getOrderId(order) {
-  return order?.order_id ?? order?.orderid ?? order?.orderId ?? order?.id ?? null;
+  return order?.oid ?? order?.order_id ?? order?.orderid ?? order?.orderId ?? order?.id ?? null;
+}
+
+// The API joins address parts with ", " even when they are empty
+// (e.g. ", , , , , , "), so drop the blanks and show a fallback instead.
+function formatAddress(raw) {
+  const parts = String(raw ?? "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return parts.length ? parts.join(", ") : "Not available";
+}
+
+function getOrderItems(order) {
+  return Array.isArray(order?.items) ? order.items : [];
+}
+
+// Free/offer items come through with price "0", a "discount" (the value that
+// was waived) and a "note" describing the offer.
+function getOrderTotals(order) {
+  const subtotal = getOrderItems(order).reduce(
+    (sum, item) => sum + (Number(item?.price) || 0) * (Number(item?.qty) || 1),
+    0
+  );
+  const charge = Number(order?.delivery_charge) || 0;
+  return { subtotal, charge, total: subtotal + charge };
 }
 
 function TrackingSteps({ status }) {
@@ -174,7 +199,7 @@ function Orders() {
     setError("");
     try {
       const response = await api.post(
-        `${API_BASE}/orders`,
+        `${API_BASE}/orders_with_items`,
         qs.stringify({ userid: user.id }),
         { expectedUserToken: token, headers: { "Content-Type": "application/x-www-form-urlencoded" } }
       );
@@ -237,6 +262,8 @@ function Orders() {
         const orderId = getOrderId(order);
         const status = normalizeStatus(order);
         const courier = getCourierInfo(order);
+        const items = getOrderItems(order);
+        const { subtotal, total } = getOrderTotals(order);
         const isHighlighted = highlightId && orderId && String(orderId) === String(highlightId);
 
         return (
@@ -247,36 +274,62 @@ function Orders() {
               isHighlighted ? "border-[#b49d91] ring-2 ring-[#b49d91]/40" : ""
             }`}
           >
-            <div className="flex items-start justify-between">
-              <div>
-                {orderId && (
-                  <p className="text-xs text-gray-400 mb-0.5">Order #{orderId}</p>
-                )}
-                <p className="text-sm text-gray-500">
-                  <strong>Date:</strong> {order.date}
-                </p>
-                <p className="text-lg font-semibold">{order.name}</p>
-                <p className="text-sm text-gray-600">{order.category}</p>
-              </div>
-              <img
-                src={`${API_BASE_IMG}/assets/uploads/${order.image}`}
-                alt={order.name}
-                className="w-20 h-20 object-cover rounded-md"
-              />
+            <div>
+              {orderId && (
+                <p className="text-xs text-gray-400 mb-0.5">Order #{orderId}</p>
+              )}
+              <p className="text-sm text-gray-500">
+                <strong>Date:</strong> {order.date}
+              </p>
+            </div>
+
+            <div className="mt-3 divide-y">
+              {items.map((item, i) => {
+                const isFree = Number(item.price) === 0 && Number(item.discount) > 0;
+                return (
+                  <div key={`${item.pslug}-${i}`} className="flex items-center justify-between gap-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-base font-semibold">{item.name}</p>
+                      <p className="text-sm text-gray-600">{item.category}</p>
+                      <p className="text-sm text-gray-700">
+                        Qty: {item.qty} ·{" "}
+                        {isFree ? (
+                          <>
+                            <span className="text-gray-400 line-through">₹{item.discount}</span>{" "}
+                            <span className="font-semibold text-green-600">FREE</span>
+                          </>
+                        ) : (
+                          <>₹{item.price}</>
+                        )}
+                      </p>
+                      {item.note && (
+                        <p className="mt-0.5 inline-block rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">
+                          {item.note}
+                        </p>
+                      )}
+                    </div>
+                    <img
+                      src={`${API_BASE_IMG}assets/uploads/${item.image}`}
+                      alt={item.name}
+                      className="w-20 h-20 object-cover rounded-md shrink-0"
+                    />
+                  </div>
+                );
+              })}
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-sm mt-3 text-gray-700">
               <p>
-                <strong>Price:</strong> ₹{order.price}
-              </p>
-              <p>
-                <strong>Quantity:</strong> {order.qty}
-              </p>
-              <p>
-                <strong>Delivery:</strong> {order.delivery}
+                <strong>Items:</strong> ₹{subtotal}
               </p>
               <p>
                 <strong>Delivery Charge:</strong> ₹{order.delivery_charge}
+              </p>
+              <p className="col-span-2">
+                <strong>Delivery:</strong> {order.delivery}
+              </p>
+              <p className="col-span-2">
+                <strong>Total:</strong> ₹{total}
               </p>
             </div>
 
@@ -321,11 +374,11 @@ function Orders() {
             <div className="space-y-3 text-sm text-gray-700">
               <div>
                 <p className="font-medium">Billing Address</p>
-                <p>{selectedOrder.billing_address}</p>
+                <p>{formatAddress(selectedOrder.billing_address)}</p>
               </div>
               <div>
                 <p className="font-medium">Delivery Address</p>
-                <p>{selectedOrder.delivery_address}</p>
+                <p>{formatAddress(selectedOrder.delivery_address)}</p>
               </div>
             </div>
           </div>

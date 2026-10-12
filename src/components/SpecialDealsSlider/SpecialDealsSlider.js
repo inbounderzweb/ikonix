@@ -8,6 +8,9 @@ import banner3 from '../../assets/home/ikonix_banner3.png';
 import banner4 from '../../assets/home/ikonix_banner4.png';
 import { useNavigate } from "react-router-dom";
 
+// Flip to true when the offers go live: shows the deals slider instead of the "coming soon" panel
+const SHOW_OFFERS = false;
+
 // Slide data
 const deals = [
   {
@@ -157,10 +160,55 @@ function DealCard({ deal, onNavigate }) {
   );
 }
 
+// Minimal placeholder shown while offers are not live
+function ComingSoonOffers({ onShop }) {
+  return (
+    <section className="bg-[#e8d5cf] py-16">
+      <div className="mx-auto w-[90%] lg:w-[80%]">
+        <div className="relative overflow-hidden rounded-[24px] border border-[#C5A291]/60 bg-gradient-to-br from-[#F9F6F4] via-[#f3e6e0] to-[#ead8d1] px-6 py-14 md:py-20 text-center">
+          {/* soft decorative glows */}
+          <div className="pointer-events-none absolute -top-24 -left-24 h-64 w-64 rounded-full bg-[#C5A291]/25 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-[#8C7367]/20 blur-3xl" />
+
+          <div className="relative z-10 flex flex-col items-center">
+            <span className="font-fancy text-[11px] md:text-[12px] uppercase tracking-[0.35em] text-[#8C7367]">
+              Exclusive Offers
+            </span>
+
+            <div className="my-5 flex items-center gap-3">
+              <span className="h-px w-10 bg-[#C5A291]" />
+              <span className="h-1.5 w-1.5 rotate-45 bg-[#C5A291]" />
+              <span className="h-px w-10 bg-[#C5A291]" />
+            </div>
+
+            <h2 className="font-heading text-[27px] md:text-[40px] leading-tight text-[#44322B] tracking-[0.5px]">
+              Special Deals, Coming Soon
+            </h2>
+
+            <p className="mt-4 max-w-[520px] font-fancy text-[14px] md:text-[16px] leading-relaxed text-[#53443D]">
+              Something rare is being curated for you. Refined savings on your signature scents, arriving shortly.
+            </p>
+
+            <button
+              onClick={onShop}
+              className="mt-8 rounded-[24px] border border-[#8C7367] px-7 py-2 font-fancy text-[13px] md:text-[14px] tracking-[0.1em] text-[#44322B] transition hover:bg-[#8C7367] hover:text-white"
+            >
+              Explore the Collection
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function SpecialDealsSlider() {
 
   const Navigate = useNavigate();
 
+  if (!SHOW_OFFERS) {
+    return <ComingSoonOffers onShop={() => Navigate("/shop")} />;
+  }
 
   return (
     <>

@@ -9,18 +9,20 @@ import { Link } from "react-router-dom";
 import CollectionCards from "../../collectioncards/CollectionCards";
 
 const sliderData = [
-  {
-  title: "Stock Up on Your Favorites",
-  subtitle:
-    "Discover your signature scents and bring home the fragrances you love, every day.",
-  image: mobilefourthBanner,
-  buttonText: "Shop Now",
-  buttonLink: "/shop",
-},
+//   {
+//   title: "Stock Up on Your Favorites",
+//   subtitle:
+//     "Discover your signature scents and bring home the fragrances you love, every day.",
+//   image: mobilefourthBanner,
+//   buttonText: "Shop Now",
+//   buttonLink: "/shop",
+//   // banner artwork already contains the headline and has a light blue background
+//   light: true,
+// },
   {
     title: "Define Your Signature",
     subtitle:
-      "Discover timeless fragrances crafted to leave a lasting impression.",
+      "Discover timeless fragrances \n crafted to leave a lasting impression.",
     image: mobilefirstBanner,
     buttonText: "View Products",
     buttonLink: '/shop',
@@ -28,7 +30,7 @@ const sliderData = [
   {
     title: "Awaken Your Senses",
     subtitle:
-      "Experience luxurious aromas designed to inspire every moment.",
+      "Experience luxurious aromas \n designed to inspire every moment.",
     image: mobilesecondBanner,
     buttonText: "View Products",
     buttonLink: '/shop',
@@ -65,24 +67,24 @@ const MobileSlider = () => {
               <img
                 src={slide.image}
                 alt={`Slide ${idx + 1}`}
-                className="block w-full h-auto rounded-[6px]"
+                className="block w-full h-[75svh] object-cover rounded-[6px]"
               />
 
-              <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/25 to-black/60" />
-
-              {/* gradient overlay + contents */}
-              <div className="absolute inset-0 flex flex-col justify-between items-center text-center px-4 pt-8 pb-10">
-                <div>
-                  <h2 className="font-heading text-[24px] leading-tight font-semibold mb-3 bg-gradient-to-r from-[#FFF8F1] via-[#E9C9B2] to-[#FFF0DE] bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(0,0,0,0.25)]">
+              {/* contents */}
+              <div className="absolute inset-0 flex flex-col justify-between items-center text-center px-4 pt-12 pb-10">
+                <div className={slide.light ? "invisible" : ""}>
+                  <h2 className="font-heading text-[22px] sm:text-[28px] leading-tight font-semibold mb-3 text-[#2F3A4A]">
                     {slide.title}
                   </h2>
-                  <p className="font-fancy text-[#F3E4D6] text-sm leading-relaxed drop-shadow-[0_1px_8px_rgba(0,0,0,0.22)]">
+                  <p className="font-fancy whitespace-pre-line text-[#2F3A4A] text-[13px] sm:text-base leading-relaxed">
                     {slide.subtitle}
                   </p>
                 </div>
                 <Link
                   to={slide.buttonLink}
-                  className="bg-[#E2C4AD] cursor-pointer text-black text-base px-6 py-2 rounded-xl font-medium hover:bg-[#d5b49b] transition-all duration-300"
+                  className={`cursor-pointer text-base px-6 py-2 rounded-xl font-medium transition-all duration-300 ${
+                    "bg-[#2F3A4A] text-white hover:bg-[#4A6FB5]"
+                  }`}
                 >
                   {slide.buttonText}
                 </Link>
