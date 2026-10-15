@@ -9,16 +9,16 @@ import { Link } from "react-router-dom";
 import CollectionCards from "../../collectioncards/CollectionCards";
 
 const sliderData = [
-//   {
-//   title: "Stock Up on Your Favorites",
-//   subtitle:
-//     "Discover your signature scents and bring home the fragrances you love, every day.",
-//   image: mobilefourthBanner,
-//   buttonText: "Shop Now",
-//   buttonLink: "/shop",
-//   // banner artwork already contains the headline and has a light blue background
-//   light: true,
-// },
+  {
+  title: "Stock Up on Your Favorites",
+  subtitle:
+    "Discover your signature scents and bring home the fragrances you love, every day.",
+  image: mobilefourthBanner,
+  buttonText: "Shop Now",
+  buttonLink: "/shop",
+  // banner artwork already contains the headline and has a light blue background
+  light: true,
+},
   {
     title: "Define Your Signature",
     subtitle:

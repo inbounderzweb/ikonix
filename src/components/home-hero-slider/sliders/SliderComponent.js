@@ -13,14 +13,14 @@ import CollectionCards from '../../collectioncards/CollectionCards';
 
 
 const sliderData = [
-//   {
-//   title: "Stock Up on \n Your Favorites",
-//   subtitle:
-//     "Discover your signature scents and bring home the fragrances you love, every day.",
-//   image: fourthbanner,
-//   buttonText: "Shop Now",
-//   buttonLink: "/shop",
-// },
+  {
+  title: "Stock Up on \n Your Favorites",
+  subtitle:
+    "Discover your signature scents and bring home the fragrances you love, every day.",
+  image: fourthbanner,
+  buttonText: "Shop Now",
+  buttonLink: "/shop",
+},
   {
     title: 'Define\n Your Signature',
     subtitle: 'Discover timeless fragrances crafted to leave a lasting impression.',

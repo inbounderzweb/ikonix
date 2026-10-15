@@ -9,7 +9,7 @@ import banner4 from '../../assets/home/ikonix_banner4.png';
 import { useNavigate } from "react-router-dom";
 
 // Flip to true when the offers go live: shows the deals slider instead of the "coming soon" panel
-const SHOW_OFFERS = false;
+const SHOW_OFFERS = true;
 
 // Slide data
 const deals = [
