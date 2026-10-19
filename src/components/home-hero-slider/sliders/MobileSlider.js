@@ -6,6 +6,7 @@ import mobilefirstBanner from "../../../assets/banner/bannerMob1.svg";
 import mobilesecondBanner from "../../../assets/banner/bannerMob2.svg";
 import mobilefourthBanner from "../../../assets/banner/bannerMob4.svg";
 import { Link } from "react-router-dom";
+import OfferMarquee from "../../offer/OfferMarquee";
 import CollectionCards from "../../collectioncards/CollectionCards";
 
 const sliderData = [
@@ -92,6 +93,7 @@ const MobileSlider = () => {
             </div>
           ))}
         </Slider>
+        <OfferMarquee />
       </div>
       <div className="mt-3">
         <CollectionCards />

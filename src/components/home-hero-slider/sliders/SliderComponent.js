@@ -9,6 +9,7 @@ import fourthbanner from '../../../assets/banner/bannerDesk4.svg';
 import arrowleft from '../../../assets/Arrow-left.svg';
 import arrowright from '../../../assets/Arrow-right.svg'
 import { Link } from 'react-router-dom';
+import OfferMarquee from '../../offer/OfferMarquee';
 import CollectionCards from '../../collectioncards/CollectionCards';
 
 
@@ -140,6 +141,7 @@ const SliderComponent = () => {
             </div>
           ))}
         </Slider>
+        <OfferMarquee />
       </div>
 
       {/* Collections */}
