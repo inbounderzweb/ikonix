@@ -14,13 +14,12 @@ import CollectionCards from '../../collectioncards/CollectionCards';
 
 const sliderData = [
   {
-  title: "Stock Up on \n Your Favorites",
-  subtitle:
-    "Discover your signature scents and bring home the fragrances you love, every day.",
-  image: fourthbanner,
-  buttonText: "Shop Now",
-  buttonLink: "/shop",
-},
+    title: 'Stock up\non your\nfavourites!',
+    variant: 'stock-up',
+    image: fourthbanner,
+    buttonText: 'View Products',
+    buttonLink: '/shop',
+  },
   {
     title: 'Define\n Your Signature',
     subtitle: 'Discover timeless fragrances crafted to leave a lasting impression.',
@@ -89,7 +88,7 @@ const SliderComponent = () => {
         <Slider {...settings} className="hero-slider h-full w-full" >
           {sliderData.map((slide, index) => (
             <div key={index}>
-              <div className="relative aspect-[1128/520] overflow-hidden rounded-[18px]">
+              <div className={`relative aspect-[1128/520] overflow-hidden rounded-[18px] ${slide.variant === 'stock-up' ? '[container-type:inline-size]' : ''}`}>
 
                 <img
                   src={slide.image}
@@ -99,20 +98,43 @@ const SliderComponent = () => {
                 {/* <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/25 to-transparent" /> */}
                     <div className="absolute inset-0" />
 
-                <div className="absolute inset-y-0 left-0 lg:ms-6 2xl:ms-14 flex w-[48%] flex-col justify-center px-10 lg:px-16 text-[#53443D]">
-                  <h1 className="font-heading text-[32px] lg:text-[54px] leading-[0.95] font-medium whitespace-pre-line">
-                    {slide.title}
-                  </h1>
-                  <p className="font-fancy mt-3 max-w-[360px] text-[10px] lg:text-[16px] leading-relaxed text-[#53443D] whitespace-pre-line">
-                    {slide.subtitle}
-                  </p>
-                  <Link
-                    to={slide.buttonLink}
-                    className="mt-5 inline-flex w-fit items-center justify-center rounded-3xl bg-[#2d3545] px-5 py-2 lg:px-10 lg:py-4 text-[14px] font-medium text-white transition-colors duration-300 hover:bg-[#1f2633]"
-                  >
-                    {slide.buttonText}
-                  </Link>
-                </div>
+                {slide.variant === 'stock-up' ? (
+                  <div className="absolute left-[8.3%] top-[36.5%] flex flex-col items-start">
+                    <h1 className="font-['Times_New_Roman',serif]">
+                      {slide.title.split('\n').map((line, lineIndex) => (
+                        <span
+                          key={line}
+                          className={lineIndex === 0
+                            ? 'block text-[3.8cqw] font-normal leading-[0.95] text-white'
+                            : 'block text-[5cqw] font-bold leading-[0.85] text-[#DDB849]'}
+                        >
+                          {line}
+                        </span>
+                      ))}
+                    </h1>
+                    <Link
+                      to={slide.buttonLink}
+                      className="mt-[1.1cqw] inline-flex h-[4cqw] w-[15cqw] items-center justify-center rounded-full bg-[#C5A28F] font-fancy text-[1.55cqw] font-normal text-[#111111] transition-colors duration-300 hover:bg-[#D1B09D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+                    >
+                      {slide.buttonText}
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="absolute inset-y-0 left-0 lg:ms-6 2xl:ms-14 flex w-[48%] flex-col justify-center px-10 lg:px-16 text-[#53443D]">
+                    <h1 className="font-heading text-[32px] lg:text-[54px] leading-[0.95] font-medium whitespace-pre-line">
+                      {slide.title}
+                    </h1>
+                    <p className="font-fancy mt-3 max-w-[360px] text-[10px] lg:text-[16px] leading-relaxed text-[#53443D] whitespace-pre-line">
+                      {slide.subtitle}
+                    </p>
+                    <Link
+                      to={slide.buttonLink}
+                      className="mt-5 inline-flex w-fit items-center justify-center rounded-3xl bg-[#2d3545] px-5 py-2 lg:px-10 lg:py-4 text-[14px] font-medium text-white transition-colors duration-300 hover:bg-[#1f2633]"
+                    >
+                      {slide.buttonText}
+                    </Link>
+                  </div>
+                )}
 
               </div>
             </div>

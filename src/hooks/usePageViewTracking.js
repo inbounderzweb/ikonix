@@ -13,6 +13,7 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { pushToDataLayer } from "../lib/gtm";
+import { trackMetaPageView } from "../lib/metaPixel";
 
 export default function usePageViewTracking() {
   const location = useLocation();
@@ -21,7 +22,12 @@ export default function usePageViewTracking() {
   useEffect(() => {
     const path = location.pathname + location.search;
     if (lastPath.current === path) return; // skip re-renders on the same route
+    const isFirstView = lastPath.current === null;
     lastPath.current = path;
+
+    // The Meta Pixel snippet in index.html already fires PageView on the
+    // initial load; only SPA route changes after that need a manual one.
+    if (!isFirstView) trackMetaPageView();
 
     pushToDataLayer({
       event: "page_view",
