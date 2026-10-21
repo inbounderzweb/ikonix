@@ -7,7 +7,7 @@ import Pagination from "../../../components/pagination/Pagination";
 import qs from "qs";
 import bag from "../../../assets/bag.svg";
 import Spinner from "../../../components/loader/Spinner";
-import shopherobg from "../../../assets/about/aboutBannerDesk.svg";
+import shopherobg from "../../../assets/about/aboutBannerDesk.webp";
 import ValidateOnLoad from "../../../components/ValidateOnLoad";
 import { useGetProductsQuery } from "../../../features/product/productApi";
 import { useAuth } from "../../../context/AuthContext";

@@ -2,10 +2,10 @@ import React from 'react';
 import Slider from 'react-slick';
 // import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/20/solid';
 // import firstBanner from '../../../assets/banner/firstBanner.svg';
-import firstBanner from '../../../assets/banner/bannerDesk1.svg';
-import secondBanner from '../../../assets/banner/bannerDesk2.svg';
-import thirdbanner from '../../../assets/banner/bannerDesk3.svg';
-import fourthbanner from '../../../assets/banner/bannerDesk4.svg';
+import firstBanner from '../../../assets/banner/bannerDesk1.webp';
+import secondBanner from '../../../assets/banner/bannerDesk2.webp';
+import thirdbanner from '../../../assets/banner/bannerDesk3.webp';
+import fourthbanner from '../../../assets/banner/bannerDesk4.webp';
 import arrowleft from '../../../assets/Arrow-left.svg';
 import arrowright from '../../../assets/Arrow-right.svg'
 import { Link } from 'react-router-dom';

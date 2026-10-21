@@ -2,9 +2,9 @@ import React from "react";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import mobilefirstBanner from "../../../assets/banner/bannerMob1.svg";
-import mobilesecondBanner from "../../../assets/banner/bannerMob2.svg";
-import mobilefourthBanner from "../../../assets/banner/bannerMob4.svg";
+import mobilefirstBanner from "../../../assets/banner/bannerMob1.webp";
+import mobilesecondBanner from "../../../assets/banner/bannerMob2.webp";
+import mobilefourthBanner from "../../../assets/banner/bannerMob4.webp";
 import { Link } from "react-router-dom";
 import OfferMarquee from "../../offer/OfferMarquee";
 import CollectionCards from "../../collectioncards/CollectionCards";
@@ -72,7 +72,7 @@ const MobileSlider = () => {
               />
 
               {/* contents */}
-              <div className="absolute inset-0 flex flex-col justify-between items-center text-center px-4 pt-12 pb-10">
+              <div className="absolute inset-0 flex flex-col justify-between items-center text-center px-4 pt-10 pb-6 sm:pt-12 sm:pb-10">
                 <div className={slide.light ? "invisible" : ""}>
                   <h2 className="font-heading text-[22px] sm:text-[28px] leading-tight font-semibold mb-3 text-[#2F3A4A]">
                     {slide.title}
@@ -83,9 +83,7 @@ const MobileSlider = () => {
                 </div>
                 <Link
                   to={slide.buttonLink}
-                  className={`cursor-pointer text-base px-6 py-2 rounded-xl font-medium transition-all duration-300 ${
-                    "bg-[#2F3A4A] text-white hover:bg-[#4A6FB5]"
-                  }`}
+                  className="inline-flex min-w-[150px] items-center justify-center whitespace-nowrap rounded-xl bg-[#2F3A4A] px-6 py-2.5 text-[15px] leading-none font-medium text-white transition-colors duration-300 active:bg-[#4A6FB5] [@media(hover:hover)]:hover:bg-[#4A6FB5]"
                 >
                   {slide.buttonText}
                 </Link>
